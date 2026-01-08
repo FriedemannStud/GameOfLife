@@ -7,7 +7,7 @@
  aus Gewinnen: Strategien für math. Spiele Bd. 4, Elwyn R. Berlekamp, John H. Conway, Richard K. Guy, Vieweg, 1985, Seite 123
 
 "LIFE" wird auf einem unendlichen Schachbrett gespielt. Ein Spiel-Zustand ist dadurch gegeben, dass man sagt, welche Quadrate oder Zellen **leben** und welche **tod** sind. Den Anfangszustand zur Zeit 0 können Sie sich aussuchen. Danach haben Sie sich freundlichst zurückzulehnen und nichts mehr zu tun, denn was dann kommt, ergibt sich in strenger Zwangsläufigkeit aus den Spielregeln:
-**Geburt**: Eine zur Zeit t ote Zelle wird zum Zeitpunkt *t+1* genau dann lebendig, wenn zur Zeit *t* genau 3 von ihren  Nachbarn lebendig waren.
+**Geburt**: Eine zur Zeit t tote Zelle wird zum Zeitpunkt *t+1* genau dann lebendig, wenn zur Zeit *t* genau 3 von ihren  Nachbarn lebendig waren.
 **Tod durch Überbevölkerung**: Eine Zelle, die zur Zeit *t* lebt, aber zugleich noch 4 oder mehr lebende Nachbarn hat, ist zur Zeit *t+1* tot.
 **Tod durch Einsamkeit**: Eine Zelle, die zur Zeit *t* lebt, aber nur einen oder keinen lebendigen Nachbarn hat, ist zur Zeit *t+1* tot.
 
@@ -17,6 +17,9 @@ ZITAT Ende
 
 
 Umsetzung der Spielidee in ein C-Programm
+
+##### Unendliches Spielfeld
+Das unendliche Spielfeld wird dadurch realisiert, dass die gegüberliegenden Ränder als Nachbarfelder modelliert werden. Dadurch entsteht quasi ein unendliches Spielfeld in Form der Oberfläche eines Torus.
 
 ##### Programmier-Konzept
 Die Kern-Algorithmen (Erstellung des Spielfelds, Berechnung der Zustände, Speicherverwaltung) werden eigenständig programmiert. Die periphere Komponenten (Eingabe Startkonfiguration, Ausgabe auf Bildschirm, ...) werden mittels eines selbst entwickelten Vibe-Coding Prompts erstellt.

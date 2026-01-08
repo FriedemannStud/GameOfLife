@@ -4,3 +4,4 @@
 
 05.01.2026: Initialisierung der Matrix erstellt, Erste Version der Ausgabe der aktuellen Matrix (World) in Entwicklungsumgebung erstellt.
 
+07.01.2026: Berechnung von zellen in update_generation modelliert. Untere-linke Ecke und untere-rechte Ecke noch nicht modelliert. - README.md um Beschreibung der Gestalt des Spielfelds ergänzt.

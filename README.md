@@ -78,6 +78,9 @@ int main(void) {
     return 0;
 }
 
+
+## Ab hier Programmierung mit VIBE-CODING
+
 ##### Pseudocode Biotop
 LIFE bleibt immer noch ein 0-Personen-Spiel, jedoch wird der Zustand des initialen Spielfelds von zwei unterschiedlichen Personen (Teams "rot" vs "blau") festgelegt. Dann wird das Spiel gestartet. Nach einer festgelegten Anzahl Zyklen wird gezählt, von welcher Farbe mehr Zellen existieren. Gewonnen hat der Spieler mit den meisten lebenden Zellen. 
 Man kann sich das das Spielfeld wie ein **Biotop** vorstellen: Die Regeln von Conway bestimmen, wo neues Leben entstehen kann, aber die Teamfarben der Nachbarn entscheiden, welche  "Lebensform" das neue Leben annimmt. So entsteht ein rundenbasierter Wettstreit auf einem mathematischen Raster.

@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h> // zur Initialisierung des Zufallszahlengenerators
+#include <unistd.h> // zur Verlangsamung der Ausführung mit sleep()
 
-#define ROWS 10 
-#define COLS 10
+//#define rows 40
+// #define cols 50
 
 // Struktur definieren
 typedef struct {
@@ -13,39 +14,49 @@ typedef struct {
 } World;
 
 // Prototypen
-void init_world(World *current_gen);
-void print_world(World *current_gen);
-void update_generation(World *current_gen, World *next_gen);
+void init_world(World *current_gen, int rows, int cols);
+void print_world(World *current_gen, int rows, int cols);
+void update_generation(World *current_gen, World *next_gen, int rows, int cols);
 
 
-int main(void) {
+int main(int argc, char *argv[]) {
+    printf("argc: %i\n", argc);
+    if (argc < 2)
+    {
+        printf("main <rows> <columns> <delay milli-sec>\n");
+        return 1;
+    }
+    
+    int rows = atoi(argv[1]);
+    int cols = atoi(argv[2]);
+    int delay_my = atoi(argv[3]) * 1000;
     // Dynamische Speicherverwaltung für zwei Gitter
     // Zwei Gitter, um neuen zustand berechnen zu können, ohne den aktuellen Zustand zu beeinflussen, analog zu "Bildbearbeituns-Übung"
     World *current_gen = malloc(sizeof(World));
     World *next_gen = malloc(sizeof(World));
 
     // Speicher für die Zellen (Arrays) reservieren
-    current_gen->grid = malloc(ROWS * COLS * sizeof(int));
-    next_gen->grid = malloc(ROWS * COLS * sizeof(int));
+    current_gen->grid = malloc(rows * cols * sizeof(int));
+    next_gen->grid = malloc(rows * cols * sizeof(int));
 
     // Initialisierung
     // Zufälliges Muster lebender Zellen
-    init_world(current_gen);
+    init_world(current_gen, rows, cols);
 
     // Spiel-Schleife (Loop)
     int turns = 0;
-    while (turns < 10)
+    while (turns < 1000)
      {
         // Aktuelle Population ausgeben
+        print_world(current_gen, rows, cols);
         printf("turns: %i\n", turns);
-        printf("current_gen:\n");
-        print_world(current_gen);
-        update_generation(current_gen, next_gen);
-        // printf("next_gen:\n");
-        // print_world(next_gen);
+        usleep(delay_my);
+        update_generation(current_gen, next_gen, rows, cols);
 
-        // Die neu berechnete Generation wird zur aktuellen Generation (Pointer-Zuweisung)
+        // Die neu berechnete Generation wird zur aktuellen Generation (Pointer-Swap)
+        World *temp = current_gen;
         current_gen = next_gen;
+        next_gen = temp;
         
         // Abbruchbedingung oder Pause noch einfügen
         turns++;
@@ -60,23 +71,24 @@ int main(void) {
     return 0;
 }
 
-void init_world(World *current_gen)
+void init_world(World *current_gen, int rows, int cols)
 {
     // Initialisiere den Zufallszahlengenerator mit der aktuellen Zeit
     srand(time(NULL));
-    for (int i = 0; i < (ROWS * COLS); i++)
+    for (int i = 0; i < (rows * cols); i++)
     {
         current_gen->grid[i] = rand() % 2; // Zufällige 0 oder 1
     }
 }
 
-void print_world(World *current_gen)
+void print_world(World *current_gen, int rows, int cols)
 // Zunächst ohne GUI als Zeichen-Matrix 1 und 0
 {
-    for (int i = 0; i < (ROWS * COLS); i++)
+    system("clear");
+    for (int i = 0; i < (rows * cols); i++)
     {
-        printf("%i  ", current_gen->grid[i]);
-        if ((i+1) % COLS == 0)
+        printf("%c", current_gen->grid[i] + 32);
+        if ((i+1) % cols == 0)
         {
             printf("\n");
         }
@@ -84,192 +96,191 @@ void print_world(World *current_gen)
     printf("\n");
 }
 
-void update_generation(World *current_gen, World *next_gen)
+void update_generation(World *current_gen, World *next_gen, int rows, int cols)
 {
     int zellen = 0;
-    for (int i = 0; i < (ROWS * COLS); i++)
+    for (int i = 0; i < (rows * cols); i++)
     {
         //next_generation Zellenweise berechnen
-        //Anzahl lebender Zellen zählen
-
-        //wenn i oben, linke Eckzelle, muss Status der Zellen ... (beschreiben)
+        //Anzahl lebender Zellen in Nachbarschaft von i zählen
+        // Sonderfall: i = Eckzelle oben, links
         if (i == 0)
         {
             zellen = 
-            current_gen->grid[i + (COLS * ROWS) - 1] + // oberhalb, links -> letzte Zeile, letzte Spalte
-            current_gen->grid[i + (COLS * (ROWS - 1))] + // oberhalb, mittig -> letzte Zeile, erste Spalte
-            current_gen->grid[i + (COLS * (ROWS - 1)) + 1] + // oberhalt, rechts -> letzte Zeile, zweite Spalte
-            current_gen->grid[i + COLS - 1] + // links -> erste Zeile, letzte Spalte
+            current_gen->grid[i + (cols * rows) - 1] + // oberhalb, links -> letzte Zeile, letzte Spalte
+            current_gen->grid[i + (cols * (rows - 1))] + // oberhalb, mittig -> letzte Zeile, erste Spalte
+            current_gen->grid[i + (cols * (rows - 1)) + 1] + // oberhalt, rechts -> letzte Zeile, zweite Spalte
+            current_gen->grid[i + cols - 1] + // links -> erste Zeile, letzte Spalte
             current_gen->grid[i + 1] +
-            current_gen->grid[i + COLS + COLS - 1] + // unterhalb, links -> zweite Zeile, letzte Spalte
-            current_gen->grid[i + COLS] +
-            current_gen->grid[i + COLS + 1];
-            
+            current_gen->grid[i + cols + cols - 1] + // unterhalb, links -> zweite Zeile, letzte Spalte
+            current_gen->grid[i + cols] +
+            current_gen->grid[i + cols + 1];
+            /*Debug-print
             printf(" Eckzelle oben, links\n");
-            printf("i: %i->i statt oberhalb, links: %i\n", i, i + (COLS * ROWS) - 1);
-            printf("i: %i->i statt oberhalb, mittig: %i\n", i, i + (COLS * (ROWS - 1)));
-            printf("i: %i->i statt oberhalb, rechts: %i\n", i, i + (COLS * (ROWS - 1)) + 1);
-            printf("i: %i->i statt links: %i\n", i, i + COLS - 1);
-            printf("i: %i->i statt unterhalb, links: %i\n", i, i + COLS + COLS - 1);
+            printf("i: %i->i statt oberhalb, links: %i\n", i, i + (cols * rows) - 1);
+            printf("i: %i->i statt oberhalb, mittig: %i\n", i, i + (cols * (rows - 1)));
+            printf("i: %i->i statt oberhalb, rechts: %i\n", i, i + (cols * (rows - 1)) + 1);
+            printf("i: %i->i statt links: %i\n", i, i + cols - 1);
+            printf("i: %i->i statt unterhalb, links: %i\n", i, i + cols + cols - 1);
+            */
         }
-
-
-        //wenn i oben, rechte Eckzelle, muss Status der Zellen ... (beschreiben)
-        else if (i == (COLS - 1))
+        // Sonderfall: i = Eckzelle oben, rechts
+        else if (i == (cols - 1))
         {
             zellen = 
-            current_gen->grid[i + (COLS * (ROWS - 1)) - 1] + // oberhalb, links -> letzte Zeile, vorletzte Spalte
-            current_gen->grid[i + (COLS * (ROWS - 1))] + // oberhalb, mittig -> letzte Zeile, letzte Spalte
-            current_gen->grid[i + (COLS * (ROWS - 1)) - COLS + 1] + // oberhalb, rechts -> letzte Zeile, erste Spalte
+            current_gen->grid[i + (cols * (rows - 1)) - 1] + // oberhalb, links -> letzte Zeile, vorletzte Spalte
+            current_gen->grid[i + (cols * (rows - 1))] + // oberhalb, mittig -> letzte Zeile, letzte Spalte
+            current_gen->grid[i + (cols * (rows - 1)) - cols + 1] + // oberhalb, rechts -> letzte Zeile, erste Spalte
             current_gen->grid[i - 1] +
-            current_gen->grid[i - (COLS - 1)] + // rechts -> erste Zeile, erste Spalte
-            current_gen->grid[i + COLS - 1] +
-            current_gen->grid[i + COLS] +
+            current_gen->grid[i - (cols - 1)] + // rechts -> erste Zeile, erste Spalte
+            current_gen->grid[i + cols - 1] +
+            current_gen->grid[i + cols] +
             current_gen->grid[i + 1]; // unterhalb, rechts -> zweite Zeile, erste Spalte
-            
+            /*Debug-print
             printf(" Eckzelle oben, rechts\n");
-            printf("i: %i->i statt oberhalb, links: %i\n", i, i + (COLS * (ROWS - 1)) - 1);
-            printf("i: %i->i statt oberhalb, mittig: %i\n", i, i + (COLS * (ROWS - 1)));
-            printf("i: %i->i statt oberhalb, rechts: %i\n", i, i + (COLS * (ROWS - 1)) - COLS + 1);
-            printf("i: %i->i statt rechts: %i\n", i, i - (COLS - 1));
+            printf("i: %i->i statt oberhalb, links: %i\n", i, i + (cols * (rows - 1)) - 1);
+            printf("i: %i->i statt oberhalb, mittig: %i\n", i, i + (cols * (rows - 1)));
+            printf("i: %i->i statt oberhalb, rechts: %i\n", i, i + (cols * (rows - 1)) - cols + 1);
+            printf("i: %i->i statt rechts: %i\n", i, i - (cols - 1));
             printf("i: %i->i statt unterhalb, rechts: %i\n", i, i + 1);
+            */
         }
-
-        //wenn i unten, rechte Eckzelle, muss Status der Zellen ... (beschreiben)
-        else if (i == (COLS * ROWS - 1))
+        // Sonderfall i = Eckzelle unten, rechts
+        else if (i == (cols * rows - 1))
         {
             zellen = 
-            current_gen->grid[i - COLS - 1] +
-            current_gen->grid[i - COLS] +
-            current_gen->grid[i - COLS - (COLS - 1)] + // oberhalb, rechts -> vorletzte Zeile, erste Spalte
+            current_gen->grid[i - cols - 1] +
+            current_gen->grid[i - cols] +
+            current_gen->grid[i - cols - (cols - 1)] + // oberhalb, rechts -> vorletzte Zeile, erste Spalte
             current_gen->grid[i - 1] +
-            current_gen->grid[i - (COLS - 1)] + // rechts -> letzte Zeile, erste Spalte
-            current_gen->grid[i - (COLS * (ROWS - 1)) - 1] + // unterhalb, links -> erste Zeile, vorletzte Spalte
-            current_gen->grid[i - (COLS * (ROWS - 1))] + // unterhalb, mittig -> erste Zeile, letzte Spalte
-            current_gen->grid[i - (COLS * (ROWS)) + 1]; // unterhalb, rechts -> erste Zeile, erste Spalte
-            
+            current_gen->grid[i - (cols - 1)] + // rechts -> letzte Zeile, erste Spalte
+            current_gen->grid[i - (cols * (rows - 1)) - 1] + // unterhalb, links -> erste Zeile, vorletzte Spalte
+            current_gen->grid[i - (cols * (rows - 1))] + // unterhalb, mittig -> erste Zeile, letzte Spalte
+            current_gen->grid[i - (cols * (rows)) + 1]; // unterhalb, rechts -> erste Zeile, erste Spalte
+            /*Debug-print
             printf(" Eckzelle unten, rechts\n");
-            printf("i: %i->i statt oberhalb, rechts: %i\n", i, i - COLS - (COLS - 1));
-            printf("i: %i->i statt rechts: %i\n", i, i - (COLS - 1));
-            printf("i: %i->i statt unterhalb, links: %i\n", i, i - (COLS * (ROWS - 1)) - 1);
-            printf("i: %i->i statt unterhalb, mittig: %i\n", i, i - (COLS * (ROWS - 1)));
-            printf("i: %i->i statt unterhalb, rechts: %i\n", i, i - (COLS * (ROWS)) + 1);
+            printf("i: %i->i statt oberhalb, rechts: %i\n", i, i - cols - (cols - 1));
+            printf("i: %i->i statt rechts: %i\n", i, i - (cols - 1));
+            printf("i: %i->i statt unterhalb, links: %i\n", i, i - (cols * (rows - 1)) - 1);
+            printf("i: %i->i statt unterhalb, mittig: %i\n", i, i - (cols * (rows - 1)));
+            printf("i: %i->i statt unterhalb, rechts: %i\n", i, i - (cols * (rows)) + 1);
+            */
         }
-
-        //wenn i unten, linke Eckzelle, muss Status der Zellen ... (beschreiben)
-        else if (i == (COLS * (ROWS - 1)))
+        // Sonderfall: i = Eckzelle unten, links
+        else if (i == (cols * (rows - 1)))
         {
             zellen = 
             current_gen->grid[i - 1] + // oberhalb, links -> vorletzte Zeile, letzte Spalte
-            current_gen->grid[i - COLS] +
-            current_gen->grid[i - COLS + 1] +
-            current_gen->grid[i + (COLS - 1)] + // links -> letzte Zeile, letzte Spalte
+            current_gen->grid[i - cols] +
+            current_gen->grid[i - cols + 1] +
+            current_gen->grid[i + (cols - 1)] + // links -> letzte Zeile, letzte Spalte
             current_gen->grid[i + 1] +
-            current_gen->grid[i - (COLS * (ROWS - 2)) - 1] + // unterhalb, links -> erste Zeile, letzte Spalte
-            current_gen->grid[i - (COLS * (ROWS - 1))] + // unterhalb, mittig -> erste Zeile, erste Spalte
-            current_gen->grid[i - (COLS * (ROWS -1)) + 1]; // unterhalb, rechts -> erste Zeile, zweite Spalte
-            
+            current_gen->grid[i - (cols * (rows - 2)) - 1] + // unterhalb, links -> erste Zeile, letzte Spalte
+            current_gen->grid[i - (cols * (rows - 1))] + // unterhalb, mittig -> erste Zeile, erste Spalte
+            current_gen->grid[i - (cols * (rows -1)) + 1]; // unterhalb, rechts -> erste Zeile, zweite Spalte
+            /*Debug-print
             printf(" Eckzelle unten, links\n");
             printf("i: %i->i statt oberhalb, links: %i\n", i, i - 1);
-            printf("i: %i->i statt links: %i\n", i, i + COLS - 1);
-            printf("i: %i->i statt unterhalb, links: %i\n", i, i - (COLS * (ROWS - 2)) - 1);
-            printf("i: %i->i statt unterhalb, mittig: %i\n", i, i - (COLS * (ROWS - 1)));
-            printf("i: %i->i statt unterhalb, rechts: %i\n", i, i - (COLS * (ROWS -1)) + 1);
+            printf("i: %i->i statt links: %i\n", i, i + cols - 1);
+            printf("i: %i->i statt unterhalb, links: %i\n", i, i - (cols * (rows - 2)) - 1);
+            printf("i: %i->i statt unterhalb, mittig: %i\n", i, i - (cols * (rows - 1)));
+            printf("i: %i->i statt unterhalb, rechts: %i\n", i, i - (cols * (rows -1)) + 1);
+            */
         }
-
-        //wenn i am oberen Rand, muss Status der untersten Zeile verwendet werden
-        else if (i > 0 && i < COLS)
+        // Sonderfall: i = Zelle am oberen Rand
+        else if (i > 0 && i < cols)
         {
             zellen = 
-            current_gen->grid[i + (COLS * (ROWS - 1)) - 1] + // oberhalb links -> letzte Zeile, eine Spalte links
-            current_gen->grid[i + (COLS * (ROWS - 1))] + // oberhalb, mittig -> letzte Zeile, selbe Spalte
-            current_gen->grid[i + (COLS * (ROWS - 1)) + 1] + // oberhalb rechts -> letzte Zeile, eine Spalte rechts
+            current_gen->grid[i + (cols * (rows - 1)) - 1] + // oberhalb links -> letzte Zeile, eine Spalte links
+            current_gen->grid[i + (cols * (rows - 1))] + // oberhalb, mittig -> letzte Zeile, selbe Spalte
+            current_gen->grid[i + (cols * (rows - 1)) + 1] + // oberhalb rechts -> letzte Zeile, eine Spalte rechts
             current_gen->grid[i - 1] +
             current_gen->grid[i + 1] +
-            current_gen->grid[i + COLS - 1] +
-            current_gen->grid[i + COLS] +
-            current_gen->grid[i + COLS + 1];
-            
+            current_gen->grid[i + cols - 1] +
+            current_gen->grid[i + cols] +
+            current_gen->grid[i + cols + 1];
+            /*Debug-print
             printf(" Randzelle oben\n");
-            printf("i: %i->i statt oberhalb, links: %i\n", i, i + (COLS * (ROWS - 1)) - 1);
-            printf("i: %i->i statt oberhalb: %i\n", i, i + (COLS * (ROWS - 1)));
-            printf("i: %i->i statt oberhalb, rechts: %i\n", i, i + (COLS * (ROWS - 1)) + 1);
+            printf("i: %i->i statt oberhalb, links: %i\n", i, i + (cols * (rows - 1)) - 1);
+            printf("i: %i->i statt oberhalb: %i\n", i, i + (cols * (rows - 1)));
+            printf("i: %i->i statt oberhalb, rechts: %i\n", i, i + (cols * (rows - 1)) + 1);
+            */
         }
-
-        //wenn i am unteren Rand, muss Status der obersten Zeile als i+1 verwendet werden
-        else if (i > (COLS * (ROWS - 1)))
+        // Sonderfall: i = Zelle am unteren Rand
+        else if (i > (cols * (rows - 1)))
         {
             zellen = 
-            current_gen->grid[i + COLS - 1] +
-            current_gen->grid[i + COLS] +
-            current_gen->grid[i + COLS + 1] +
+            current_gen->grid[i + cols - 1] +
+            current_gen->grid[i + cols] +
+            current_gen->grid[i + cols + 1] +
             current_gen->grid[i - 1] +
             current_gen->grid[i + 1] +
-            current_gen->grid[i - (COLS * (ROWS - 1)) - 1] + // unterhalb, links -> erste Zeile, eine Spalte links
-            current_gen->grid[i - (COLS * (ROWS - 1))] + // unterhalb, mittig -> erste Zeile, selbe Spalte
-            current_gen->grid[i - (COLS * (ROWS - 1)) + 1]; // unterhalb, rechts -> erste Zeile, eine Spalte rechts
-            
+            current_gen->grid[i - (cols * (rows - 1)) - 1] + // unterhalb, links -> erste Zeile, eine Spalte links
+            current_gen->grid[i - (cols * (rows - 1))] + // unterhalb, mittig -> erste Zeile, selbe Spalte
+            current_gen->grid[i - (cols * (rows - 1)) + 1]; // unterhalb, rechts -> erste Zeile, eine Spalte rechts
+            /*Debug-print
             printf(" Randzelle unten\n");
-            printf("i: %i->i statt unterhalb, links: %i\n", i, i - (COLS * (ROWS - 1)) - 1);
-            printf("i: %i->i statt unterhalb: %i\n", i, i - (COLS * (ROWS - 1)));
-            printf("i: %i->i statt unterhalb, rechts: %i\n", i, i - (COLS * (ROWS - 1)) + 1);
+            printf("i: %i->i statt unterhalb, links: %i\n", i, i - (cols * (rows - 1)) - 1);
+            printf("i: %i->i statt unterhalb: %i\n", i, i - (cols * (rows - 1)));
+            printf("i: %i->i statt unterhalb, rechts: %i\n", i, i - (cols * (rows - 1)) + 1);
+            */
         }
-
-        //wenn i am linken Rand, muss Status der Zelle am rechten Rand als i-1 verwendet werden
-        else if (i != 0 && i % COLS == 0)
+        // Sonderfall: i = Zelle am linken Rand
+        else if (i != 0 && i % cols == 0)
         {
             zellen = 
-            current_gen->grid[i - COLS + COLS - 1] + //linker Rand -> eine Zeile nach oben, letzte Spalte
-            current_gen->grid[i - COLS] +
-            current_gen->grid[i - COLS + 1] +
-            current_gen->grid[i + COLS - 1] + // linker Rand -> selbe Zeile, letzte Spalte
+            current_gen->grid[i - cols + cols - 1] + //linker Rand -> eine Zeile nach oben, letzte Spalte
+            current_gen->grid[i - cols] +
+            current_gen->grid[i - cols + 1] +
+            current_gen->grid[i + cols - 1] + // linker Rand -> selbe Zeile, letzte Spalte
             current_gen->grid[i + 1] +
-            current_gen->grid[i + COLS + COLS - 1] + // linker Rand -> eine Zeile nach unten, letzte Spalte
-            current_gen->grid[i + COLS] +
-            current_gen->grid[i + COLS + 1];   
-            
+            current_gen->grid[i + cols + cols - 1] + // linker Rand -> eine Zeile nach unten, letzte Spalte
+            current_gen->grid[i + cols] +
+            current_gen->grid[i + cols + 1];   
+            /*Debug-print
             printf(" Randzelle links\n");
-            printf("i: %i->i statt oberhalb, links: %i\n", i, i - COLS + COLS - 1);
-            printf("i: %i->i statt links: %i\n", i, i + COLS - 1);
-            printf("i: %i->i statt unterhalb, links: %i\n", i, i + COLS + COLS - 1);
+            printf("i: %i->i statt oberhalb, links: %i\n", i, i - cols + cols - 1);
+            printf("i: %i->i statt links: %i\n", i, i + cols - 1);
+            printf("i: %i->i statt unterhalb, links: %i\n", i, i + cols + cols - 1);
+            */
         }
-
-        //wenn i am rechten Rand, muss Status der Zelle am linken Rand als i+1 verwendet werden
-        else if ((i + 1) % COLS == 0)
+        // Sonderfall: i = Zelle am rechten Rand
+        else if ((i + 1) % cols == 0)
         {
             zellen = 
-            current_gen->grid[i - COLS - 1] +
-            current_gen->grid[i - COLS] +
-            current_gen->grid[i - COLS + 1 - (COLS)] + // rechter Rand -> eine Zeile nach oben, erste Spalte
+            current_gen->grid[i - cols - 1] +
+            current_gen->grid[i - cols] +
+            current_gen->grid[i - cols + 1 - (cols)] + // rechter Rand -> eine Zeile nach oben, erste Spalte
             current_gen->grid[i - 1] +
-            current_gen->grid[i + 1 - (COLS)] + // rechter Rand -> selbe Zeile, erste Spalte
-            current_gen->grid[i + COLS - 1] +
-            current_gen->grid[i + COLS] +
-            current_gen->grid[i + COLS + 1 - (COLS)]; // rechter Rand -> eine Zeile nach unten, erste Spalte   
-            
+            current_gen->grid[i + 1 - (cols)] + // rechter Rand -> selbe Zeile, erste Spalte
+            current_gen->grid[i + cols - 1] +
+            current_gen->grid[i + cols] +
+            current_gen->grid[i + cols + 1 - (cols)]; // rechter Rand -> eine Zeile nach unten, erste Spalte   
+            /*Debug-print
             printf(" Randzelle rechts\n");
-            printf("i: %i->i statt oberhalb, rechts: %i\n", i, i - COLS + 1 - (COLS));
-            printf("i: %i->i statt rechts: %i\n", i, i + 1 - (COLS));
-            printf("i: %i->i statt unterhalb, rechts: %i\n", i, i + COLS + 1 - (COLS));
+            printf("i: %i->i statt oberhalb, rechts: %i\n", i, i - cols + 1 - (cols));
+            printf("i: %i->i statt rechts: %i\n", i, i + 1 - (cols));
+            printf("i: %i->i statt unterhalb, rechts: %i\n", i, i + cols + 1 - (cols));
+            */
         }
-
-
+        // Zellen innerhalb Spielfeld
         else
         {
             zellen = 
-            current_gen->grid[i - COLS - 1] +
-            current_gen->grid[i - COLS] +
-            current_gen->grid[i - COLS + 1] +
+            current_gen->grid[i - cols - 1] +
+            current_gen->grid[i - cols] +
+            current_gen->grid[i - cols + 1] +
             current_gen->grid[i - 1] +
             current_gen->grid[i + 1] +
-            current_gen->grid[i + COLS - 1] +
-            current_gen->grid[i + COLS] +
-            current_gen->grid[i + COLS + 1];
-
+            current_gen->grid[i + cols - 1] +
+            current_gen->grid[i + cols] +
+            current_gen->grid[i + cols + 1];
+            /*Debug-print
             printf("i: %i->i im Feld\n", i);
+            */
         }
-
-        if (zellen == 2 || zellen == 3)
+        // 
+        if (current_gen->grid[i] == 1 && zellen == 2 || zellen == 3)
         {
             next_gen->grid[i] = 1;
         }

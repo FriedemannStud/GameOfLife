@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
     printf("argc: %i\n", argc);
     if (argc < 2)
     {
-        printf("main <rows> <columns> <delay milli-sec>\n");
+        printf("./main <rows> <columns> <delay milli-sec>\n");
         return 1;
     }
     
@@ -59,6 +59,8 @@ int main(int argc, char *argv[]) {
         next_gen = temp;
         
         // Abbruchbedingung oder Pause noch einfügen
+        // Abbruch, wenn stabile Population erreicht,
+        // d.h. wenn next_gen = current_gen, unter Berücksichtigung periodisch alternierender Muster  
         turns++;
     }
 

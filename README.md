@@ -80,6 +80,17 @@ int main(void) {
 
 
 ## Ab hier Programmierung mit VIBE-CODING
+Mittlerweile existieren von verschiedenen Anbietern sog. KI-Agenten, die behaupten, auf professionellem Niveau Software-Code schreiben zu können. 
+Ziel dieses Projektes ist, eine funktionierende (von Hand in C geschriebene) Simulation von Conway's Game of Life mittels der Nutzung von einem KI-Agenten zu der im Folgenden beschriebenen Anwendung zu entwickeln.
+
+### Vorgehensweise
+Im ersten Schritt wird ein sog. **Architecture Decision Record (ADR)** erstellt, der die Anforderungen an das Projekt und die Grundlagen für die Entscheidung für das Programmkonzept enthält. In einem weiteren Schritt soll der KI-Agent eine **Anforderungsanalyse und Spezifikation** erstellen, in der auf Basis des ADR die Anforderungsspezifikation, User Stories, das Product Backlog und die Definition of Done formuliert werden. Im nächsten Schritt soll der KI-Agent dann das **technische Design und eine umsetzbare technische Architektur** entwickeln und formulieren. Basierend auf diesen Dokumenten wird der KI-Agent anschließend beauftragt, eine detaillierte **Aufgabenliste** zu erstellen, die dann verwendet wird, um den KI-Agenten präzise durch die Umsetzung und Entwicklung des Programmcodes zu führen. Dem KI-Agenten werden für die vorstehend genannten Dokumente **Templates** zur Verfügung gestellt, die eine Form und inhaltliche Struktur vorgeben.
+
+Die zur Verfügung gestellten Templates und die von dem KI-Agenten erstellten Dokumente werden in einem separaten Verzeichnis docs/ innerhalb der Codebase abgelegt.
+
+
+Für die Umsetzung wird der KI-Agent von Google Gemini-CLI verwendet. Ausschlaggebend für die Wahl dieses Anbieters war ausschließlich das große kostenfreie Token-Volumen für Studierende.
+
 
 ##### Pseudocode Biotop
 LIFE bleibt immer noch ein 0-Personen-Spiel, jedoch wird der Zustand des initialen Spielfelds von zwei unterschiedlichen Personen (Teams "rot" vs "blau") festgelegt. Dann wird das Spiel gestartet. Nach einer festgelegten Anzahl Zyklen wird gezählt, von welcher Farbe mehr Zellen existieren. Gewonnen hat der Spieler mit den meisten lebenden Zellen. 
@@ -139,7 +150,7 @@ while (rounds < MAX_ROUNDS) {
     rounds++;
 }
 
-// 6. Auswertung (Siegbedingung)
+// 5. Auswertung (Siegbedingung)
 int red_count = count_cells_by_team(current_gen, TEAM_RED);
 int blue_count = count_cells_by_team(current_gen, TEAM_BLUE);
 
@@ -148,3 +159,14 @@ if (red_count > blue_count) {
 } else if (blue_count > red_count) {
     // Team Blau gewinnt
 }
+
+// 6. UI für Biotop
+Über eine GUI können die Spieler folgende Eingaben vor Spielbeginn vornehmen.
+6.1 Spielfeldgröße in Zeilen x Spalten (rows, cols). Überschreibbare Standardvorgabe: 100 x 100.
+6.2 Verzögerung der Anzeige einer neu berechneten Generation in Millisekunden. Überschreibbare Standardvorgabe 500 Millisekunden.
+6.3 Anzahl der zur Generation 0 maximal lebenden Zellen pro Team. Es können weniger als die maximale Anzahl lebender Zellen initial eingegeben werden. Überschreibbare Standardvorgabe: 100. Es kann jedoch immer nur maximal 50% der gesamten Spielfeldgröße pro Team initial belegt werden.
+6.4 Anzahl der zu spielenden Runden (turns). Überschreibbare Standardvorgabe: 1000.
+6.4 Eingabe der initialen Belegung der Population (lebende Zellen) pro Team mittels Mausklick auf eine Zelle in einem auf dem Bildschirm dargestellten graphischen Gitter. Der zu belegende Bereich ist quadratisch. Diese initiale Belegung wird in einem geeigneten Datenformat auf der Festplatte abgespeichert und für den Spielablauf von dem Programm eingelesen.
+6.4.1 Historische initiale Belegungen können ausgewählt werden und erneut gestartet werden.
+6.4.2 Die initiale Belegung von Team Rot wird mittig in der rechten Hemisphäre des Spielfeldes platziert. Die initiale Belegung von Team Blau wird mittig in der linken Hemisphäre des Spielfeldes platziert.
+6.5 Das Endergebnis in Form einer statistischen Auswertung des Spielverlaufs wird als Datei im .md-Format auf der Festplatte abgespeichert.

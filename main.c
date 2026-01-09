@@ -1,10 +1,22 @@
+/*
+ * Game of Life - Competitive Biotope Mode (Red vs Blue)
+ * 
+ * Rules:
+ * - Standard Conway survival rules (2 or 3 neighbors).
+ * - Birth rule (3 neighbors): Majority color of parents determines child color.
+ * - Teams: Red (X) vs Blue (O).
+ * - Goal: Highest population after MAX_ROUNDS.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h> // zur Initialisierung des Zufallszahlengenerators
 #include <unistd.h> // zur Verlangsamung der Ausführung mit sleep()
 
-//#define rows 40
-// #define cols 50
+#define DEAD 0
+#define TEAM_RED 1
+#define TEAM_BLUE 2
+#define MAX_ROUNDS 1000
 
 // Struktur definieren
 typedef struct {
@@ -29,6 +41,12 @@ int main(int argc, char *argv[]) {
     
     int rows = atoi(argv[1]);
     int cols = atoi(argv[2]);
+    
+    if (rows > 2000 || cols > 2000) {
+        printf("Error: Grid too large (max 2000x2000)\n");
+        return 1;
+    }
+
     int delay_my = atoi(argv[3]) * 1000;
     // Dynamische Speicherverwaltung für zwei Gitter
     // Zwei Gitter, um neuen zustand berechnen zu können, ohne den aktuellen Zustand zu beeinflussen, analog zu "Bildbearbeituns-Übung"
@@ -45,11 +63,11 @@ int main(int argc, char *argv[]) {
 
     // Spiel-Schleife (Loop)
     int turns = 0;
-    while (turns < 1000)
+    while (turns < MAX_ROUNDS)
      {
         // Aktuelle Population ausgeben
         print_world(current_gen, rows, cols);
-        printf("turns: %i\n", turns);
+        printf("Turn: %i / %d\n", turns, MAX_ROUNDS);
         usleep(delay_my);
         update_generation(current_gen, next_gen, rows, cols);
 
@@ -58,10 +76,25 @@ int main(int argc, char *argv[]) {
         current_gen = next_gen;
         next_gen = temp;
         
-        // Abbruchbedingung oder Pause noch einfügen
-        // Abbruch, wenn stabile Population erreicht,
-        // d.h. wenn next_gen = current_gen, unter Berücksichtigung periodisch alternierender Muster  
         turns++;
+    }
+
+    // Game Over - Determine Winner
+    int final_red = 0;
+    int final_blue = 0;
+    for (int i = 0; i < rows * cols; i++) {
+        if (current_gen->grid[i] == TEAM_RED) final_red++;
+        else if (current_gen->grid[i] == TEAM_BLUE) final_blue++;
+    }
+
+    printf("\n--- GAME OVER ---\n");
+    printf("Final Score:\nRed: %d\nBlue: %d\n", final_red, final_blue);
+    if (final_red > final_blue) {
+        printf("Winner: RED TEAM\n");
+    } else if (final_blue > final_red) {
+        printf("Winner: BLUE TEAM\n");
+    } else {
+        printf("Result: DRAW\n");
     }
 
     // Speicher freigeben (Vermeidung von Memory Leaks)
@@ -79,7 +112,14 @@ void init_world(World *current_gen, int rows, int cols)
     srand(time(NULL));
     for (int i = 0; i < (rows * cols); i++)
     {
-        current_gen->grid[i] = rand() % 2; // Zufällige 0 oder 1
+        int val = rand() % 100;
+        if (val < 10) {
+            current_gen->grid[i] = TEAM_RED;
+        } else if (val < 20) {
+            current_gen->grid[i] = TEAM_BLUE;
+        } else {
+            current_gen->grid[i] = DEAD;
+        }
     }
 }
 
@@ -87,208 +127,181 @@ void print_world(World *current_gen, int rows, int cols)
 // Zunächst ohne GUI als Zeichen-Matrix 1 und 0
 {
     system("clear");
+    int red_count = 0;
+    int blue_count = 0;
+
     for (int i = 0; i < (rows * cols); i++)
     {
-        printf("%c", current_gen->grid[i] + 32);
+        if (current_gen->grid[i] == TEAM_RED) {
+            printf("X"); // Could add ANSI colors later
+            red_count++;
+        } else if (current_gen->grid[i] == TEAM_BLUE) {
+            printf("O");
+            blue_count++;
+        } else {
+            printf(" ");
+        }
+
         if ((i+1) % cols == 0)
         {
             printf("\n");
         }
     }
-    printf("\n");
+    printf("\nStats: Red: %d | Blue: %d\n", red_count, blue_count);
 }
 
 void update_generation(World *current_gen, World *next_gen, int rows, int cols)
 {
-    int zellen = 0;
+    // Macro to check a neighbor index and increment counters
+    // Using a macro avoids function call overhead in the tight loop
+    #define COUNT_NEIGHBOR(idx) \
+        if (current_gen->grid[idx] == TEAM_RED) red_neighbors++; \
+        else if (current_gen->grid[idx] == TEAM_BLUE) blue_neighbors++;
+
     for (int i = 0; i < (rows * cols); i++)
     {
-        //next_generation Zellenweise berechnen
-        //Anzahl lebender Zellen in Nachbarschaft von i zählen
+        int red_neighbors = 0;
+        int blue_neighbors = 0;
+
+        // --- Neighbor Counting (Unrolled for Edges) ---
+
         // Sonderfall: i = Eckzelle oben, links
         if (i == 0)
         {
-            zellen = 
-            current_gen->grid[i + (cols * rows) - 1] + // oberhalb, links -> letzte Zeile, letzte Spalte
-            current_gen->grid[i + (cols * (rows - 1))] + // oberhalb, mittig -> letzte Zeile, erste Spalte
-            current_gen->grid[i + (cols * (rows - 1)) + 1] + // oberhalt, rechts -> letzte Zeile, zweite Spalte
-            current_gen->grid[i + cols - 1] + // links -> erste Zeile, letzte Spalte
-            current_gen->grid[i + 1] +
-            current_gen->grid[i + cols + cols - 1] + // unterhalb, links -> zweite Zeile, letzte Spalte
-            current_gen->grid[i + cols] +
-            current_gen->grid[i + cols + 1];
-            /*Debug-print
-            printf(" Eckzelle oben, links\n");
-            printf("i: %i->i statt oberhalb, links: %i\n", i, i + (cols * rows) - 1);
-            printf("i: %i->i statt oberhalb, mittig: %i\n", i, i + (cols * (rows - 1)));
-            printf("i: %i->i statt oberhalb, rechts: %i\n", i, i + (cols * (rows - 1)) + 1);
-            printf("i: %i->i statt links: %i\n", i, i + cols - 1);
-            printf("i: %i->i statt unterhalb, links: %i\n", i, i + cols + cols - 1);
-            */
+            COUNT_NEIGHBOR(i + (cols * rows) - 1);           // oberhalb, links
+            COUNT_NEIGHBOR(i + (cols * (rows - 1)));         // oberhalb, mittig
+            COUNT_NEIGHBOR(i + (cols * (rows - 1)) + 1);     // oberhalb, rechts
+            COUNT_NEIGHBOR(i + cols - 1);                    // links
+            COUNT_NEIGHBOR(i + 1);                           // rechts
+            COUNT_NEIGHBOR(i + cols + cols - 1);             // unterhalb, links
+            COUNT_NEIGHBOR(i + cols);                        // unterhalb, mittig
+            COUNT_NEIGHBOR(i + cols + 1);                    // unterhalb, rechts
         }
         // Sonderfall: i = Eckzelle oben, rechts
         else if (i == (cols - 1))
         {
-            zellen = 
-            current_gen->grid[i + (cols * (rows - 1)) - 1] + // oberhalb, links -> letzte Zeile, vorletzte Spalte
-            current_gen->grid[i + (cols * (rows - 1))] + // oberhalb, mittig -> letzte Zeile, letzte Spalte
-            current_gen->grid[i + (cols * (rows - 1)) - cols + 1] + // oberhalb, rechts -> letzte Zeile, erste Spalte
-            current_gen->grid[i - 1] +
-            current_gen->grid[i - (cols - 1)] + // rechts -> erste Zeile, erste Spalte
-            current_gen->grid[i + cols - 1] +
-            current_gen->grid[i + cols] +
-            current_gen->grid[i + 1]; // unterhalb, rechts -> zweite Zeile, erste Spalte
-            /*Debug-print
-            printf(" Eckzelle oben, rechts\n");
-            printf("i: %i->i statt oberhalb, links: %i\n", i, i + (cols * (rows - 1)) - 1);
-            printf("i: %i->i statt oberhalb, mittig: %i\n", i, i + (cols * (rows - 1)));
-            printf("i: %i->i statt oberhalb, rechts: %i\n", i, i + (cols * (rows - 1)) - cols + 1);
-            printf("i: %i->i statt rechts: %i\n", i, i - (cols - 1));
-            printf("i: %i->i statt unterhalb, rechts: %i\n", i, i + 1);
-            */
+            COUNT_NEIGHBOR(i + (cols * (rows - 1)) - 1);     // oberhalb, links
+            COUNT_NEIGHBOR(i + (cols * (rows - 1)));         // oberhalb, mittig
+            COUNT_NEIGHBOR(i + (cols * (rows - 1)) - cols + 1); // oberhalb, rechts
+            COUNT_NEIGHBOR(i - 1);                           // links
+            COUNT_NEIGHBOR(i - (cols - 1));                  // rechts
+            COUNT_NEIGHBOR(i + cols - 1);                    // unterhalb, links
+            COUNT_NEIGHBOR(i + cols);                        // unterhalb, mittig
+            COUNT_NEIGHBOR(i + 1);                           // unterhalb, rechts (Note: was i+1 in original)
         }
         // Sonderfall i = Eckzelle unten, rechts
         else if (i == (cols * rows - 1))
         {
-            zellen = 
-            current_gen->grid[i - cols - 1] +
-            current_gen->grid[i - cols] +
-            current_gen->grid[i - cols - (cols - 1)] + // oberhalb, rechts -> vorletzte Zeile, erste Spalte
-            current_gen->grid[i - 1] +
-            current_gen->grid[i - (cols - 1)] + // rechts -> letzte Zeile, erste Spalte
-            current_gen->grid[i - (cols * (rows - 1)) - 1] + // unterhalb, links -> erste Zeile, vorletzte Spalte
-            current_gen->grid[i - (cols * (rows - 1))] + // unterhalb, mittig -> erste Zeile, letzte Spalte
-            current_gen->grid[i - (cols * (rows)) + 1]; // unterhalb, rechts -> erste Zeile, erste Spalte
-            /*Debug-print
-            printf(" Eckzelle unten, rechts\n");
-            printf("i: %i->i statt oberhalb, rechts: %i\n", i, i - cols - (cols - 1));
-            printf("i: %i->i statt rechts: %i\n", i, i - (cols - 1));
-            printf("i: %i->i statt unterhalb, links: %i\n", i, i - (cols * (rows - 1)) - 1);
-            printf("i: %i->i statt unterhalb, mittig: %i\n", i, i - (cols * (rows - 1)));
-            printf("i: %i->i statt unterhalb, rechts: %i\n", i, i - (cols * (rows)) + 1);
-            */
+            COUNT_NEIGHBOR(i - cols - 1);                    // oberhalb, links
+            COUNT_NEIGHBOR(i - cols);                        // oberhalb, mittig
+            COUNT_NEIGHBOR(i - cols - (cols - 1));           // oberhalb, rechts
+            COUNT_NEIGHBOR(i - 1);                           // links
+            COUNT_NEIGHBOR(i - (cols - 1));                  // rechts
+            COUNT_NEIGHBOR(i - (cols * (rows - 1)) - 1);     // unterhalb, links
+            COUNT_NEIGHBOR(i - (cols * (rows - 1)));         // unterhalb, mittig
+            COUNT_NEIGHBOR(i - (cols * (rows)) + 1);         // unterhalb, rechts
         }
         // Sonderfall: i = Eckzelle unten, links
         else if (i == (cols * (rows - 1)))
         {
-            zellen = 
-            current_gen->grid[i - 1] + // oberhalb, links -> vorletzte Zeile, letzte Spalte
-            current_gen->grid[i - cols] +
-            current_gen->grid[i - cols + 1] +
-            current_gen->grid[i + (cols - 1)] + // links -> letzte Zeile, letzte Spalte
-            current_gen->grid[i + 1] +
-            current_gen->grid[i - (cols * (rows - 2)) - 1] + // unterhalb, links -> erste Zeile, letzte Spalte
-            current_gen->grid[i - (cols * (rows - 1))] + // unterhalb, mittig -> erste Zeile, erste Spalte
-            current_gen->grid[i - (cols * (rows -1)) + 1]; // unterhalb, rechts -> erste Zeile, zweite Spalte
-            /*Debug-print
-            printf(" Eckzelle unten, links\n");
-            printf("i: %i->i statt oberhalb, links: %i\n", i, i - 1);
-            printf("i: %i->i statt links: %i\n", i, i + cols - 1);
-            printf("i: %i->i statt unterhalb, links: %i\n", i, i - (cols * (rows - 2)) - 1);
-            printf("i: %i->i statt unterhalb, mittig: %i\n", i, i - (cols * (rows - 1)));
-            printf("i: %i->i statt unterhalb, rechts: %i\n", i, i - (cols * (rows -1)) + 1);
-            */
+            COUNT_NEIGHBOR(i - 1);                           // oberhalb, links
+            COUNT_NEIGHBOR(i - cols);                        // oberhalb, mittig
+            COUNT_NEIGHBOR(i - cols + 1);                    // oberhalb, rechts
+            COUNT_NEIGHBOR(i + (cols - 1));                  // links
+            COUNT_NEIGHBOR(i + 1);                           // rechts
+            COUNT_NEIGHBOR(i - (cols * (rows - 2)) - 1);     // unterhalb, links
+            COUNT_NEIGHBOR(i - (cols * (rows - 1)));         // unterhalb, mittig
+            COUNT_NEIGHBOR(i - (cols * (rows -1)) + 1);      // unterhalb, rechts
         }
         // Sonderfall: i = Zelle am oberen Rand
         else if (i > 0 && i < cols)
         {
-            zellen = 
-            current_gen->grid[i + (cols * (rows - 1)) - 1] + // oberhalb links -> letzte Zeile, eine Spalte links
-            current_gen->grid[i + (cols * (rows - 1))] + // oberhalb, mittig -> letzte Zeile, selbe Spalte
-            current_gen->grid[i + (cols * (rows - 1)) + 1] + // oberhalb rechts -> letzte Zeile, eine Spalte rechts
-            current_gen->grid[i - 1] +
-            current_gen->grid[i + 1] +
-            current_gen->grid[i + cols - 1] +
-            current_gen->grid[i + cols] +
-            current_gen->grid[i + cols + 1];
-            /*Debug-print
-            printf(" Randzelle oben\n");
-            printf("i: %i->i statt oberhalb, links: %i\n", i, i + (cols * (rows - 1)) - 1);
-            printf("i: %i->i statt oberhalb: %i\n", i, i + (cols * (rows - 1)));
-            printf("i: %i->i statt oberhalb, rechts: %i\n", i, i + (cols * (rows - 1)) + 1);
-            */
+            COUNT_NEIGHBOR(i + (cols * (rows - 1)) - 1);
+            COUNT_NEIGHBOR(i + (cols * (rows - 1)));
+            COUNT_NEIGHBOR(i + (cols * (rows - 1)) + 1);
+            COUNT_NEIGHBOR(i - 1);
+            COUNT_NEIGHBOR(i + 1);
+            COUNT_NEIGHBOR(i + cols - 1);
+            COUNT_NEIGHBOR(i + cols);
+            COUNT_NEIGHBOR(i + cols + 1);
         }
         // Sonderfall: i = Zelle am unteren Rand
         else if (i > (cols * (rows - 1)))
         {
-            zellen = 
-            current_gen->grid[i + cols - 1] +
-            current_gen->grid[i + cols] +
-            current_gen->grid[i + cols + 1] +
-            current_gen->grid[i - 1] +
-            current_gen->grid[i + 1] +
-            current_gen->grid[i - (cols * (rows - 1)) - 1] + // unterhalb, links -> erste Zeile, eine Spalte links
-            current_gen->grid[i - (cols * (rows - 1))] + // unterhalb, mittig -> erste Zeile, selbe Spalte
-            current_gen->grid[i - (cols * (rows - 1)) + 1]; // unterhalb, rechts -> erste Zeile, eine Spalte rechts
-            /*Debug-print
-            printf(" Randzelle unten\n");
-            printf("i: %i->i statt unterhalb, links: %i\n", i, i - (cols * (rows - 1)) - 1);
-            printf("i: %i->i statt unterhalb: %i\n", i, i - (cols * (rows - 1)));
-            printf("i: %i->i statt unterhalb, rechts: %i\n", i, i - (cols * (rows - 1)) + 1);
-            */
+            COUNT_NEIGHBOR(i + cols - 1);
+            COUNT_NEIGHBOR(i + cols);
+            COUNT_NEIGHBOR(i + cols + 1);
+            COUNT_NEIGHBOR(i - 1);
+            COUNT_NEIGHBOR(i + 1);
+            COUNT_NEIGHBOR(i - (cols * (rows - 1)) - 1);
+            COUNT_NEIGHBOR(i - (cols * (rows - 1)));
+            COUNT_NEIGHBOR(i - (cols * (rows - 1)) + 1);
         }
         // Sonderfall: i = Zelle am linken Rand
         else if (i != 0 && i % cols == 0)
         {
-            zellen = 
-            current_gen->grid[i - cols + cols - 1] + //linker Rand -> eine Zeile nach oben, letzte Spalte
-            current_gen->grid[i - cols] +
-            current_gen->grid[i - cols + 1] +
-            current_gen->grid[i + cols - 1] + // linker Rand -> selbe Zeile, letzte Spalte
-            current_gen->grid[i + 1] +
-            current_gen->grid[i + cols + cols - 1] + // linker Rand -> eine Zeile nach unten, letzte Spalte
-            current_gen->grid[i + cols] +
-            current_gen->grid[i + cols + 1];   
-            /*Debug-print
-            printf(" Randzelle links\n");
-            printf("i: %i->i statt oberhalb, links: %i\n", i, i - cols + cols - 1);
-            printf("i: %i->i statt links: %i\n", i, i + cols - 1);
-            printf("i: %i->i statt unterhalb, links: %i\n", i, i + cols + cols - 1);
-            */
+            COUNT_NEIGHBOR(i - cols + cols - 1);
+            COUNT_NEIGHBOR(i - cols);
+            COUNT_NEIGHBOR(i - cols + 1);
+            COUNT_NEIGHBOR(i + cols - 1);
+            COUNT_NEIGHBOR(i + 1);
+            COUNT_NEIGHBOR(i + cols + cols - 1);
+            COUNT_NEIGHBOR(i + cols);
+            COUNT_NEIGHBOR(i + cols + 1);
         }
         // Sonderfall: i = Zelle am rechten Rand
         else if ((i + 1) % cols == 0)
         {
-            zellen = 
-            current_gen->grid[i - cols - 1] +
-            current_gen->grid[i - cols] +
-            current_gen->grid[i - cols + 1 - (cols)] + // rechter Rand -> eine Zeile nach oben, erste Spalte
-            current_gen->grid[i - 1] +
-            current_gen->grid[i + 1 - (cols)] + // rechter Rand -> selbe Zeile, erste Spalte
-            current_gen->grid[i + cols - 1] +
-            current_gen->grid[i + cols] +
-            current_gen->grid[i + cols + 1 - (cols)]; // rechter Rand -> eine Zeile nach unten, erste Spalte   
-            /*Debug-print
-            printf(" Randzelle rechts\n");
-            printf("i: %i->i statt oberhalb, rechts: %i\n", i, i - cols + 1 - (cols));
-            printf("i: %i->i statt rechts: %i\n", i, i + 1 - (cols));
-            printf("i: %i->i statt unterhalb, rechts: %i\n", i, i + cols + 1 - (cols));
-            */
+            COUNT_NEIGHBOR(i - cols - 1);
+            COUNT_NEIGHBOR(i - cols);
+            COUNT_NEIGHBOR(i - cols + 1 - (cols));
+            COUNT_NEIGHBOR(i - 1);
+            COUNT_NEIGHBOR(i + 1 - (cols));
+            COUNT_NEIGHBOR(i + cols - 1);
+            COUNT_NEIGHBOR(i + cols);
+            COUNT_NEIGHBOR(i + cols + 1 - (cols));
         }
         // Zellen innerhalb Spielfeld
         else
         {
-            zellen = 
-            current_gen->grid[i - cols - 1] +
-            current_gen->grid[i - cols] +
-            current_gen->grid[i - cols + 1] +
-            current_gen->grid[i - 1] +
-            current_gen->grid[i + 1] +
-            current_gen->grid[i + cols - 1] +
-            current_gen->grid[i + cols] +
-            current_gen->grid[i + cols + 1];
-            /*Debug-print
-            printf("i: %i->i im Feld\n", i);
-            */
+            COUNT_NEIGHBOR(i - cols - 1);
+            COUNT_NEIGHBOR(i - cols);
+            COUNT_NEIGHBOR(i - cols + 1);
+            COUNT_NEIGHBOR(i - 1);
+            COUNT_NEIGHBOR(i + 1);
+            COUNT_NEIGHBOR(i + cols - 1);
+            COUNT_NEIGHBOR(i + cols);
+            COUNT_NEIGHBOR(i + cols + 1);
         }
-        // 
-        if (current_gen->grid[i] == 1 && zellen == 2 || zellen == 3)
+
+        // --- Evolution Rules ---
+        int total_neighbors = red_neighbors + blue_neighbors;
+        int current_cell = current_gen->grid[i];
+        
+        if (current_cell != DEAD) 
         {
-            next_gen->grid[i] = 1;
+            // SURVIVAL: 2 or 3 neighbors -> stay alive
+            if (total_neighbors == 2 || total_neighbors == 3) {
+                next_gen->grid[i] = current_cell;
+            } else {
+                next_gen->grid[i] = DEAD;
+            }
         }
-        else
+        else // Dead cell
         {
-            next_gen->grid[i] = 0;
+            // BIRTH: exactly 3 neighbors -> become alive
+            if (total_neighbors == 3) {
+                // Determine color by majority
+                if (red_neighbors > blue_neighbors) {
+                    next_gen->grid[i] = TEAM_RED;
+                } else {
+                    next_gen->grid[i] = TEAM_BLUE;
+                }
+            } else {
+                next_gen->grid[i] = DEAD;
+            }
         }
     }
+    
+    #undef COUNT_NEIGHBOR
 }

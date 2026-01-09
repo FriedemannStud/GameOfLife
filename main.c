@@ -6,6 +6,7 @@
  * - Birth rule (3 neighbors): Majority color of parents determines child color.
  * - Teams: Red (X) vs Blue (O).
  * - Goal: Highest population after MAX_ROUNDS.
+ * // KI-Agent unterstützt
  */
 
 #include <stdio.h>
@@ -13,10 +14,10 @@
 #include <time.h> // zur Initialisierung des Zufallszahlengenerators
 #include <unistd.h> // zur Verlangsamung der Ausführung mit sleep()
 
-#define DEAD 0
-#define TEAM_RED 1
-#define TEAM_BLUE 2
-#define MAX_ROUNDS 1000
+#define DEAD 0 // KI-Agent unterstützt
+#define TEAM_RED 1 // KI-Agent unterstützt
+#define TEAM_BLUE 2 // KI-Agent unterstützt
+#define MAX_ROUNDS 1000 // KI-Agent unterstützt
 
 // Struktur definieren
 typedef struct {
@@ -42,7 +43,7 @@ int main(int argc, char *argv[]) {
     int rows = atoi(argv[1]);
     int cols = atoi(argv[2]);
     
-    if (rows > 2000 || cols > 2000) {
+    if (rows > 2000 || cols > 2000) { // KI-Agent unterstützt
         printf("Error: Grid too large (max 2000x2000)\n");
         return 1;
     }
@@ -63,11 +64,11 @@ int main(int argc, char *argv[]) {
 
     // Spiel-Schleife (Loop)
     int turns = 0;
-    while (turns < MAX_ROUNDS)
+    while (turns < MAX_ROUNDS) // KI-Agent unterstützt
      {
         // Aktuelle Population ausgeben
         print_world(current_gen, rows, cols);
-        printf("Turn: %i / %d\n", turns, MAX_ROUNDS);
+        printf("Turn: %i / %d\n", turns, MAX_ROUNDS); // KI-Agent unterstützt
         usleep(delay_my);
         update_generation(current_gen, next_gen, rows, cols);
 
@@ -80,6 +81,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Game Over - Determine Winner
+    // KI-Agent unterstützt
     int final_red = 0;
     int final_blue = 0;
     for (int i = 0; i < rows * cols; i++) {
@@ -112,6 +114,7 @@ void init_world(World *current_gen, int rows, int cols)
     srand(time(NULL));
     for (int i = 0; i < (rows * cols); i++)
     {
+        // KI-Agent unterstützt
         int val = rand() % 100;
         if (val < 10) {
             current_gen->grid[i] = TEAM_RED;
@@ -127,6 +130,7 @@ void print_world(World *current_gen, int rows, int cols)
 // Zunächst ohne GUI als Zeichen-Matrix 1 und 0
 {
     system("clear");
+    // KI-Agent unterstützt
     int red_count = 0;
     int blue_count = 0;
 
@@ -154,6 +158,7 @@ void update_generation(World *current_gen, World *next_gen, int rows, int cols)
 {
     // Macro to check a neighbor index and increment counters
     // Using a macro avoids function call overhead in the tight loop
+    // KI-Agent unterstützt
     #define COUNT_NEIGHBOR(idx) \
         if (current_gen->grid[idx] == TEAM_RED) red_neighbors++; \
         else if (current_gen->grid[idx] == TEAM_BLUE) blue_neighbors++;
@@ -275,6 +280,7 @@ void update_generation(World *current_gen, World *next_gen, int rows, int cols)
         }
 
         // --- Evolution Rules ---
+        // KI-Agent unterstützt
         int total_neighbors = red_neighbors + blue_neighbors;
         int current_cell = current_gen->grid[i];
         

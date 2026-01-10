@@ -1,0 +1,30 @@
+# Compiled Binaries
+main
+game
+test_logic
+*.exe
+*.out
+*.app
+
+# Objects and Libraries
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Project specific results
+biotope_results/
+biotope_results_*.md

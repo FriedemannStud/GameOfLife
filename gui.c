@@ -182,6 +182,17 @@ void run_gui_app() {
                 if (IsKeyPressed(KEY_PAGE_UP)) config.max_rounds += 100;
                 if (IsKeyPressed(KEY_PAGE_DOWN) && config.max_rounds > 100) config.max_rounds -= 100;
 
+                // Interaction: Change Max Population
+                int max_squad_cells = (config.rows * config.cols) / 2;
+                // Clamp if grid size reduced below current max_pop
+                if (config.max_population > max_squad_cells) config.max_population = max_squad_cells;
+
+                if (IsKeyPressed(KEY_INSERT) && config.max_population < max_squad_cells) {
+                    config.max_population += 10;
+                    if (config.max_population > max_squad_cells) config.max_population = max_squad_cells;
+                }
+                if (IsKeyPressed(KEY_DELETE) && config.max_population > 10) config.max_population -= 10;
+
                 // Transition: Start Setup
                 if (IsKeyPressed(KEY_ENTER)) {
                     if (gui_world) free_world(gui_world);
@@ -422,6 +433,20 @@ void run_gui_app() {
                 DrawText(buf, 40, 180, 20, THEME_BLUE);
                 DrawText("(PageUp/PageDown)", 300, 180, 18, DARKGRAY);
                 
+                sprintf(buf, "MAX INIT POP:    %04d", config.max_population);
+                DrawText(buf, 40, 220, 20, THEME_RED);
+                DrawText("(Insert/Delete)", 300, 220, 18, DARKGRAY);
+                
+                // KI-Agent unterstützt: Mission Protocol (Rules Display)
+                int rulesX = screenWidth / 2 + 40;
+                DrawLine(rulesX - 20, 100, rulesX - 20, 240, Fade(THEME_TEXT, 0.3f)); // Vertical Separator
+                
+                DrawText("CONWAY'S MISSION PROTOCOL", rulesX, 100, 20, THEME_HIGHLIGHT);
+                DrawText("- SURVIVAL: 2 or 3 neighbors", rulesX, 135, 20, THEME_TEXT);
+                DrawText("- BIRTH: 3 neighbors (Majority Rule of parents)", rulesX, 160, 20, THEME_TEXT);
+                DrawText("- TEAMS: RED vs BLUE", rulesX, 185, 20, THEME_TEXT);
+                DrawText("- GOAL: Max Population after timeout", rulesX, 210, 20, THEME_TEXT);
+
                 DrawText("PRESS [ENTER] TO INITIALIZE SYSTEM", 40, 300, 20, THEME_HIGHLIGHT);
                 break;
 
@@ -461,7 +486,9 @@ void run_gui_app() {
                     }
                 }
                 
-                DrawGridAndCells(&config, screenWidth, screenHeight, true); // true = Draw Grid Lines
+                // KI-Agent unterstützt: Draw grid lines only if grid is not too dense (> 150)
+                bool showLines = (config.rows <= 150 && config.cols <= 150);
+                DrawGridAndCells(&config, screenWidth, screenHeight, showLines); 
 
                 // KI-Agent unterstützt: Updated Footer Menu Font Size to 14
                 DrawText("[ENTER] RUN | [S] SAVE | [L] LOAD | [R] RANDOM | [G] GLIDER | [T] TRAVELER | [B] BLASTER", 

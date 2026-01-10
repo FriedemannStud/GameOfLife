@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <time.h>
+#include <stdlib.h> // For malloc/free
 #include "file_io.h"
 
 // KI-Agent unterstützt
@@ -41,19 +42,34 @@ int load_grid(const char *filename, World *w, GameConfig *c) {
         return 0;
     }
     
-    // Check if loaded config matches current world size (simplification)
-    // Ideally we would resize the world here, but for now we enforce matching size
-    // or we just warn. Let's assume user configured size correctly or we just update config
-    // if we haven't allocated yet. But here world is already allocated in GUI.
-    // So we only load cells if dimensions match.
+    // Check if loaded config matches current world size
+    // If mismatch, we resize the world and update config
     if (rows != c->rows || cols != c->cols) {
-        printf("Error: File dimensions (%dx%d) do not match current config (%dx%d)\n", rows, cols, c->rows, c->cols);
-        fclose(f);
-        return 0;
+        printf("Resizing world from %dx%d to %dx%d...\n", c->rows, c->cols, rows, cols);
+        
+        // Free old grid
+        free(w->grid);
+        
+        // Allocate new grid
+        w->grid = (int*)malloc(rows * cols * sizeof(int));
+        if (!w->grid) {
+            printf("Error: Failed to allocate memory for new grid size.\n");
+            fclose(f);
+            return 0;
+        }
+        
+        // Update dimensions
+        w->rows = rows;
+        w->cols = cols;
+        c->rows = rows;
+        c->cols = cols;
     }
     
-    // Clear current grid
-    for(int i=0; i<w->rows * w->cols; i++) w->grid[i] = DEAD;
+    // Always update max_population from file (as per file format)
+    c->max_population = max_pop;
+    
+    // Clear current grid (safely, using new dimensions)
+    for(int i=0; i < w->rows * w->cols; i++) w->grid[i] = DEAD;
     c->current_blue_pop = 0;
     c->current_red_pop = 0;
     

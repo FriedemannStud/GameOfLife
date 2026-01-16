@@ -11,3 +11,5 @@
 09.01.2026: Neuen Branch (biotop) für getrennte Versionsverwaltung von "manueller" Programmierung und "Vibe-Coding" erstellt. Vibe-Coding Konzept für erweiterte Funktionalität "Interaktives Spielkonzept Rot vs Blau" erstellt. Interaktives Spielkonzept Rot vs Blau mittels Nutzung von Gemini-CLI-Agent programmiert. Nach Programmierung der Spiele-Logik Refactoring des UI durchgeführt.
 
 10.01.2026: Feintuning des UI.
+
+16.01.2026: feat(gui): Tastenwiederholung für Konfigurationsparameter implementiert - Hilfsfunktion `IsActionTriggered` zur Verarbeitung von initialem Tastendruck und kontinuierlicher Wiederholung hinzugefügt. - Kontinuierliche Eingabeverarbeitung für Grid Size, Delay, Max Rounds und Max Population aktiviert. - Initialverzögerung auf 500ms und Wiederholungsintervall auf 50ms für flüssige Wertänderungen eingestellt.

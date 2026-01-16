@@ -125,6 +125,36 @@ void PlacePattern(World *w, GameConfig *c, int startR, int startC, int type) {
     }
 }
 
+// Helper for continuous input handling (Key Repeat)
+bool IsActionTriggered(int key) {
+    static int activeKey = -1;
+    static float timer = 0.0f;
+    const float INITIAL_DELAY = 0.5f;
+    const float REPEAT_INTERVAL = 0.05f; 
+
+    if (IsKeyPressed(key)) {
+        activeKey = key;
+        timer = 0.0f;
+        return true;
+    }
+
+    if (IsKeyDown(key)) {
+        if (activeKey == key) {
+            timer += GetFrameTime();
+            if (timer >= INITIAL_DELAY + REPEAT_INTERVAL) {
+                timer = INITIAL_DELAY; 
+                return true;
+            }
+        }
+    } else {
+        if (activeKey == key) {
+            activeKey = -1;
+            timer = 0.0f;
+        }
+    }
+    return false;
+}
+
 // KI-Agent unterstützt
 void run_gui_app() {
     // Initial window size
@@ -167,31 +197,31 @@ void run_gui_app() {
         switch (state) {
             case STATE_CONFIG:
                 // Interaction: Change Grid Size
-                if (IsKeyPressed(KEY_RIGHT)) config.cols += 10;
-                if (IsKeyPressed(KEY_LEFT) && config.cols > 10) config.cols -= 10;
-                if (IsKeyPressed(KEY_UP)) config.rows += 10;
-                if (IsKeyPressed(KEY_DOWN) && config.rows > 10) config.rows -= 10;
+                if (IsActionTriggered(KEY_RIGHT)) config.cols += 10;
+                if (IsActionTriggered(KEY_LEFT) && config.cols > 10) config.cols -= 10;
+                if (IsActionTriggered(KEY_UP)) config.rows += 10;
+                if (IsActionTriggered(KEY_DOWN) && config.rows > 10) config.rows -= 10;
                 
                 // Interaction: Change Delay (incl. German Layout)
-                if (IsKeyPressed(KEY_KP_ADD) || IsKeyPressed(KEY_EQUAL) || IsKeyPressed(KEY_RIGHT_BRACKET)) 
+                if (IsActionTriggered(KEY_KP_ADD) || IsActionTriggered(KEY_EQUAL) || IsActionTriggered(KEY_RIGHT_BRACKET)) 
                     config.delay_ms += 50;
-                if ((IsKeyPressed(KEY_KP_SUBTRACT) || IsKeyPressed(KEY_MINUS) || IsKeyPressed(KEY_SLASH)) && config.delay_ms > 0) 
+                if ((IsActionTriggered(KEY_KP_SUBTRACT) || IsActionTriggered(KEY_MINUS) || IsActionTriggered(KEY_SLASH)) && config.delay_ms > 0) 
                     config.delay_ms -= 50;
 
                 // Interaction: Change Max Rounds
-                if (IsKeyPressed(KEY_PAGE_UP)) config.max_rounds += 100;
-                if (IsKeyPressed(KEY_PAGE_DOWN) && config.max_rounds > 100) config.max_rounds -= 100;
+                if (IsActionTriggered(KEY_PAGE_UP)) config.max_rounds += 100;
+                if (IsActionTriggered(KEY_PAGE_DOWN) && config.max_rounds > 100) config.max_rounds -= 100;
 
                 // Interaction: Change Max Population
                 int max_squad_cells = (config.rows * config.cols) / 2;
                 // Clamp if grid size reduced below current max_pop
                 if (config.max_population > max_squad_cells) config.max_population = max_squad_cells;
 
-                if (IsKeyPressed(KEY_INSERT) && config.max_population < max_squad_cells) {
+                if (IsActionTriggered(KEY_INSERT) && config.max_population < max_squad_cells) {
                     config.max_population += 10;
                     if (config.max_population > max_squad_cells) config.max_population = max_squad_cells;
                 }
-                if (IsKeyPressed(KEY_DELETE) && config.max_population > 10) config.max_population -= 10;
+                if (IsActionTriggered(KEY_DELETE) && config.max_population > 10) config.max_population -= 10;
 
                 // Transition: Start Setup
                 if (IsKeyPressed(KEY_ENTER)) {

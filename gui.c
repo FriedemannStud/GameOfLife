@@ -20,8 +20,10 @@ const Color THEME_TEXT = { 220, 220, 220, 255 };   // Off-White
 const Color THEME_HIGHLIGHT = { 255, 255, 255, 40 }; // Selection Glow
 
 // Helper to draw the grid (reused in multiple states)
+// KI-Agent unterstützt: Optimized Texture-Based Rendering for VcXsrv performance
 void DrawGridAndCells(GameConfig *config, int screenWidth, int screenHeight, bool drawGridLines) {
-    // ... (existing implementation) ...
+    if (!gui_world) return;
+
     // Layout Constants
     const int headerHeight = 60;
     const int footerHeight = 40;
@@ -35,28 +37,60 @@ void DrawGridAndCells(GameConfig *config, int screenWidth, int screenHeight, boo
     float cellW = (float)drawWidth / config->cols;
     float cellH = (float)drawHeight / config->rows;
     
-    // 1. Draw Living Cells (with Padding for "Gap Grid" effect)
-    // KI-Agent unterstützt: Optimization - Use padding instead of lines for simulation
-    float pad = (cellW > 4 && cellH > 4) ? 1.0f : 0.0f; // Only pad if cells are big enough
-
-    for (int r = 0; r < config->rows; r++) {
-        for (int c = 0; c < config->cols; c++) {
-            int index = r * config->cols + c;
-            if (gui_world->grid[index] == TEAM_BLUE) {
-                DrawRectangle(startX + c * cellW + pad, startY + r * cellH + pad, cellW - pad, cellH - pad, THEME_BLUE);
-            } else if (gui_world->grid[index] == TEAM_RED) {
-                DrawRectangle(startX + c * cellW + pad, startY + r * cellH + pad, cellW - pad, cellH - pad, THEME_RED);
-            }
+    // --- 1. Texture Management (Static to persist across frames) ---
+    static Texture2D gridTex = { 0 };
+    static int texW = 0;
+    static int texH = 0;
+    static Color *pixels = NULL;
+    
+    // Check if grid size changed or not initialized
+    if (config->cols != texW || config->rows != texH) {
+        // Cleanup old resources
+        if (gridTex.id > 0) UnloadTexture(gridTex);
+        if (pixels) free(pixels);
+        
+        // Update dimensions
+        texW = config->cols;
+        texH = config->rows;
+        
+        // Allocate new resources
+        pixels = (Color*)malloc(texW * texH * sizeof(Color));
+        Image img = GenImageColor(texW, texH, BLANK); // Create empty image
+        gridTex = LoadTextureFromImage(img);
+        UnloadImage(img);
+        
+        // IMPORTANT: Point filtering ensures sharp pixels when scaled up
+        SetTextureFilter(gridTex, TEXTURE_FILTER_POINT); 
+    }
+    
+    // --- 2. Update Pixel Data (CPU side) ---
+    // Instead of thousands of DrawRectangle calls, we update a single buffer.
+    for (int i = 0; i < texW * texH; i++) {
+        if (gui_world->grid[i] == TEAM_BLUE) {
+            pixels[i] = THEME_BLUE;
+        } else if (gui_world->grid[i] == TEAM_RED) {
+            pixels[i] = THEME_RED;
+        } else {
+            pixels[i] = BLANK; // Transparent, so background shows through
         }
     }
+    
+    // --- 3. Upload to GPU & Draw ---
+    UpdateTexture(gridTex, pixels);
+    
+    Rectangle source = { 0.0f, 0.0f, (float)texW, (float)texH };
+    Rectangle dest = { (float)startX, (float)startY, (float)drawWidth, (float)drawHeight };
+    Vector2 origin = { 0.0f, 0.0f };
+    
+    DrawTexturePro(gridTex, source, dest, origin, 0.0f, WHITE);
 
-    // 2. Draw Grid Lines (Only if requested - e.g. Editor)
+    // --- 4. Draw Grid Lines (Optional - Overhead is low for lines) ---
     if (drawGridLines) {
         for (int i = 0; i <= config->cols; i++) DrawLine(startX + i * cellW, startY, startX + i * cellW, startY + drawHeight, THEME_GRID);
         for (int i = 0; i <= config->rows; i++) DrawLine(startX, startY + i * cellH, startX + drawWidth, startY + i * cellH, THEME_GRID);
     }
     
-    // 3. Draw Hemisphere Separator (Always visible but subtle)
+    // 5. Draw Hemisphere Separator
     DrawLine(startX + (config->cols / 2) * cellW, startY, 
              startX + (config->cols / 2) * cellW, startY + drawHeight, Fade(THEME_TEXT, 0.3f));
 }

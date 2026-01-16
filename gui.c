@@ -255,6 +255,10 @@ void run_gui_app() {
                     float cellW = (float)drawWidth / config.cols;
                     float cellH = (float)drawHeight / config.rows;
                     
+                    // State for Drag-and-Paint interaction
+                    static int editAction = 0; // 0:Idle, 1:Place, 2:Remove
+                    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) editAction = 0;
+
                     // Check if mouse is inside the grid area
                     if (mousePos.x >= startX && mousePos.x < startX + drawWidth &&
                         mousePos.y >= startY && mousePos.y < startY + drawHeight) {
@@ -262,25 +266,32 @@ void run_gui_app() {
                         int col = (int)((mousePos.x - startX) / cellW);
                         int row = (int)((mousePos.y - startY) / cellH);
                         
-                        // Handle Clicks (Single Cell)
+                        // Handle Clicks (Single Cell) & Drag
                         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                            int index = row * config.cols + col;
+                            // Determine action based on initial cell state: Place (1) or Remove (2)
+                            if (gui_world->grid[index] == DEAD) editAction = 1;
+                            else editAction = 2;
+                        }
+
+                        if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) && editAction != 0) {
                             int index = row * config.cols + col;
                             int midCol = config.cols / 2;
 
                             // Check Hemispheres and Population Limits
                             if (col < midCol) {
-                                if (gui_world->grid[index] == TEAM_BLUE) {
+                                if (editAction == 2 && gui_world->grid[index] == TEAM_BLUE) {
                                     gui_world->grid[index] = DEAD;
                                     config.current_blue_pop--;
-                                } else if (gui_world->grid[index] == DEAD && config.current_blue_pop < config.max_population) {
+                                } else if (editAction == 1 && gui_world->grid[index] == DEAD && config.current_blue_pop < config.max_population) {
                                     gui_world->grid[index] = TEAM_BLUE;
                                     config.current_blue_pop++;
                                 }
                             } else {
-                                if (gui_world->grid[index] == TEAM_RED) {
+                                if (editAction == 2 && gui_world->grid[index] == TEAM_RED) {
                                     gui_world->grid[index] = DEAD;
                                     config.current_red_pop--;
-                                } else if (gui_world->grid[index] == DEAD && config.current_red_pop < config.max_population) {
+                                } else if (editAction == 1 && gui_world->grid[index] == DEAD && config.current_red_pop < config.max_population) {
                                     gui_world->grid[index] = TEAM_RED;
                                     config.current_red_pop++;
                                 }

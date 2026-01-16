@@ -13,3 +13,4 @@
 10.01.2026: Feintuning des UI.
 
 16.01.2026: feat(gui): Tastenwiederholung für Konfigurationsparameter implementiert - Hilfsfunktion `IsActionTriggered` zur Verarbeitung von initialem Tastendruck und kontinuierlicher Wiederholung hinzugefügt. - Kontinuierliche Eingabeverarbeitung für Grid Size, Delay, Max Rounds und Max Population aktiviert. - Initialverzögerung auf 500ms und Wiederholungsintervall auf 50ms für flüssige Wertänderungen eingestellt.
+feat(gui): Drag-to-Paint Funktion im Editor-Modus hinzugefügt - Ermöglicht das Aktivieren oder Deaktivieren mehrerer Zellen durch Ziehen mit gedrückter Maustaste. - Status (Platzieren oder Löschen) wird beim ersten Klicken automatisch erkannt. - Überprüfung der Team-Hemisphären und Populationslimits bleibt beim Ziehen aktiv.

@@ -497,11 +497,6 @@ void run_gui_app() {
                      if (config.current_red_pop > config.current_blue_pop) winner = TEAM_RED;
                      else if (config.current_blue_pop > config.current_red_pop) winner = TEAM_BLUE;
                      
-                     char filename[64];
-                     time_t t = time(NULL);
-                     sprintf(filename, "biotope_results_%ld.md", t);
-                     export_stats_md(filename, &config, winner);
-                     
                      // Append to Protocol
                      if (strlen(currentProtocolFilename) > 0) {
                         append_protocol_result(currentProtocolFilename, winner, config.current_red_pop, config.current_blue_pop);

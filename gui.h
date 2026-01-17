@@ -7,8 +7,9 @@
 typedef enum {
     STATE_CONFIG,
     STATE_EDIT,
+    STATE_LOAD,     // NEW: For browsing protocol archive
     STATE_RUNNING,
-    STATE_FINISHED, // KI-Agent unterstützt: New state for viewing final grid
+    STATE_FINISHED, 
     STATE_GAME_OVER
 } AppState;
 

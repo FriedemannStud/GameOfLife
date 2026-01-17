@@ -9,6 +9,13 @@
 // Global World Pointer for GUI
 World *gui_world = NULL;
 
+// Protocol Archive State
+static ProtocolInfo *fileList = NULL;
+static int fileCount = 0;
+static int selectedFileIndex = 0;
+// Current Run Tracking
+static char currentProtocolFilename[256] = "";
+
 // --- Theme Colors (Digital Lab) ---
 // KI-Agent unterstützt: Sci-Fi / Retro Colors
 const Color THEME_BG = { 20, 24, 32, 255 };        // Deep Dark Blue/Grey
@@ -361,14 +368,12 @@ void run_gui_app() {
                         statusTimer = 2.0f;
                     }
                 }
+                
+                // NEW: Load State Transition
                 if (IsKeyPressed(KEY_L)) {
-                    if (load_grid("setup.bio", gui_world, &config)) {
-                        strcpy(statusMsg, "Loaded from setup.bio!");
-                        statusTimer = 2.0f;
-                    } else {
-                        strcpy(statusMsg, "Load Failed");
-                        statusTimer = 2.0f;
-                    }
+                    fileCount = list_protocol_files("biotope_results", &fileList);
+                    selectedFileIndex = 0;
+                    state = STATE_LOAD;
                 }
                 
                 // KI-Agent unterstützt: Random Placement Logic
@@ -406,9 +411,45 @@ void run_gui_app() {
                     statusTimer = 2.0f;
                 }
                 
-                // Transition: Start Simulation
+                // Transition: Start Simulation with Auto-Save
                 if (IsKeyPressed(KEY_ENTER)) {
+                    // Phase 3: Auto-Save on Start
+                    char autoFilename[128];
+                    time_t now = time(NULL);
+                    struct tm *t = localtime(&now);
+                    strftime(autoFilename, sizeof(autoFilename), "biotope_results/run_%Y%m%d_%H%M%S.bio", t);
+                    
+                    // Store for result appending later
+                    strcpy(currentProtocolFilename, autoFilename);
+                    
+                    if (save_grid(autoFilename, gui_world, &config)) {
+                        printf("Auto-save successful: %s\n", autoFilename);
+                    } else {
+                        printf("Auto-save failed!\n");
+                    }
+                    
                     state = STATE_RUNNING;
+                }
+                break;
+
+            case STATE_LOAD:
+                if (IsKeyPressed(KEY_UP) && selectedFileIndex > 0) selectedFileIndex--;
+                if (IsKeyPressed(KEY_DOWN) && selectedFileIndex < fileCount - 1) selectedFileIndex++;
+                
+                if (IsKeyPressed(KEY_ENTER) && fileCount > 0) {
+                    if (load_grid(fileList[selectedFileIndex].filepath, gui_world, &config)) {
+                        strcpy(statusMsg, "Protocol Loaded!");
+                        statusTimer = 2.0f;
+                    }
+                    if (fileList) free(fileList);
+                    fileList = NULL;
+                    state = STATE_EDIT;
+                }
+                
+                if (IsKeyPressed(KEY_Q) || IsKeyPressed(KEY_ESCAPE)) {
+                    if (fileList) free(fileList);
+                    fileList = NULL;
+                    state = STATE_EDIT;
                 }
                 break;
             
@@ -460,6 +501,11 @@ void run_gui_app() {
                      time_t t = time(NULL);
                      sprintf(filename, "biotope_results_%ld.md", t);
                      export_stats_md(filename, &config, winner);
+                     
+                     // Append to Protocol
+                     if (strlen(currentProtocolFilename) > 0) {
+                        append_protocol_result(currentProtocolFilename, winner, config.current_red_pop, config.current_blue_pop);
+                     }
                 }
                 if (IsKeyPressed(KEY_Q)) {
                     if (gui_world) free_world(gui_world);
@@ -568,6 +614,79 @@ void run_gui_app() {
                 // KI-Agent unterstützt: Updated Footer Menu Font Size to 14
                 DrawText("[ENTER] RUN | [S] SAVE | [L] LOAD | [R] RANDOM | [G] GLIDER | [T] TRAVELER | [B] BLASTER", 
                          20, screenHeight - 28, 20, THEME_TEXT);
+                break;
+
+            case STATE_LOAD:
+                DrawText("PROTOCOL ARCHIVE", 20, 15, 30, THEME_TEXT);
+                DrawText("SELECT A SIMULATION RUN TO REPLAY", 400, 24, 16, DARKGRAY);
+
+                if (fileCount == 0) {
+                    DrawText("NO PROTOCOLS FOUND IN 'biotope_results/'", 40, 100, 20, THEME_RED);
+                } else {
+                    // Draw List
+                    int startY = 100;
+                    int itemHeight = 30;
+                    int visibleItems = (screenHeight - 150) / itemHeight;
+                    
+                    // Simple scrolling view
+                    int scrollOffset = 0;
+                    if (selectedFileIndex >= visibleItems) scrollOffset = selectedFileIndex - visibleItems + 1;
+
+                    for (int i = 0; i < visibleItems && (i + scrollOffset) < fileCount; i++) {
+                        int idx = i + scrollOffset;
+                        Color col = (idx == selectedFileIndex) ? THEME_BLUE : THEME_TEXT;
+                        if (idx == selectedFileIndex) {
+                            DrawRectangle(30, startY + i * itemHeight - 5, 400, itemHeight, THEME_HIGHLIGHT);
+                            DrawText(">", 15, startY + i * itemHeight, 20, THEME_BLUE);
+                        }
+                        DrawText(fileList[idx].filename, 40, startY + i * itemHeight, 20, col);
+                    }
+
+                    // Draw Preview Panel
+                    int previewX = 460;
+                    DrawLine(previewX - 20, 100, previewX - 20, screenHeight - 60, Fade(THEME_TEXT, 0.3f));
+                    
+                    DrawText("PROTOCOL PREVIEW", previewX, 100, 20, THEME_HIGHLIGHT);
+                    
+                    ProtocolInfo *sel = &fileList[selectedFileIndex];
+                    char infoBuf[128];
+                    
+                    if (sel->timestamp > 0) {
+                        struct tm *t = localtime(&sel->timestamp);
+                        strftime(infoBuf, sizeof(infoBuf), "DATE: %d.%m.%Y %H:%M:%S", t);
+                        DrawText(infoBuf, previewX, 140, 20, THEME_TEXT);
+                    } else {
+                        DrawText("DATE: LEGACY FORMAT", previewX, 140, 20, DARKGRAY);
+                    }
+                    
+                    sprintf(infoBuf, "GRID: %d x %d", sel->rows, sel->cols);
+                    DrawText(infoBuf, previewX, 170, 20, THEME_TEXT);
+                    
+                    sprintf(infoBuf, "MAX ROUNDS: %d", sel->max_rounds);
+                    DrawText(infoBuf, previewX, 200, 20, THEME_TEXT);
+                    
+                    sprintf(infoBuf, "MAX POPULATION: %d", sel->max_population);
+                    DrawText(infoBuf, previewX, 230, 20, THEME_TEXT);
+                    
+                    if (sel->has_results) {
+                        DrawLine(previewX - 10, 260, previewX + 250, 260, Fade(THEME_TEXT, 0.3f));
+                        DrawText("RESULTS:", previewX, 270, 20, THEME_HIGHLIGHT);
+                        
+                        if (sel->winner == 1) DrawText("WINNER: RED", previewX, 300, 20, THEME_RED);
+                        else if (sel->winner == 2) DrawText("WINNER: BLUE", previewX, 300, 20, THEME_BLUE);
+                        else DrawText("WINNER: DRAW", previewX, 300, 20, DARKGRAY);
+                        
+                        char scoreBuf[64];
+                        sprintf(scoreBuf, "R:%d  B:%d", sel->final_red, sel->final_blue);
+                        DrawText(scoreBuf, previewX, 330, 20, THEME_TEXT);
+                    } else {
+                        DrawText("NO RESULTS YET", previewX, 270, 18, DARKGRAY);
+                    }
+
+                    DrawText("PRESS [ENTER] TO LOAD", previewX, 380, 20, GREEN);
+                }
+
+                DrawText("[UP/DOWN] NAVIGATE  |  [ENTER] LOAD  |  [Q/ESC] CANCEL", 20, screenHeight - 28, 20, THEME_TEXT);
                 break;
 
             case STATE_RUNNING:

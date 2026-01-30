@@ -24,7 +24,7 @@ void init_world(World *current_gen, int rows, int cols) {
     // Initialisiere den Zufallszahlengenerator mit der aktuellen Zeit
     srand(time(NULL));
     for (int i = 0; i < (rows * cols); i++) {
-        int val = rand() % 100;
+        int val = rand() % 100; // Ganzzahlige Zufallszahlen zw. 0 und 100
         if (val < 10) {
             current_gen->grid[i] = TEAM_RED;
         } else if (val < 20) {
@@ -36,7 +36,10 @@ void init_world(World *current_gen, int rows, int cols) {
 }
 
 // KI-Agent unterstützt
-void update_generation(World *current_gen, World *next_gen, int rows, int cols) {
+void update_generation(World *current_gen, World *next_gen, int rows, int     // Initialisiere den Zufallszahlengenerator mit der aktuellen Zeit
+    srand(time(NULL));
+    for (int i = 0; i < (rows * cols); i++) {
+        int val = rand() % 100;cols) {
     // Macro to check a neighbor index and increment counters
     // Using a macro avoids function call overhead in the tight loop
     #define COUNT_NEIGHBOR(idx) \

@@ -14,16 +14,17 @@ typedef struct {
 } World;
 
 // Prototypen
-void init_world(World *current_gen, int rows, int cols);
+void init_world(World *current_gen, int rows, int cols, char *init_file);
 void print_world(World *current_gen, int rows, int cols);
 void update_generation(World *current_gen, World *next_gen, int rows, int cols);
 
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     printf("argc: %i\n", argc);
-    if (argc != 5)
+    if (argc < 5)
     {
-        printf("./main_original <rows> <columns> <delay milli-sec> <max_turns>\n\n Schach: ./main_original 8 8 1000 100 Zoom: [Strg] + [+]\n Space Battle: ./main_original 30 120 100 1000\n Von Neumann: ./main_original 2000 2000 0 1000 Zoom: [Strg] + [+]\n ");
+        printf("./main_original <rows> <columns> <delay milli-sec> <max_turns> <init_file (optional)>\n\n Schach: ./main_original 8 8 1000 100 Zoom: [Strg] + [+]\n Space Battle: ./main_original 30 120 100 1000\n Von Neumann: ./main_original 2000 2000 0 1000 Zoom: [Strg] + [+]\n ");
         return 1;
     }
     
@@ -31,7 +32,9 @@ int main(int argc, char *argv[]) {
     int cols = atoi(argv[2]);
     int delay_my = atoi(argv[3]) * 1000;
     int max_turns = atoi(argv[4]);
-    if (argc = 6)
+    char *init_file = NULL;
+
+    if (argc == 6)
     {
         char *init_file = argv[5];
     }
@@ -41,7 +44,7 @@ int main(int argc, char *argv[]) {
     }
     
     // Dynamische Speicherverwaltung für zwei Gitter
-    // Zwei Gitter, um neuen zustand berechnen zu können, ohne den aktuellen Zustand zu beeinflussen, analog zu "Bildbearbeituns-Übung"
+    // Zwei Gitter, um neuen Zustand berechnen zu können, ohne den aktuellen Zustand zu beeinflussen, analog zu "Bildbearbeituns-Übung"
     World *current_gen = malloc(sizeof(World));
     World *next_gen = malloc(sizeof(World));
 
@@ -51,7 +54,7 @@ int main(int argc, char *argv[]) {
 
     // Initialisierung
     // Zufälliges Muster lebender Zellen oder Initialisierung mit Datei
-    init_world(current_gen, rows, cols, *init_file);
+    init_world(current_gen, rows, cols, init_file);
 
     // Spiel-Schleife (Loop)
     int turns = 0;
@@ -82,9 +85,6 @@ int main(int argc, char *argv[]) {
     }
     printf("turns: %i\n", turns);
     printf("population: %i\n", num_current_gen);
-    
-
-
 
     // Speicher freigeben (Vermeidung von Memory Leaks)
     free(current_gen->grid);
@@ -95,18 +95,19 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-void init_world(World *current_gen, int rows, int cols, char init_file)
+void init_world(World *current_gen, int rows, int cols, char *init_file)
 {
-    if (init_file != "")
+    if (init_file != NULL)
     {
         //Dateiinhalt in current_gen->grid einlesen
     }
     else
     {
-        printf("No init file -> random population\n");
+        system("clear");
         for (int i = 3; i > 0; i--)
         {
-            printf("launch in %i sec");
+            printf("No init file -> random population\n");
+            printf("launch in %i sec\n", i);
             usleep(1000000);
             system("clear");
         }

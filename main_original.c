@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
     printf("argc: %i\n", argc);
     if (argc < 2)
     {
-        printf("./main_original <rows> <columns> <delay milli-sec>\n Schach: ./main_original 30 120 500 Zoom: [Strg] + [+]\n Space Battle: ./main_original 30 120 100\n Von Neumann: ./main_original 2000 2000 0 Zoom: [Strg] + [+]\n");
+        printf("./main_original <rows> <columns> <delay milli-sec>\n\n Schach: ./main_original 8 16 500 Zoom: [Strg] + [+]\n Space Battle: ./main_original 30 120 100\n Von Neumann: ./main_original 2000 2000 0 Zoom: [Strg] + [+]\n");
         return 1;
     }
     

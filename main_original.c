@@ -21,15 +21,25 @@ void update_generation(World *current_gen, World *next_gen, int rows, int cols);
 
 int main(int argc, char *argv[]) {
     printf("argc: %i\n", argc);
-    if (argc < 2)
+    if (argc != 5)
     {
-        printf("./main_original <rows> <columns> <delay milli-sec>\n\n Schach: ./main_original 8 16 500 Zoom: [Strg] + [+]\n Space Battle: ./main_original 30 120 100\n Von Neumann: ./main_original 2000 2000 0 Zoom: [Strg] + [+]\n");
+        printf("./main_original <rows> <columns> <delay milli-sec> <max_turns>\n\n Schach: ./main_original 8 8 1000 100 Zoom: [Strg] + [+]\n Space Battle: ./main_original 30 120 100 1000\n Von Neumann: ./main_original 2000 2000 0 1000 Zoom: [Strg] + [+]\n ");
         return 1;
     }
     
     int rows = atoi(argv[1]);
     int cols = atoi(argv[2]);
     int delay_my = atoi(argv[3]) * 1000;
+    int max_turns = atoi(argv[4]);
+    if (argc = 6)
+    {
+        char *init_file = argv[5];
+    }
+    else
+    {
+        char *init_file = "test";
+    }
+    
     // Dynamische Speicherverwaltung für zwei Gitter
     // Zwei Gitter, um neuen zustand berechnen zu können, ohne den aktuellen Zustand zu beeinflussen, analog zu "Bildbearbeituns-Übung"
     World *current_gen = malloc(sizeof(World));
@@ -40,12 +50,12 @@ int main(int argc, char *argv[]) {
     next_gen->grid = malloc(rows * cols * sizeof(int));
 
     // Initialisierung
-    // Zufälliges Muster lebender Zellen
-    init_world(current_gen, rows, cols);
+    // Zufälliges Muster lebender Zellen oder Initialisierung mit Datei
+    init_world(current_gen, rows, cols, *init_file);
 
     // Spiel-Schleife (Loop)
     int turns = 0;
-    while (turns < 1000)
+    while (turns < max_turns)
      {
         // Aktuelle Population ausgeben
         print_world(current_gen, rows, cols);
@@ -63,6 +73,18 @@ int main(int argc, char *argv[]) {
         // d.h. wenn next_gen = current_gen, unter Berücksichtigung periodisch alternierender Muster  
         turns++;
     }
+    // Finalen Spielstand ausgeben
+    print_world(current_gen, rows, cols);
+    int num_current_gen = 0;
+    for (int i = 0; i < (rows * cols); i++) // Population zählen
+    {
+        num_current_gen += current_gen->grid[i];
+    }
+    printf("turns: %i\n", turns);
+    printf("population: %i\n", num_current_gen);
+    
+
+
 
     // Speicher freigeben (Vermeidung von Memory Leaks)
     free(current_gen->grid);
@@ -73,14 +95,31 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-void init_world(World *current_gen, int rows, int cols)
+void init_world(World *current_gen, int rows, int cols, char init_file)
 {
-    // Initialisiere den Zufallszahlengenerator mit der aktuellen Zeit
-    srand(time(NULL));
-    for (int i = 0; i < (rows * cols); i++)
+    if (init_file != "")
     {
-        current_gen->grid[i] = rand() % 2; // Zufällige 0 oder 1
+        //Dateiinhalt in current_gen->grid einlesen
     }
+    else
+    {
+        printf("No init file -> random population\n");
+        for (int i = 3; i > 0; i--)
+        {
+            printf("launch in %i sec");
+            usleep(1000000);
+            system("clear");
+        }
+        // Initialisiere den Zufallszahlengenerator mit der aktuellen Zeit
+        srand(time(NULL));
+        for (int i = 0; i < (rows * cols); i++)
+        {
+            current_gen->grid[i] = rand() % 2; // Zufällige 0 oder 1
+        }
+    }
+    
+    
+    
 }
 
 void print_world(World *current_gen, int rows, int cols)
@@ -89,8 +128,15 @@ void print_world(World *current_gen, int rows, int cols)
     system("clear");
     for (int i = 0; i < (rows * cols); i++)
     {
-        printf("%c", current_gen->grid[i] + 32);
-        if ((i+1) % cols == 0)
+        if (current_gen->grid[i] == 0)
+        {
+            printf("%c", current_gen->grid[i] + 32);    
+        }
+        else
+        {
+            printf("o");
+        }
+        if ((i+1) % cols == 0) // Zeilenende
         {
             printf("\n");
         }

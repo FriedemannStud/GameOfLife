@@ -502,7 +502,7 @@ void run_gui_app() {
                     timeAccumulator = 0.0f;
                     
                     World *next_gen = create_world(config.rows, config.cols); // Def von create_world() in game_logic.c
-                    update_generation(gui_world, next_gen, config.rows, config.cols);
+                    update_generation(gui_world, next_gen, config.rows, config.cols, &config.current_red_pop, &config.current_blue_pop);
                     free_world(gui_world);
                     gui_world = next_gen;
                     

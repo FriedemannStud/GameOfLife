@@ -36,10 +36,11 @@ void init_world(World *current_gen, int rows, int cols) {
 }
 
 // KI-Agent unterstützt
-void update_generation(World *current_gen, World *next_gen, int rows, int     // Initialisiere den Zufallszahlengenerator mit der aktuellen Zeit
-    srand(time(NULL));
-    for (int i = 0; i < (rows * cols); i++) {
-        int val = rand() % 100;cols) {
+void update_generation(World *current_gen, World *next_gen, int rows, int cols, int *red_pop, int *blue_pop) {
+    // Reset Counters
+    *red_pop = 0;
+    *blue_pop = 0;
+
     // Macro to check a neighbor index and increment counters
     // Using a macro avoids function call overhead in the tight loop
     #define COUNT_NEIGHBOR(idx) \
@@ -162,12 +163,12 @@ void update_generation(World *current_gen, World *next_gen, int rows, int     //
         int total_neighbors = red_neighbors + blue_neighbors;
         int current_cell = current_gen->grid[i];
         
+        int new_state = DEAD;
+
         if (current_cell != DEAD) {
             // SURVIVAL: 2 or 3 neighbors -> stay alive
             if (total_neighbors == 2 || total_neighbors == 3) {
-                next_gen->grid[i] = current_cell;
-            } else {
-                next_gen->grid[i] = DEAD;
+                new_state = current_cell;
             }
         }
         else {
@@ -175,14 +176,18 @@ void update_generation(World *current_gen, World *next_gen, int rows, int     //
             if (total_neighbors == 3) {
                 // Determine color by majority
                 if (red_neighbors > blue_neighbors) {
-                    next_gen->grid[i] = TEAM_RED;
+                    new_state = TEAM_RED;
                 } else {
-                    next_gen->grid[i] = TEAM_BLUE;
+                    new_state = TEAM_BLUE;
                 }
-            } else {
-                next_gen->grid[i] = DEAD;
             }
         }
+        
+        next_gen->grid[i] = new_state;
+        
+        // --- Integrated Counting ---
+        if (new_state == TEAM_RED) (*red_pop)++;
+        else if (new_state == TEAM_BLUE) (*blue_pop)++;
     }
     #undef COUNT_NEIGHBOR
 }

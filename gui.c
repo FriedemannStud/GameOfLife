@@ -17,8 +17,8 @@ static int selectedFileIndex = 0;
 static char currentProtocolFilename[256] = "";
 
 // --- Theme Colors (Digital Lab) ---
-// KI-Agent unterstützt: Sci-Fi / Retro Colors
-const Color THEME_BG = { 20, 24, 32, 255 };        // Deep Dark Blue/Grey
+// KI-Agent unterstützt: Sci-Fi / Retro Colors 
+const Color THEME_BG = { 20, 24, 32, 255 };        // Deep Dark Blue/Grey //Datentyp color = von Raylib zur Verfügung gestellt.
 const Color THEME_HUD = { 10, 12, 16, 230 };       // Semi-transparent Black
 const Color THEME_GRID = { 40, 44, 52, 255 };      // Faint Grid Lines
 const Color THEME_RED = { 255, 60, 100, 255 };     // Neon Red/Pink
@@ -45,7 +45,7 @@ void DrawGridAndCells(GameConfig *config, int screenWidth, int screenHeight, boo
     float cellH = (float)drawHeight / config->rows;
     
     // --- 1. Texture Management (Static to persist across frames) ---
-    static Texture2D gridTex = { 0 };
+    static Texture2D gridTex = { 0 }; //Raylib Datentyp: Texture2D wird in GPU geladen zum schnellen Darstellung werden Bilder vor Zeichnen in Texturen umgeandelt 
     static int texW = 0;
     static int texH = 0;
     static Color *pixels = NULL;
@@ -53,7 +53,7 @@ void DrawGridAndCells(GameConfig *config, int screenWidth, int screenHeight, boo
     // Check if grid size changed or not initialized
     if (config->cols != texW || config->rows != texH) {
         // Cleanup old resources
-        if (gridTex.id > 0) UnloadTexture(gridTex);
+        if (gridTex.id > 0) UnloadTexture(gridTex); // Raylib Bild&Textur Management: UnloadTexture = Gibt Textur-Objekt Speicherplatz (GPU) wieder frei
         if (pixels) free(pixels);
         
         // Update dimensions
@@ -63,11 +63,17 @@ void DrawGridAndCells(GameConfig *config, int screenWidth, int screenHeight, boo
         // Allocate new resources
         pixels = (Color*)malloc(texW * texH * sizeof(Color));
         Image img = GenImageColor(texW, texH, BLANK); // Create empty image
+            // Raylib Datentyp: Image = Array von Pixeldaten (CPU), die bearbeitet werden können
+            // Raylib Bild&Textur Management: GenImageColor = Erzeugt Image-Objekt (CPU), ganz mit einer Farbe gefüllt.
+            // Raylib Konstante: BLANK = transparentes Schwarz
         gridTex = LoadTextureFromImage(img);
+            // Raylib Bild&Textur Management: LoadTextureFromImage = Lädt Image (CPU) in Textur (GPU) - schnelles Zeichnen 
         UnloadImage(img);
+            // Raylib Bild&Text Management: UnloadImage = Gibt Image-Objekt Speicherplatz (CPU) wieder frei
         
         // IMPORTANT: Point filtering ensures sharp pixels when scaled up
         SetTextureFilter(gridTex, TEXTURE_FILTER_POINT); 
+            // Raylib Bild&Texture Management: SetTextureFilter = Wendet Filterbibliothek auf Textur (gridTex) an. TEXTURE_FILTER_POINT = "pxeliger" Look
     }
     
     // --- 2. Update Pixel Data (CPU side) ---
@@ -83,31 +89,34 @@ void DrawGridAndCells(GameConfig *config, int screenWidth, int screenHeight, boo
     }
     
     // --- 3. Upload to GPU & Draw ---
-    UpdateTexture(gridTex, pixels);
+    UpdateTexture(gridTex, pixels); // Raylib Bild&Textur Mangement: UpdateTexture = Aktualisiert Textur (GPU) mit Pixeldaten von Image (CPU)
     
-    Rectangle source = { 0.0f, 0.0f, (float)texW, (float)texH };
+    Rectangle source = { 0.0f, 0.0f, (float)texW, (float)texH }; // Raylib Datentyp: Rectangle definiert Rechteck {x, y, Breite, Höhe}
     Rectangle dest = { (float)startX, (float)startY, (float)drawWidth, (float)drawHeight };
-    Vector2 origin = { 0.0f, 0.0f };
+    Vector2 origin = { 0.0f, 0.0f };  //Raylib Datentyp: Vector2 stellt Punkt oder Vektor in 2D dar {x, y}
     
-    DrawTexturePro(gridTex, source, dest, origin, 0.0f, WHITE);
+    DrawTexturePro(gridTex, source, dest, origin, 0.0f, WHITE); // Raylib Bild&Textur Management: DrawTexturePro = Zeichnet Textur
 
     // --- 4. Draw Grid Lines (Optional - Overhead is low for lines) ---
     if (drawGridLines) {
-        for (int i = 0; i <= config->cols; i++) DrawLine(startX + i * cellW, startY, startX + i * cellW, startY + drawHeight, THEME_GRID);
+        for (int i = 0; i <= config->cols; i++) DrawLine(startX + i * cellW, startY, startX + i * cellW, startY + drawHeight, THEME_GRID); // Raylib Zeichenfunktion: Linie zeichnen
         for (int i = 0; i <= config->rows; i++) DrawLine(startX, startY + i * cellH, startX + drawWidth, startY + i * cellH, THEME_GRID);
     }
     
     // 5. Draw Hemisphere Separator
     DrawLine(startX + (config->cols / 2) * cellW, startY, 
-             startX + (config->cols / 2) * cellW, startY + drawHeight, Fade(THEME_TEXT, 0.3f));
+             startX + (config->cols / 2) * cellW, startY + drawHeight, Fade(THEME_TEXT, 0.3f)); // Raylib Zeichenfunktion: Fade = gibt Farbe mit neuem Apha-Wert zurück
 }
 
 // KI-Agent unterstützt: Pattern Definitions
 typedef struct { int r; int c; } Point;
 
-void PlacePattern(World *w, GameConfig *c, int startR, int startC, int type) {
+void PlacePattern(World *w, GameConfig *c, int startR, int startC, int type) {  
+    // Platziert vordefinierte Muster auf World "w"
+    // startR, startC = Startposition für Muster kommt von Mauspos
+    // type = welches Muster platziert werden soll
     int team;
-    int midCol = c->cols / 2;
+    int midCol = c->cols / 2; // Mittellinie
     int *current_pop;
     
     // Determine Team based on Mouse Cursor (Start Position)
@@ -173,13 +182,13 @@ bool IsActionTriggered(int key) {
     const float INITIAL_DELAY = 0.5f;
     const float REPEAT_INTERVAL = 0.05f; 
 
-    if (IsKeyPressed(key)) {
+    if (IsKeyPressed(key)) { // Raylib Input-Steuerung: TRUE, wenn Taste 1 x gedrückt
         activeKey = key;
         timer = 0.0f;
         return true;
     }
 
-    if (IsKeyDown(key)) {
+    if (IsKeyDown(key)) {  // Raylib Input-Steuerung: TRUE, solange Taste gedrückt
         if (activeKey == key) {
             timer += GetFrameTime();
             if (timer >= INITIAL_DELAY + REPEAT_INTERVAL) {
@@ -202,9 +211,9 @@ void run_gui_app() {
     int screenWidth = 800;
     int screenHeight = 600;
 
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE); 
-    InitWindow(screenWidth, screenHeight, "Biotope - Game of Life");
-    SetTargetFPS(60);
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE); // Raylib Fenstersteuerung: Param. FLAG_WINDOW_REZISABLE -> Fenstergröße veränderbar
+    InitWindow(screenWidth, screenHeight, "Biotope - Game of Life"); // Raylib Fenstersteuerung: Öffnet Startfenster - Header für Start-Window
+    SetTargetFPS(60); // Raylib Fenstersteuerung: Legt Frames Per Second fest 
 
     // Initial state
     AppState state = STATE_CONFIG;
@@ -223,10 +232,11 @@ void run_gui_app() {
     char statusMsg[64] = "";
     float statusTimer = 0.0f;
 
-    while (!WindowShouldClose()) {
-        // Update dynamic screen dimensions
-        screenWidth = GetScreenWidth();
-        screenHeight = GetScreenHeight();
+    while (!WindowShouldClose()) {      // HIER geht's los! Game Loop/Hauptschleife 
+            //Raylib Fenstersteuerung "WindowShouldClose" = "x" oben-rechts in Win - Fenster
+            // Update dynamic screen dimensions
+        screenWidth = GetScreenWidth(); // Raylib Fenstersteuerung: Gibt Fensterbreite zurück 
+        screenHeight = GetScreenHeight(); // Raylib Fenstersteuerung: Gibt Fensterhöhe zurück
         
         // Timer for status message
         if (statusTimer > 0) {
@@ -235,8 +245,8 @@ void run_gui_app() {
         }
         
         // --- Logic per State ---
-        switch (state) {
-            case STATE_CONFIG:
+        switch (state) {                 // Zustandsmaschine - Wert von State gibt Code-Block-Ausführung vor 
+            case STATE_CONFIG:           // Spieleinstellungen mit Tasten im Fenster Biotope Configuration
                 // Interaction: Change Grid Size
                 if (IsActionTriggered(KEY_RIGHT)) config.cols += 10;
                 if (IsActionTriggered(KEY_LEFT) && config.cols > 10) config.cols -= 10;
@@ -264,6 +274,29 @@ void run_gui_app() {
                 }
                 if (IsActionTriggered(KEY_DELETE) && config.max_population > 10) config.max_population -= 10;
 
+                // Presets 
+                if (IsActionTriggered(KEY_ONE)) { // Schach Modus
+                    config.cols = 16;
+                    config.rows = 8;
+                    config.delay_ms = 500;
+                    config.max_rounds = 50;
+                    config.max_population = 30;
+                }
+                if (IsActionTriggered(KEY_TWO)) { // Outer Space Battle
+                    config.cols = 400;
+                    config.rows = 200;
+                    config.delay_ms = 100;
+                    config.max_rounds = 300;
+                    config.max_population = 1000;
+                }
+                if (IsActionTriggered(KEY_THREE)) { // Von Neumann
+                    config.cols = 1000;
+                    config.rows = 500;
+                    config.delay_ms = 0;
+                    config.max_rounds = 1000;
+                    config.max_population = 5000;
+                }
+
                 // Transition: Start Setup
                 if (IsKeyPressed(KEY_ENTER)) {
                     if (gui_world) free_world(gui_world);
@@ -279,10 +312,10 @@ void run_gui_app() {
                 }
                 break;
 
-            case STATE_EDIT:
+            case STATE_EDIT:    // Startkonfiguration für Simulation auf Screen mit Maus setzen
                 // --- Mouse & Pattern Interaction ---
                 {
-                    Vector2 mousePos = GetMousePosition();
+                    Vector2 mousePos = GetMousePosition();  // Raylib Input-Steuerung: Gibt aktuelle x,y-Mauspos. als Vector2 zurück 
                     
                     // Constants must match DrawGridAndCells layout
                     const int headerHeight = 60;
@@ -298,7 +331,7 @@ void run_gui_app() {
                     
                     // State for Drag-and-Paint interaction
                     static int editAction = 0; // 0:Idle, 1:Place, 2:Remove
-                    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) editAction = 0;
+                    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) editAction = 0; // Raylib Input-Steuerung: TRUE in dem Frame, in dem Maustaste losgelassen wird
 
                     // Check if mouse is inside the grid area
                     if (mousePos.x >= startX && mousePos.x < startX + drawWidth &&
@@ -308,14 +341,14 @@ void run_gui_app() {
                         int row = (int)((mousePos.y - startY) / cellH);
                         
                         // Handle Clicks (Single Cell) & Drag
-                        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {  // Raylib Input-Steuerung: TRUE in dem Frame, in dem Maustaste gedrückt wird.
                             int index = row * config.cols + col;
                             // Determine action based on initial cell state: Place (1) or Remove (2)
                             if (gui_world->grid[index] == DEAD) editAction = 1;
                             else editAction = 2;
                         }
 
-                        if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) && editAction != 0) {
+                        if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) && editAction != 0) {  // Raylib Input-Steuerung: TRUE, solange Maustaste gedrückt wird.
                             int index = row * config.cols + col;
                             int midCol = config.cols / 2;
 
@@ -373,11 +406,11 @@ void run_gui_app() {
                 if (IsKeyPressed(KEY_L)) {
                     fileCount = list_protocol_files("biotope_results", &fileList);
                     selectedFileIndex = 0;
-                    state = STATE_LOAD;
+                    state = STATE_LOAD;  // Absprung alte Spiele laden
                 }
                 
                 // KI-Agent unterstützt: Random Placement Logic
-                if (IsKeyPressed(KEY_R)) {
+                if (IsKeyPressed(KEY_R)) {    // Spielfeld wird mit Zufallsmuster gefüllt
                     // Reset grid
                     for(int i=0; i<config.rows*config.cols; i++) gui_world->grid[i] = DEAD;
                     config.current_blue_pop = 0;
@@ -411,7 +444,7 @@ void run_gui_app() {
                     statusTimer = 2.0f;
                 }
                 
-                // Transition: Start Simulation with Auto-Save
+                // Transition: Start Simulation initiale Belegung wird gespeichert "....bio"
                 if (IsKeyPressed(KEY_ENTER)) {
                     // Phase 3: Auto-Save on Start
                     char autoFilename[128];
@@ -428,11 +461,11 @@ void run_gui_app() {
                         printf("Auto-save failed!\n");
                     }
                     
-                    state = STATE_RUNNING;
+                    state = STATE_RUNNING;   
                 }
                 break;
 
-            case STATE_LOAD:
+            case STATE_LOAD:   // Alte Spielkonfigurationen laden
                 if (IsKeyPressed(KEY_UP) && selectedFileIndex > 0) selectedFileIndex--;
                 if (IsKeyPressed(KEY_DOWN) && selectedFileIndex < fileCount - 1) selectedFileIndex++;
                 
@@ -449,11 +482,11 @@ void run_gui_app() {
                 if (IsKeyPressed(KEY_Q) || IsKeyPressed(KEY_ESCAPE)) {
                     if (fileList) free(fileList);
                     fileList = NULL;
-                    state = STATE_EDIT;
+                    state = STATE_EDIT;   
                 }
                 break;
             
-            case STATE_RUNNING:
+            case STATE_RUNNING:  // Hier zurücklehnen und zuschauen
                 if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_Q)) {
                     if (gui_world) free_world(gui_world);
                     gui_world = NULL;
@@ -463,24 +496,17 @@ void run_gui_app() {
 
                 // --- Simulation Logic ---
                 static float timeAccumulator = 0.0f;
-                timeAccumulator += GetFrameTime();
-                
+                timeAccumulator += GetFrameTime(); // Raylib Zeitsteuerung: Benötigte Zeit in Sek. für Berechnung u. Zeichnen  d. letzten Frames   
+                // "Sammelt" die pro Frame verbrauchte Zeit, bis die in delay_ms vorgegebene Wartezeit angesammelt wurde, dann weiter.  
                 if (timeAccumulator >= config.delay_ms / 1000.0f) {
                     timeAccumulator = 0.0f;
                     
-                    World *next_gen = create_world(config.rows, config.cols);
+                    World *next_gen = create_world(config.rows, config.cols); // Def von create_world() in game_logic.c
                     update_generation(gui_world, next_gen, config.rows, config.cols);
                     free_world(gui_world);
                     gui_world = next_gen;
                     
                     config.current_round++;
-                    
-                    config.current_red_pop = 0;
-                    config.current_blue_pop = 0;
-                    for(int i=0; i<config.rows*config.cols; i++) {
-                        if (gui_world->grid[i] == TEAM_RED) config.current_red_pop++;
-                        if (gui_world->grid[i] == TEAM_BLUE) config.current_blue_pop++;
-                    }
                     
                     if (config.current_round >= config.max_rounds || 
                         config.current_red_pop == 0 || 
@@ -519,17 +545,17 @@ void run_gui_app() {
         }
 
         // --- Drawing ---
-        BeginDrawing();
-        ClearBackground(THEME_BG);
+        BeginDrawing(); // Raylib Anzeigesteuerung: Beginn einer neuen "Zeichenrunde"
+        ClearBackground(THEME_BG); // Raylib Anzeigesteuerung: Gesamtes Fenster wird mit THEME_BG gefüllt
 
         // Draw HUD Backgrounds (Header & Footer)
-        DrawRectangle(0, 0, screenWidth, 60, THEME_HUD); // Header
+        DrawRectangle(0, 0, screenWidth, 60, THEME_HUD); // Header // Raylib Zeichenfunktion: Rechteck zeichnen
         DrawRectangle(0, screenHeight - 40, screenWidth, 40, THEME_HUD); // Footer
 
         // Draw Status Message Overlay
         if (statusTimer > 0) {
             // KI-Agent unterstützt: Center status message to avoid collision with counters
-            DrawText(statusMsg, screenWidth/2 - MeasureText(statusMsg, 20)/2, 20, 20, GREEN);
+            DrawText(statusMsg, screenWidth/2 - MeasureText(statusMsg, 20)/2, 20, 20, GREEN); // Raylib Zeichenfunktion: Text zeichnen
         }
 
         switch (state) {
@@ -552,6 +578,8 @@ void run_gui_app() {
                 sprintf(buf, "MAX INIT POP:    %04d", config.max_population);
                 DrawText(buf, 40, 220, 20, THEME_RED);
                 DrawText("(Insert/Delete)", 300, 220, 18, DARKGRAY);
+
+
                 
                 // KI-Agent unterstützt: Mission Protocol (Rules Display)
                 int rulesX = screenWidth / 2 + 40;
@@ -563,7 +591,12 @@ void run_gui_app() {
                 DrawText("- TEAMS: RED vs BLUE", rulesX, 185, 20, THEME_TEXT);
                 DrawText("- GOAL: Max Population after timeout", rulesX, 210, 20, THEME_TEXT);
 
-                DrawText("PRESS [ENTER] TO INITIALIZE SYSTEM", 40, 300, 20, THEME_HIGHLIGHT);
+
+                DrawText("PRESET", 40, 300, 20, THEME_HIGHLIGHT);
+                DrawText("[1] CHESS", 40, 335, 20, THEME_HIGHLIGHT);
+                DrawText("[2] OUTER SPACE BATTLE", 40, 370, 20, THEME_HIGHLIGHT);
+                DrawText("[3] VON NEUMANN", 40, 405, 20, THEME_HIGHLIGHT);
+                DrawText("PRESS [ENTER] TO INITIALIZE SYSTEM", 40, 475, 20, THEME_HIGHLIGHT);
                 break;
 
             case STATE_EDIT:
@@ -742,9 +775,9 @@ void run_gui_app() {
                 break;
         }
 
-        EndDrawing();
+        EndDrawing(); // Raylib Anzeigesteuerung: Ende der "Zeichenrunde". Fertig gezeichnetes Bild wird im Fenster angezeigt.
     }
 
     if (gui_world) free_world(gui_world);
-    CloseWindow();
+    CloseWindow(); // Raylib Fenstersteuerung: Schließt Fenster und gibt alle Ressourcen frei
 }

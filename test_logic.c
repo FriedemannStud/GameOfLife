@@ -23,7 +23,8 @@ int main() {
 
     // Test update
     World *next = create_world(10, 10);
-    update_generation(w, next, 10, 10);
+    int r, b;
+    update_generation(w, next, 10, 10, &r, &b);
     printf("- Update generation passed\n");
 
     // Test cleanup

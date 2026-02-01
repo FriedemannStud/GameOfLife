@@ -275,7 +275,7 @@ void run_gui_app() {
                 if (IsActionTriggered(KEY_DELETE) && config.max_population > 10) config.max_population -= 10;
 
                 // Presets 
-                if (IsActionTriggered(KEY_ONE)) { // Conway's Chess
+                if (IsActionTriggered(KEY_ONE)) { // CONWAY'S CHESS
                     config.cols = 16;
                     config.rows = 8;
                     config.delay_ms = 500;
@@ -284,12 +284,12 @@ void run_gui_app() {
                 }
                 if (IsActionTriggered(KEY_TWO)) { // Outer Space Battle
                     config.cols = 400;
-                    config.rows = 400;
+                    config.rows = 200;
                     config.delay_ms = 100;
                     config.max_rounds = 300;
                     config.max_population = 1000;
                 }
-                if (IsActionTriggered(KEY_THREE)) { // Turing Sandbox
+                if (IsActionTriggered(KEY_THREE)) { // TURING SANDBOX
                     config.cols = 1000;
                     config.rows = 500;
                     config.delay_ms = 0;

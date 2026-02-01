@@ -275,7 +275,7 @@ void run_gui_app() {
                 if (IsActionTriggered(KEY_DELETE) && config.max_population > 10) config.max_population -= 10;
 
                 // Presets 
-                if (IsActionTriggered(KEY_ONE)) { // Schach Modus
+                if (IsActionTriggered(KEY_ONE)) { // Conway's Chess
                     config.cols = 16;
                     config.rows = 8;
                     config.delay_ms = 500;
@@ -284,12 +284,12 @@ void run_gui_app() {
                 }
                 if (IsActionTriggered(KEY_TWO)) { // Outer Space Battle
                     config.cols = 400;
-                    config.rows = 200;
+                    config.rows = 400;
                     config.delay_ms = 100;
                     config.max_rounds = 300;
                     config.max_population = 1000;
                 }
-                if (IsActionTriggered(KEY_THREE)) { // Von Neumann
+                if (IsActionTriggered(KEY_THREE)) { // Turing Sandbox
                     config.cols = 1000;
                     config.rows = 500;
                     config.delay_ms = 0;
@@ -593,9 +593,9 @@ void run_gui_app() {
 
 
                 DrawText("PRESET", 40, 300, 20, THEME_HIGHLIGHT);
-                DrawText("[1] CHESS", 40, 335, 20, THEME_HIGHLIGHT);
+                DrawText("[1] CONWAY'S CHESS", 40, 335, 20, THEME_HIGHLIGHT);
                 DrawText("[2] OUTER SPACE BATTLE", 40, 370, 20, THEME_HIGHLIGHT);
-                DrawText("[3] VON NEUMANN", 40, 405, 20, THEME_HIGHLIGHT);
+                DrawText("[3] TURING SANDBOX", 40, 405, 20, THEME_HIGHLIGHT);
                 DrawText("PRESS [ENTER] TO INITIALIZE SYSTEM", 40, 475, 20, THEME_HIGHLIGHT);
                 break;
 

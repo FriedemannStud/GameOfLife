@@ -7,7 +7,7 @@
 
 // Comparator for qsort to sort by timestamp descending
 static int compare_protocol_info(const void *a, const void *b) {
-    ProtocolInfo *pa = (ProtocolInfo *)a;  // typedef struckt in file_io.h definiert
+    ProtocolInfo *pa = (ProtocolInfo *)a;  // typedef struct in file_io.h definiert
     ProtocolInfo *pb = (ProtocolInfo *)b;
     if (pb->timestamp > pa->timestamp) return 1;
     if (pb->timestamp < pa->timestamp) return -1;

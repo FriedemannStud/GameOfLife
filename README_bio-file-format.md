@@ -13,7 +13,7 @@ The file consists of two parts:
 ---
 
 ### 1. The Header (First Line)
-The first line must contain exactly three numbers, separated by spaces:
+The first line must contain at least three numbers, separated by spaces:
 `[Number of Rows] [Number of Columns] [Max Population Limit]`
 
 *   **Number of Rows**: The height of the board (Y-axis).

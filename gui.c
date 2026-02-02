@@ -503,14 +503,14 @@ void run_gui_app() {
                     
                     World *next_gen = create_world(config.rows, config.cols); // Def von create_world() in game_logic.c
                     update_generation(gui_world, next_gen, config.rows, config.cols, &config.current_red_pop, &config.current_blue_pop);
-                    free_world(gui_world);
-                    gui_world = next_gen;
+                    free_world(gui_world); // Speicher von letztem Bild wird freigegeben, wird nicht mehr benötigt. 
+                    gui_world = next_gen;  // Neu berechnete Generation (next_gen) wird anzuzeigende Generation(gui_world) gui_world "erbt" Speicher von next_gen.
                     
                     config.current_round++;
                     
-                    if (config.current_round >= config.max_rounds || 
-                        config.current_red_pop == 0 || 
-                        config.current_blue_pop == 0) {
+                    if (config.current_round >= config.max_rounds || // Fertig, wenn max_rounds erreicht
+                        config.current_red_pop == 0 ||               // Fertig, wenn keine roten Zellen mehr 
+                        config.current_blue_pop == 0) {              // Fertig, wenn keine blauen Zellen mehr
                         state = STATE_FINISHED;
                     }
                 }

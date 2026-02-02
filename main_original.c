@@ -118,13 +118,9 @@ void init_world(World *current_gen, int rows, int cols, char *init_file)
             current_gen->grid[i] = rand() % 2; // Zufällige 0 oder 1
         }
     }
-    
-    
-    
 }
 
 void print_world(World *current_gen, int rows, int cols)
-// Zunächst ohne GUI als Zeichen-Matrix 1 und 0
 {
     system("clear");
     for (int i = 0; i < (rows * cols); i++)
@@ -328,7 +324,7 @@ void update_generation(World *current_gen, World *next_gen, int rows, int cols)
             printf("i: %i->i im Feld\n", i);
             */
         }
-        // 
+        // Berechnet Zustand für nächste Generation 
         if (current_gen->grid[i] == 1 && zellen == 2 || zellen == 3)
         {
             next_gen->grid[i] = 1;

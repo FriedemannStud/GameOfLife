@@ -77,14 +77,19 @@ void DrawGridAndCells(GameConfig *config, int screenWidth, int screenHeight, boo
     }
     
     // --- 2. Update Pixel Data (CPU side) ---
-    // Instead of thousands of DrawRectangle calls, we update a single buffer.
-    for (int i = 0; i < texW * texH; i++) {
-        if (gui_world->grid[i] == TEAM_BLUE) {
-            pixels[i] = THEME_BLUE;
-        } else if (gui_world->grid[i] == TEAM_RED) {
-            pixels[i] = THEME_RED;
-        } else {
-            pixels[i] = BLANK; // Transparent, so background shows through
+    int stride = config->cols + 2;
+    for (int r = 1; r <= config->rows; r++) {
+        for (int c = 1; c <= config->cols; c++) {
+            int gridIdx = r * stride + c;
+            int pixelIdx = (r - 1) * config->cols + (c - 1);
+
+            if (gui_world->grid[gridIdx] == TEAM_BLUE) {
+                pixels[pixelIdx] = THEME_BLUE;
+            } else if (gui_world->grid[gridIdx] == TEAM_RED) {
+                pixels[pixelIdx] = THEME_RED;
+            } else {
+                pixels[pixelIdx] = BLANK; 
+            }
         }
     }
     
@@ -166,7 +171,8 @@ void PlacePattern(World *w, GameConfig *c, int startR, int startC, int type) {
         if (team == TEAM_RED && col >= midCol) valid = true;
 
         if (valid) {
-            int idx = r * c->cols + col;
+            int stride = c->cols + 2;
+            int idx = (r + 1) * stride + (col + 1);
             if (w->grid[idx] == DEAD) {
                 w->grid[idx] = team;
                 (*current_pop)++;
@@ -297,20 +303,24 @@ void run_gui_app() {
                     config.max_population = 5000;
                 }
 
-                // Transition: Start Setup
-                if (IsKeyPressed(KEY_ENTER)) {
-                    if (gui_world) free_world(gui_world);
-                    gui_world = create_world(config.rows, config.cols);
-                    // Initialize empty
-                    for(int i=0; i<config.rows*config.cols; i++) gui_world->grid[i] = DEAD;
-                    
-                    config.current_blue_pop = 0;
-                    config.current_red_pop = 0;
-                    config.current_round = 0;
-                    
-                    state = STATE_EDIT;
-                }
-                break;
+                                    // Transition: Start Setup
+                                if (IsKeyPressed(KEY_ENTER)) {
+                                    if (gui_world) free_world(gui_world);
+                                    gui_world = create_world(config.rows, config.cols);
+                                    // Initialize empty (Corrected for ghost borders)
+                                    int stride = config.cols + 2;
+                                    for(int r=0; r < config.rows + 2; r++) {
+                                        for(int c=0; c < config.cols + 2; c++) {
+                                            gui_world->grid[r * stride + c] = DEAD;
+                                        }
+                                    }
+                                    
+                                    config.current_blue_pop = 0;
+                                    config.current_red_pop = 0;
+                                    config.current_round = 0;
+                                    
+                                    state = STATE_EDIT;
+                                }                break;
 
             case STATE_EDIT:    // Startkonfiguration für Simulation auf Screen mit Maus setzen
                 // --- Mouse & Pattern Interaction ---
@@ -339,17 +349,17 @@ void run_gui_app() {
                         
                         int col = (int)((mousePos.x - startX) / cellW);
                         int row = (int)((mousePos.y - startY) / cellH);
+                        int stride = config.cols + 2;
+                        int index = (row + 1) * stride + (col + 1);
                         
                         // Handle Clicks (Single Cell) & Drag
                         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {  // Raylib Input-Steuerung: TRUE in dem Frame, in dem Maustaste gedrückt wird.
-                            int index = row * config.cols + col;
                             // Determine action based on initial cell state: Place (1) or Remove (2)
                             if (gui_world->grid[index] == DEAD) editAction = 1;
                             else editAction = 2;
                         }
 
                         if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) && editAction != 0) {  // Raylib Input-Steuerung: TRUE, solange Maustaste gedrückt wird.
-                            int index = row * config.cols + col;
                             int midCol = config.cols / 2;
 
                             // Check Hemispheres and Population Limits
@@ -411,28 +421,27 @@ void run_gui_app() {
                 
                 // KI-Agent unterstützt: Random Placement Logic
                 if (IsKeyPressed(KEY_R)) {    // Spielfeld wird mit Zufallsmuster gefüllt
-                    // Reset grid
-                    for(int i=0; i<config.rows*config.cols; i++) gui_world->grid[i] = DEAD;
+                    int stride = config.cols + 2;
+                    // Reset grid (including borders)
+                    for(int i=0; i < (config.rows + 2) * (config.cols + 2); i++) gui_world->grid[i] = DEAD;
+                    
                     config.current_blue_pop = 0;
                     config.current_red_pop = 0;
                     
                     int midCol = config.cols / 2;
-                    // Seed random
                     srand(time(NULL));
                     
-                    // Iterate and randomly fill
                     for(int r=0; r<config.rows; r++) {
                         for(int c=0; c<config.cols; c++) {
-                            int idx = r * config.cols + c;
-                            // 20% chance to be alive
+                            int idx = (r + 1) * stride + (c + 1);
                             if ((rand() % 100) < 20) {
                                 if (c < midCol) {
-                                    if (config.current_blue_pop < config.max_population) {
+                                    if (config.current_blue_pop < config.cols * config.rows) {
                                         gui_world->grid[idx] = TEAM_BLUE;
                                         config.current_blue_pop++;
                                     }
                                 } else {
-                                    if (config.current_red_pop < config.max_population) {
+                                    if (config.current_red_pop < config.cols * config.rows) {
                                         gui_world->grid[idx] = TEAM_RED;
                                         config.current_red_pop++;
                                     }

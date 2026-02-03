@@ -33,11 +33,14 @@ int save_grid(const char *filename, World *w, GameConfig *c) {
             c->delay_ms);
     
     // Save live cells only: r c team
-    for(int i=0; i < w->rows * w->cols; i++) {
-        if (w->grid[i] != DEAD) {
-            int r = i / w->cols;
-            int c_idx = i % w->cols;
-            fprintf(f, "%d %d %d\n", r, c_idx, w->grid[i]);
+    int stride = c->cols + 2;
+    for(int r = 1; r <= c->rows; r++) {
+        for(int col = 1; col <= c->cols; col++) {
+            int idx = r * stride + col;
+            if (w->grid[idx] != DEAD) {
+                // Save coordinates relative to the active area (0-indexed)
+                fprintf(f, "%d %d %d\n", r - 1, col - 1, w->grid[idx]);
+            }
         }
     }
     
@@ -89,7 +92,8 @@ int load_grid(const char *filename, World *w, GameConfig *c) {
     if (rows != c->rows || cols != c->cols) {
         printf("Resizing world from %dx%d to %dx%d...\n", c->rows, c->cols, rows, cols);
         free(w->grid);
-        w->grid = (int*)malloc(rows * cols * sizeof(int));
+        // PADDED GRID allocation: (rows + 2) * (cols + 2)
+        w->grid = (int*)calloc((rows + 2) * (cols + 2), sizeof(int));
         if (!w->grid) {
             printf("Error: Failed to allocate memory for new grid size.\n");
             fclose(f);
@@ -106,15 +110,17 @@ int load_grid(const char *filename, World *w, GameConfig *c) {
     c->max_rounds = max_rounds;
     c->delay_ms = delay_ms;
     
-    // Clear grid
-    for(int i=0; i < w->rows * w->cols; i++) w->grid[i] = DEAD;
+    // Clear grid (all cells including ghost borders)
+    int stride = cols + 2;
+    for(int i=0; i < (rows + 2) * (cols + 2); i++) w->grid[i] = DEAD;
     c->current_blue_pop = 0;
     c->current_red_pop = 0;
     
-    int r, c_idx, team;
-    while (fscanf(f, "%d %d %d", &r, &c_idx, &team) == 3) {
-        if (r >= 0 && r < rows && c_idx >= 0 && c_idx < cols) {
-            int idx = r * cols + c_idx;
+    int r_in, c_in, team;
+    while (fscanf(f, "%d %d %d", &r_in, &c_in, &team) == 3) {
+        if (r_in >= 0 && r_in < rows && c_in >= 0 && c_in < cols) {
+            // Map 0-indexed file coordinates to padded grid indices (r+1, c+1)
+            int idx = (r_in + 1) * stride + (c_in + 1);
             w->grid[idx] = team;
             if (team == TEAM_RED) c->current_red_pop++;
             if (team == TEAM_BLUE) c->current_blue_pop++;

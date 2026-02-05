@@ -9,6 +9,10 @@
 
 
 int main(int argc, char *argv[]) {
+    // KI-Agent unterstützt: Explicitly ignore unused parameters
+    (void)argc;
+    (void)argv;
+    
     // KI-Agent unterstützt: Switching to GUI mode
     printf("Starting Biotope GUI...\n"); // siehe Docker-Terminal
     run_gui_app(); // Init-Protokoll in Docker-Terminal

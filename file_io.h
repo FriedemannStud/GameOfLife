@@ -6,8 +6,8 @@
 
 // Struct to hold file metadata for the browser
 typedef struct {
-    char filename[128]; // e.g., "run_20260117_120000.bio"
-    char filepath[256]; // Full relative path
+    char filename[256]; // e.g., "run_20260117_120000.bio"
+    char filepath[512]; // Full relative path
     long timestamp;     // For sorting
     
     // Preview Data

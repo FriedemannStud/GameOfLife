@@ -8,6 +8,7 @@
 
 // Global World Pointer for GUI
 World *gui_world = NULL;
+World *swap_world = NULL;
 
 // Protocol Archive State
 static ProtocolInfo *fileList = NULL;
@@ -219,7 +220,7 @@ void run_gui_app() {
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE); // Raylib Fenstersteuerung: Param. FLAG_WINDOW_REZISABLE -> Fenstergröße veränderbar
     InitWindow(screenWidth, screenHeight, "Biotope - Game of Life"); // Raylib Fenstersteuerung: Öffnet Startfenster - Header für Start-Window
-    SetTargetFPS(60); // Raylib Fenstersteuerung: Legt Frames Per Second fest 
+    SetTargetFPS(120); // Raylib Fenstersteuerung: Legt Frames Per Second fest 
 
     // Initial state
     AppState state = STATE_CONFIG;
@@ -303,24 +304,26 @@ void run_gui_app() {
                     config.max_population = 5000;
                 }
 
-                                    // Transition: Start Setup
-                                if (IsKeyPressed(KEY_ENTER)) {
-                                    if (gui_world) free_world(gui_world);
-                                    gui_world = create_world(config.rows, config.cols);
-                                    // Initialize empty (Corrected for ghost borders)
-                                    int stride = config.cols + 2;
-                                    for(int r=0; r < config.rows + 2; r++) {
-                                        for(int c=0; c < config.cols + 2; c++) {
-                                            gui_world->grid[r * stride + c] = DEAD;
-                                        }
-                                    }
-                                    
-                                    config.current_blue_pop = 0;
-                                    config.current_red_pop = 0;
-                                    config.current_round = 0;
-                                    
-                                    state = STATE_EDIT;
-                                }                break;
+                    // Transition: Start Setup
+                if (IsKeyPressed(KEY_ENTER)) {
+                    if (gui_world) free_world(gui_world);
+                    gui_world = create_world(config.rows, config.cols);
+                    if (swap_world) free_world(swap_world);
+                    swap_world = create_world(config.rows, config.cols);
+                    // Initialize empty (Corrected for ghost borders)
+                    int stride = config.cols + 2;
+                    for(int r=0; r < config.rows + 2; r++) {
+                        for(int c=0; c < config.cols + 2; c++) {
+                            gui_world->grid[r * stride + c] = DEAD;
+                        }
+                    }
+                    
+                    config.current_blue_pop = 0;
+                    config.current_red_pop = 0;
+                    config.current_round = 0;
+                    
+                    state = STATE_EDIT;
+                }                break;
 
             case STATE_EDIT:    // Startkonfiguration für Simulation auf Screen mit Maus setzen
                 // --- Mouse & Pattern Interaction ---
@@ -482,6 +485,14 @@ void run_gui_app() {
                     if (load_grid(fileList[selectedFileIndex].filepath, gui_world, &config)) {
                         strcpy(statusMsg, "Protocol Loaded!");
                         statusTimer = 2.0f;
+                        
+                        // FIX: Ensure swap_world matches the new dimensions!
+                        // Otherwise -> Heap Corruption / Buffer Overflow in update_generation
+                        if (swap_world) free_world(swap_world);
+                        swap_world = create_world(config.rows, config.cols);
+                        // Initialize swap_world to valid empty state (including borders)
+                        int stride = config.cols + 2;
+                        for(int i=0; i < (config.rows + 2) * stride; i++) swap_world->grid[i] = DEAD;
                     }
                     if (fileList) free(fileList);
                     fileList = NULL;
@@ -498,7 +509,9 @@ void run_gui_app() {
             case STATE_RUNNING:  // Hier zurücklehnen und zuschauen
                 if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_Q)) {
                     if (gui_world) free_world(gui_world);
+                    if (swap_world) free_world(swap_world);
                     gui_world = NULL;
+                    swap_world = NULL;
                     state = STATE_CONFIG;
                     break;
                 }
@@ -510,11 +523,13 @@ void run_gui_app() {
                 if (timeAccumulator >= config.delay_ms / 1000.0f) {
                     timeAccumulator = 0.0f;
                     
-                    World *next_gen = create_world(config.rows, config.cols); // Def von create_world() in game_logic.c
-                    update_generation(gui_world, next_gen, config.rows, config.cols, &config.current_red_pop, &config.current_blue_pop);
-                    free_world(gui_world); // Speicher von letztem Bild wird freigegeben, wird nicht mehr benötigt. 
-                    gui_world = next_gen;  // Neu berechnete Generation (next_gen) wird anzuzeigende Generation(gui_world) gui_world "erbt" Speicher von next_gen.
+                    update_generation(gui_world, swap_world, config.rows, config.cols, &config.current_red_pop, &config.current_blue_pop);
                     
+                    // Pointer Swap (Double Buffering)
+                    World *temp = gui_world;
+                    gui_world = swap_world;
+                    swap_world = temp;
+
                     config.current_round++;
                     
                     if (config.current_round >= config.max_rounds || // Fertig, wenn max_rounds erreicht
@@ -788,5 +803,6 @@ void run_gui_app() {
     }
 
     if (gui_world) free_world(gui_world);
+    if (swap_world) free_world(swap_world);
     CloseWindow(); // Raylib Fenstersteuerung: Schließt Fenster und gibt alle Ressourcen frei
 }

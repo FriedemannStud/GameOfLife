@@ -127,8 +127,8 @@ if __name__ == "__main__":
         # Mit Mirror=True wird x=0..35 zu x=0..-35.
         # Um den Bereich 129..164 abzudecken (wie original), muss der Anker bei 164 liegen.
         # 164 + (-35) = 129.
-        {'type': 'GGG', 'team': 1, 'x': 84, 'y': 55, 'rotation': 180, 'mirror': True},
-        {'type': 'GGG', 'team': 1, 'x': 180, 'y': 8, 'rotation': 0, 'mirror': False},
+        # {'type': 'GGG', 'team': 1, 'x': 84, 'y': 55, 'rotation': 180, 'mirror': True},
+        # {'type': 'GGG', 'team': 1, 'x': 180, 'y': 8, 'rotation': 0, 'mirror': False},
         
         # Eater (Block)
         # Original: y=85, x=85.
@@ -137,14 +137,14 @@ if __name__ == "__main__":
         
         
         # Team 1 nach oben: mal 0, Team 2 nach unten: mal 0
-        {'type': 'GGG', 'team': 2, 'x': (87)+0, 'y': (8)+120, 'rotation': 0, 'mirror': False},
-        {'type': 'GGG', 'team': 1, 'x': (87)+0, 'y': (30)+120, 'rotation': 180, 'mirror': True},
+        # {'type': 'GGG', 'team': 2, 'x': (87)+0, 'y': (8)+120, 'rotation': 0, 'mirror': False},
+        # {'type': 'GGG', 'team': 1, 'x': (87)+0, 'y': (30)+120, 'rotation': 180, 'mirror': True},
         # Team 1 nach oben: mal 1/5, Team 2 nach unten: mal 1/10
-        {'type': 'GGG', 'team': 2, 'x': (87)+0, 'y': (8)+180, 'rotation': 0, 'mirror': False},
-        {'type': 'GGG', 'team': 1, 'x': (84)+0, 'y': (55)+180, 'rotation': 180, 'mirror': True},
+        # {'type': 'GGG', 'team': 2, 'x': (87)+0, 'y': (8)+180, 'rotation': 0, 'mirror': False},
+        # {'type': 'GGG', 'team': 1, 'x': (84)+0, 'y': (55)+180, 'rotation': 180, 'mirror': True},
         # Team 1 nach oben: mal 0, Team 2 nach unten: mal 2/3
-        {'type': 'GGG', 'team': 2, 'x': (87)+0, 'y': (8)+300, 'rotation': 0, 'mirror': False},
-        {'type': 'GGG', 'team': 1, 'x': (89)+0, 'y': (41)+300, 'rotation': 180, 'mirror': True},
+        {'type': 'GGG', 'team': 2, 'x': (87)+0, 'y': (8)+50, 'rotation': 0, 'mirror': False},
+        {'type': 'GGG', 'team': 1, 'x': (89)+0, 'y': (41)+50, 'rotation': 180, 'mirror': True},
     ]
     
     write_bio_file("setup.bio", ROWS, COLS, POPULATION_LIMIT, PLACEMENTS)

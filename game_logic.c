@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <time.h>
+#include <omp.h>
 #include "game_logic.h"
 
 // KI-Agent unterstützt
@@ -69,72 +70,67 @@ void sync_ghost_borders(World *w) {
 }
 
 
-// KI-Agent unterstützt
+// KI-Agent unterstützt: Parallelized update using OpenMP
 void update_generation(World *current_gen, World *next_gen, int rows, int cols, int *red_pop, int *blue_pop) {
-    // Reset Counters
-    *red_pop = 0;
-    *blue_pop = 0;
-
     // Vor der Berechnung: Geister-Ränder mit echten Daten füllen (Wrapping)
     sync_ghost_borders(current_gen);
 
-
-    // Macro to check a neighbor index and increment counters
-    // Using a macro avoids function call overhead in the tight loop
-    #define COUNT_NEIGHBOR(idx) \
-        if (current_gen->grid[idx] == TEAM_RED) red_neighbors++; \
-        else if (current_gen->grid[idx] == TEAM_BLUE) blue_neighbors++;
-
     int stride = cols + 2;
+    int local_red = 0;
+    int local_blue = 0;
 
+    // OpenMP Parallelization: Split the outer loop across CPU cores
+    // reduction(+:local_red, local_blue) ensures each thread counts safely
+    #pragma omp parallel for reduction(+:local_red, local_blue)
     for (int r = 1; r <= rows; r++) {
         for (int c = 1; c <= cols; c++) {
-            int i = r * stride +c;
-             
+            int i = r * stride + c;
+            
             int red_neighbors = 0;
             int blue_neighbors = 0;
 
-                COUNT_NEIGHBOR(i - stride -1);
-                COUNT_NEIGHBOR(i - stride);
-                COUNT_NEIGHBOR(i - stride + 1);
-                COUNT_NEIGHBOR(i - 1);
-                COUNT_NEIGHBOR(i + 1);
-                COUNT_NEIGHBOR(i + stride - 1);
-                COUNT_NEIGHBOR(i + stride);
-                COUNT_NEIGHBOR(i + stride + 1);
+            // Manual neighbor check (Top row)
+            if (current_gen->grid[i - stride - 1] == TEAM_RED) red_neighbors++;
+            else if (current_gen->grid[i - stride - 1] == TEAM_BLUE) blue_neighbors++;
+            if (current_gen->grid[i - stride] == TEAM_RED) red_neighbors++;
+            else if (current_gen->grid[i - stride] == TEAM_BLUE) blue_neighbors++;
+            if (current_gen->grid[i - stride + 1] == TEAM_RED) red_neighbors++;
+            else if (current_gen->grid[i - stride + 1] == TEAM_BLUE) blue_neighbors++;
             
+            // Middle row
+            if (current_gen->grid[i - 1] == TEAM_RED) red_neighbors++;
+            else if (current_gen->grid[i - 1] == TEAM_BLUE) blue_neighbors++;
+            if (current_gen->grid[i + 1] == TEAM_RED) red_neighbors++;
+            else if (current_gen->grid[i + 1] == TEAM_BLUE) blue_neighbors++;
+            
+            // Bottom row
+            if (current_gen->grid[i + stride - 1] == TEAM_RED) red_neighbors++;
+            else if (current_gen->grid[i + stride - 1] == TEAM_BLUE) blue_neighbors++;
+            if (current_gen->grid[i + stride] == TEAM_RED) red_neighbors++;
+            else if (current_gen->grid[i + stride] == TEAM_BLUE) blue_neighbors++;
+            if (current_gen->grid[i + stride + 1] == TEAM_RED) red_neighbors++;
+            else if (current_gen->grid[i + stride + 1] == TEAM_BLUE) blue_neighbors++;
 
-            // --- Evolution Rules ---
             int total_neighbors = red_neighbors + blue_neighbors;
             int current_cell = current_gen->grid[i];
-            
             int new_state = DEAD;
 
             if (current_cell != DEAD) {
-                // SURVIVAL: 2 or 3 neighbors -> stay alive
-                if (total_neighbors == 2 || total_neighbors == 3) {
-                    new_state = current_cell;
-                }
-            }
-            else {
-                // BIRTH: exactly 3 neighbors -> become alive
+                if (total_neighbors == 2 || total_neighbors == 3) new_state = current_cell;
+            } else {
                 if (total_neighbors == 3) {
-                    // Determine color by majority
-                    if (red_neighbors > blue_neighbors) {
-                        new_state = TEAM_RED;
-                    }
-                    else {
-                        new_state = TEAM_BLUE;
-                    }
+                    new_state = (red_neighbors > blue_neighbors) ? TEAM_RED : TEAM_BLUE;
                 }
             }
             
             next_gen->grid[i] = new_state;
             
-            // --- Integrated Counting ---
-            if (new_state == TEAM_RED) (*red_pop)++;
-            else if (new_state == TEAM_BLUE) (*blue_pop)++;
+            if (new_state == TEAM_RED) local_red++;
+            else if (new_state == TEAM_BLUE) local_blue++;
         }
     }
-    #undef COUNT_NEIGHBOR
+
+    // Write final totals back
+    *red_pop = local_red;
+    *blue_pop = local_blue;
 }

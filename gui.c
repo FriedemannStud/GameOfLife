@@ -29,6 +29,10 @@ const Color THEME_HIGHLIGHT = { 255, 255, 255, 40 }; // Selection Glow
 
 // Helper to draw the grid (reused in multiple states)
 // KI-Agent unterstützt: Optimized Texture-Based Rendering for VcXsrv performance
+// --- NEW SHADER PIPELINE GLOBALS ---
+static Shader biotopeShader;
+static unsigned char *gpu_data_buffer = NULL;
+
 void DrawGridAndCells(GameConfig *config, int screenWidth, int screenHeight, bool drawGridLines) {
     if (!gui_world) return;
 
@@ -46,35 +50,58 @@ void DrawGridAndCells(GameConfig *config, int screenWidth, int screenHeight, boo
     float cellH = (float)drawHeight / config->rows;
     
     // --- 1. Texture Management (Static to persist across frames) ---
-    static Texture2D gridTex = { 0 }; //Raylib Datentyp: Texture2D wird in GPU geladen zum schnellen Darstellung werden Bilder vor Zeichnen in Texturen umgeandelt 
+    static Texture2D gridTex = { 0 };
     static int texW = 0;
     static int texH = 0;
-    static Color *pixels = NULL;
+    static int lastDrawWidth = 0;
+    static int lastDrawHeight = 0;
+
+    // Ping-Pong Targets
+    static RenderTexture2D pingPongTarget[2] = { 0 };
+    static int pingPongIndex = 0;
+    static int locPrevFrame = -1;
+    static int locFadeRate = -1;
     
     // Check if grid size changed or not initialized
-    if (config->cols != texW || config->rows != texH) {
+    if (config->cols != texW || config->rows != texH || drawWidth != lastDrawWidth || drawHeight != lastDrawHeight) {
         // Cleanup old resources
-        if (gridTex.id > 0) UnloadTexture(gridTex); // Raylib Bild&Textur Management: UnloadTexture = Gibt Textur-Objekt Speicherplatz (GPU) wieder frei
-        if (pixels) free(pixels);
+        if (gridTex.id > 0) UnloadTexture(gridTex);
+        if (gpu_data_buffer) free(gpu_data_buffer);
+        if (pingPongTarget[0].id > 0) UnloadRenderTexture(pingPongTarget[0]);
+        if (pingPongTarget[1].id > 0) UnloadRenderTexture(pingPongTarget[1]);
         
         // Update dimensions
         texW = config->cols;
         texH = config->rows;
+        lastDrawWidth = drawWidth;
+        lastDrawHeight = drawHeight;
         
         // Allocate new resources
-        pixels = (Color*)malloc(texW * texH * sizeof(Color));
+        gpu_data_buffer = (unsigned char*)malloc(texW * texH * sizeof(unsigned char));
         Image img = GenImageColor(texW, texH, BLANK); // Create empty image
-            // Raylib Datentyp: Image = Array von Pixeldaten (CPU), die bearbeitet werden können
-            // Raylib Bild&Textur Management: GenImageColor = Erzeugt Image-Objekt (CPU), ganz mit einer Farbe gefüllt.
-            // Raylib Konstante: BLANK = transparentes Schwarz
+        ImageFormat(&img, PIXELFORMAT_UNCOMPRESSED_GRAYSCALE); // Force 1-byte grayscale
+        
         gridTex = LoadTextureFromImage(img);
-            // Raylib Bild&Textur Management: LoadTextureFromImage = Lädt Image (CPU) in Textur (GPU) - schnelles Zeichnen 
         UnloadImage(img);
-            // Raylib Bild&Text Management: UnloadImage = Gibt Image-Objekt Speicherplatz (CPU) wieder frei
         
         // IMPORTANT: Point filtering ensures sharp pixels when scaled up
         SetTextureFilter(gridTex, TEXTURE_FILTER_POINT); 
-            // Raylib Bild&Texture Management: SetTextureFilter = Wendet Filterbibliothek auf Textur (gridTex) an. TEXTURE_FILTER_POINT = "pxeliger" Look
+
+        // Init Ping-Pong Targets
+        pingPongTarget[0] = LoadRenderTexture(drawWidth, drawHeight);
+        pingPongTarget[1] = LoadRenderTexture(drawWidth, drawHeight);
+
+        // Clear both targets to background color
+        BeginTextureMode(pingPongTarget[0]);
+        ClearBackground(THEME_BG);
+        EndTextureMode();
+        BeginTextureMode(pingPongTarget[1]);
+        ClearBackground(THEME_BG);
+        EndTextureMode();
+
+        // Get Shader Locations
+        locPrevFrame = GetShaderLocation(biotopeShader, "previousFrame");
+        locFadeRate = GetShaderLocation(biotopeShader, "fadeRate");
     }
     
     // --- 2. Update Pixel Data (CPU side) ---
@@ -85,33 +112,56 @@ void DrawGridAndCells(GameConfig *config, int screenWidth, int screenHeight, boo
             int pixelIdx = (r - 1) * config->cols + (c - 1);
 
             if (gui_world->grid[gridIdx] == TEAM_BLUE) {
-                pixels[pixelIdx] = THEME_BLUE;
+                gpu_data_buffer[pixelIdx] = 127;
             } else if (gui_world->grid[gridIdx] == TEAM_RED) {
-                pixels[pixelIdx] = THEME_RED;
+                gpu_data_buffer[pixelIdx] = 255;
             } else {
-                pixels[pixelIdx] = BLANK; 
+                gpu_data_buffer[pixelIdx] = 0; 
             }
         }
     }
     
     // --- 3. Upload to GPU & Draw ---
-    UpdateTexture(gridTex, pixels); // Raylib Bild&Textur Mangement: UpdateTexture = Aktualisiert Textur (GPU) mit Pixeldaten von Image (CPU)
+    UpdateTexture(gridTex, gpu_data_buffer);
     
-    Rectangle source = { 0.0f, 0.0f, (float)texW, (float)texH }; // Raylib Datentyp: Rectangle definiert Rechteck {x, y, Breite, Höhe}
-    Rectangle dest = { (float)startX, (float)startY, (float)drawWidth, (float)drawHeight };
-    Vector2 origin = { 0.0f, 0.0f };  //Raylib Datentyp: Vector2 stellt Punkt oder Vektor in 2D dar {x, y}
+    Rectangle source = { 0.0f, 0.0f, (float)texW, (float)texH };
+    // We draw to the FBO at 0,0 with full width/height
+    Rectangle fboDest = { 0.0f, 0.0f, (float)drawWidth, (float)drawHeight };
+    Vector2 origin = { 0.0f, 0.0f };
     
-    DrawTexturePro(gridTex, source, dest, origin, 0.0f, WHITE); // Raylib Bild&Textur Management: DrawTexturePro = Zeichnet Textur
+    BeginTextureMode(pingPongTarget[pingPongIndex]);
+        BeginShaderMode(biotopeShader);
+        
+        // Bind previous frame
+        SetShaderValueTexture(biotopeShader, locPrevFrame, pingPongTarget[1 - pingPongIndex].texture);
+        
+        // Set fade rate
+        float fade = 0.95f;
+        SetShaderValue(biotopeShader, locFadeRate, &fade, SHADER_UNIFORM_FLOAT);
+        
+        DrawTexturePro(gridTex, source, fboDest, origin, 0.0f, WHITE);
+        
+        EndShaderMode();
+    EndTextureMode();
+
+    // Draw the current FBO to the screen
+    // Note: y-axis is flipped in OpenGL textures when rendered to FBO
+    Rectangle screenSource = { 0.0f, 0.0f, (float)drawWidth, -(float)drawHeight };
+    Rectangle screenDest = { (float)startX, (float)startY, (float)drawWidth, (float)drawHeight };
+    DrawTexturePro(pingPongTarget[pingPongIndex].texture, screenSource, screenDest, origin, 0.0f, WHITE);
+
+    // Swap buffers
+    pingPongIndex = 1 - pingPongIndex;
 
     // --- 4. Draw Grid Lines (Optional - Overhead is low for lines) ---
     if (drawGridLines) {
-        for (int i = 0; i <= config->cols; i++) DrawLine(startX + i * cellW, startY, startX + i * cellW, startY + drawHeight, THEME_GRID); // Raylib Zeichenfunktion: Linie zeichnen
+        for (int i = 0; i <= config->cols; i++) DrawLine(startX + i * cellW, startY, startX + i * cellW, startY + drawHeight, THEME_GRID);
         for (int i = 0; i <= config->rows; i++) DrawLine(startX, startY + i * cellH, startX + drawWidth, startY + i * cellH, THEME_GRID);
     }
     
     // 5. Draw Hemisphere Separator
     DrawLine(startX + (config->cols / 2) * cellW, startY, 
-             startX + (config->cols / 2) * cellW, startY + drawHeight, Fade(THEME_TEXT, 0.3f)); // Raylib Zeichenfunktion: Fade = gibt Farbe mit neuem Apha-Wert zurück
+             startX + (config->cols / 2) * cellW, startY + drawHeight, Fade(THEME_TEXT, 0.3f));
 }
 
 // KI-Agent unterstützt: Pattern Definitions
@@ -234,12 +284,17 @@ void init_gui_app(void) {
     InitWindow(screenWidth, screenHeight, "Biotope - Game of Life");
 #ifndef PLATFORM_WEB
     SetTargetFPS(120);
+    biotopeShader = LoadShader(0, "resources/shaders/biotope_base.fs");
+#else
+    biotopeShader = LoadShader(0, "resources/shaders/biotope_base_web.fs");
 #endif
 }
 
 void close_gui_app(void) {
     if (gui_world) free_world(gui_world);
     if (swap_world) free_world(swap_world);
+    if (biotopeShader.id > 0) UnloadShader(biotopeShader);
+    if (gpu_data_buffer) free(gpu_data_buffer);
     CloseWindow();
 }
 

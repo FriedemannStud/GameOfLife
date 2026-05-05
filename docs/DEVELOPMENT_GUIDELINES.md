@@ -14,7 +14,7 @@ GameOfLife/
 │   ├── CODING_STYLE.md
 │   ├── PROJECT_BRIEFING.md
 │   ├── DEVELOPMENT_GUIDELINES.md
-│   └── project-logfile.md (Log of major changes)
+│   └── CHANGELOG.md (Log of major changes)
 └── ... (project code: .c, .h, Makefile)
 ```
 
@@ -24,11 +24,11 @@ GameOfLife/
 | **ADRs** | *Why* behind major decisions | Context, decision, rationale, consequences | Immutable once implemented |
 | **DEV_SPEC** | *What* is the feature | Requirements, User Stories, UI Mockups | Updated during design phase |
 | **DEV_TASKS** | *How* to implement | Step-by-step checklist using Markdown checkboxes (`- [ ]`) | Updated continuously |
-| **Logfile** | *What* changed and when | Chronological history of major steps | Updated after completion |
+| **CHANGELOG** | *What* changed and when | Chronological history of major steps | Updated after completion |
 
 ## **3. Interlinking Strategy**
 - **DEV_TASKS → ADR/SPEC:** Link tasks to relevant design documents.
-- **Logfile → TASKS:** Reference completed tasks in the log.
+- **CHANGELOG → TASKS:** Reference completed tasks in the log.
 
 ## **4. Developer Workflow**
 1. **Before starting a major change:**
@@ -39,7 +39,7 @@ GameOfLife/
 3. **Before completion:**
    - Test thoroughly (compile with `make`, verify logic).
 4. **Upon completion:**
-   - Update `project-logfile.md` with details.
+   - Update `CHANGELOG.md` with details.
    - Mark tasks as "Done" in the relevant task files.
 
 ## **5. Testing Guidelines**

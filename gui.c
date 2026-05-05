@@ -212,36 +212,38 @@ bool IsActionTriggered(int key) {
     return false;
 }
 
-// KI-Agent unterstützt
-void run_gui_app() {
-    // Initial window size
-    int screenWidth = 800;
-    int screenHeight = 600;
+// Global state
+static int screenWidth = 800;
+static int screenHeight = 600;
+static AppState state = STATE_PUZZLE;
+static GameConfig config = {
+    .rows = 50, 
+    .cols = 50, 
+    .delay_ms = 100, 
+    .max_population = 100, 
+    .max_rounds = 1000,
+    .current_red_pop = 0,
+    .current_blue_pop = 0,
+    .current_round = 0
+};
+static char statusMsg[64] = "";
+static float statusTimer = 0.0f;
 
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE); // Raylib Fenstersteuerung: Param. FLAG_WINDOW_REZISABLE -> Fenstergröße veränderbar
-    InitWindow(screenWidth, screenHeight, "Biotope - Game of Life"); // Raylib Fenstersteuerung: Öffnet Startfenster - Header für Start-Window
-    SetTargetFPS(120); // Raylib Fenstersteuerung: Legt Frames Per Second fest 
+void init_gui_app(void) {
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    InitWindow(screenWidth, screenHeight, "Biotope - Game of Life");
+#ifndef PLATFORM_WEB
+    SetTargetFPS(120);
+#endif
+}
 
-    // Initial state
-    AppState state = STATE_CONFIG;
-    GameConfig config = {
-        .rows = 50, 
-        .cols = 50, 
-        .delay_ms = 100, 
-        .max_population = 100, 
-        .max_rounds = 1000,
-        .current_red_pop = 0,
-        .current_blue_pop = 0,
-        .current_round = 0
-    };
-    
-    // Feedback Message System
-    char statusMsg[64] = "";
-    float statusTimer = 0.0f;
+void close_gui_app(void) {
+    if (gui_world) free_world(gui_world);
+    if (swap_world) free_world(swap_world);
+    CloseWindow();
+}
 
-    while (!WindowShouldClose()) {      // HIER geht's los! Game Loop/Hauptschleife 
-            //Raylib Fenstersteuerung "WindowShouldClose" = "x" oben-rechts in Win - Fenster
-            // Update dynamic screen dimensions
+void UpdateDrawFrame(void) {
         screenWidth = GetScreenWidth(); // Raylib Fenstersteuerung: Gibt Fensterbreite zurück 
         screenHeight = GetScreenHeight(); // Raylib Fenstersteuerung: Gibt Fensterhöhe zurück
         
@@ -253,6 +255,11 @@ void run_gui_app() {
         
         // --- Logic per State ---
         switch (state) {                 // Zustandsmaschine - Wert von State gibt Code-Block-Ausführung vor 
+            case STATE_PUZZLE:
+                if (IsKeyPressed(KEY_ENTER)) {
+                    state = STATE_CONFIG;
+                }
+                break;
             case STATE_CONFIG:           // Spieleinstellungen mit Tasten im Fenster Biotope Configuration
                 // Interaction: Change Grid Size
                 if (IsActionTriggered(KEY_RIGHT)) config.cols += 10;
@@ -583,6 +590,10 @@ void run_gui_app() {
         }
 
         switch (state) {
+            case STATE_PUZZLE:
+                DrawText("Tutorial Level 1", screenWidth/2 - MeasureText("Tutorial Level 1", 40)/2, screenHeight/2 - 20, 40, THEME_BLUE);
+                DrawText("PRESS [ENTER] TO CONTINUE", screenWidth/2 - MeasureText("PRESS [ENTER] TO CONTINUE", 20)/2, screenHeight/2 + 40, 20, THEME_TEXT);
+                break;
             case STATE_CONFIG:
                 DrawText("BIOTOPE CONFIGURATION", 20, 15, 30, THEME_TEXT);
                 
@@ -800,9 +811,4 @@ void run_gui_app() {
         }
 
         EndDrawing(); // Raylib Anzeigesteuerung: Ende der "Zeichenrunde". Fertig gezeichnetes Bild wird im Fenster angezeigt.
-    }
-
-    if (gui_world) free_world(gui_world);
-    if (swap_world) free_world(swap_world);
-    CloseWindow(); // Raylib Fenstersteuerung: Schließt Fenster und gibt alle Ressourcen frei
 }

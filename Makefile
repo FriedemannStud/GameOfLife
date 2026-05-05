@@ -37,4 +37,4 @@ help:
 	@echo "Verfügbare Befehle:"
 	@echo "  make        - Kompiliert das Projekt"
 	@echo "  make clean  - Löscht die ausführbare Datei"
-	@echo "  make help   - Zeigt diese Hilfe an"
+	@echo "  make help   - Zeigt diese Hilfe an"Makefile: ;

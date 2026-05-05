@@ -1,6 +1,7 @@
 #ifndef FILE_IO_H
 #define FILE_IO_H
 
+#include <time.h>
 #include "game_logic.h"
 #include "gui.h" // For GameConfig struct
 
@@ -8,7 +9,7 @@
 typedef struct {
     char filename[256]; // e.g., "run_20260117_120000.bio"
     char filepath[512]; // Full relative path
-    long timestamp;     // For sorting
+    time_t timestamp;   // For sorting
     
     // Preview Data
     int rows;

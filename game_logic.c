@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <time.h>
+#ifndef PLATFORM_WEB
 #include <omp.h>
+#endif
 #include "game_logic.h"
 
 // KI-Agent unterstützt
@@ -81,7 +83,9 @@ void update_generation(World *current_gen, World *next_gen, int rows, int cols, 
 
     // OpenMP Parallelization: Split the outer loop across CPU cores
     // reduction(+:local_red, local_blue) ensures each thread counts safely
+#ifndef PLATFORM_WEB
     #pragma omp parallel for reduction(+:local_red, local_blue)
+#endif
     for (int r = 1; r <= rows; r++) {
         for (int c = 1; c <= cols; c++) {
             int i = r * stride + c;

@@ -5,6 +5,10 @@
 #include <dirent.h>
 #include "file_io.h"
 
+#if defined(PLATFORM_WEB)
+#include <emscripten/emscripten.h>
+#endif
+
 // Comparator for qsort to sort by timestamp descending
 static int compare_protocol_info(const void *a, const void *b) {
     ProtocolInfo *pa = (ProtocolInfo *)a;  // typedef struct in file_io.h definiert
@@ -46,6 +50,19 @@ int save_grid(const char *filename, World *w, GameConfig *c) {
     
     fclose(f);
     printf("Saved to %s\n", filename);
+
+#if defined(PLATFORM_WEB)
+    EM_ASM({
+        FS.syncfs(false, function(err) {
+            if (err) {
+                console.error("IndexedDB sync error:", err);
+            } else {
+                console.log("Biotope saved to IndexedDB");
+            }
+        });
+    });
+#endif
+
     return 1;
 }
 

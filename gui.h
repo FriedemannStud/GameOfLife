@@ -5,6 +5,7 @@
 
 // KI-Agent unterstützt
 typedef enum {
+    STATE_PUZZLE,   // NEW: Tutorial/Onboarding
     STATE_CONFIG,
     STATE_EDIT,
     STATE_LOAD,     // NEW: For browsing protocol archive
@@ -12,6 +13,13 @@ typedef enum {
     STATE_FINISHED, 
     STATE_GAME_OVER
 } AppState;
+
+// KI-Agent unterstützt
+typedef struct {
+    int level;
+    int target_pop;
+    char hint[256];
+} PuzzleConfig;
 
 // KI-Agent unterstützt
 typedef struct {
@@ -27,6 +35,8 @@ typedef struct {
 } GameConfig;
 
 // KI-Agent unterstützt
-void run_gui_app();
+void init_gui_app(void);
+void UpdateDrawFrame(void);
+void close_gui_app(void);
 
 #endif // GUI_H

@@ -1,0 +1,16 @@
+# Makefile.web
+CC = emcc
+CFLAGS = -Os -Wall -I. -I/opt/raylib_web/include -s USE_GLFW=3 -s ASYNCIFY -s TOTAL_MEMORY=67108864 -s ALLOW_MEMORY_GROWTH=1 -DPLATFORM_WEB
+LDFLAGS = -L/opt/raylib_web/lib -lraylib
+
+SOURCES = main.c game_logic.c gui.c file_io.c
+HEADERS = game_logic.h gui.h file_io.h
+TARGET = biotope.html
+
+all: $(TARGET)
+
+$(TARGET): $(SOURCES) $(HEADERS)
+	$(CC) $(SOURCES) $(CFLAGS) $(LDFLAGS) -o $(TARGET)
+
+clean:
+	rm -f $(TARGET) biotope.wasm biotope.js biotope.data

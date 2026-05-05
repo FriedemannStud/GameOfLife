@@ -7,10 +7,10 @@ All project documentation is stored in the `docs/` directory with the following 
 ```
 GameOfLife/
 ├── docs/
-│   ├── ADR-xxxx.md (Architectural Decision Records)
-│   ├── DEV_SPEC-xxxx.md (Feature Specifications)
-│   ├── DEV_TASKS-xxxx.md (Task tracking with checkboxes)
-│   ├── DEV_TECH_DESIGN-xxxx.md (Technical Implementation Details)
+│   ├── adr/ (Architectural Decision Records)
+│   ├── specs/ (Feature Specifications)
+│   ├── tasks/ (Task tracking with checkboxes)
+│   ├── tech_design/ (Technical Implementation Details)
 │   ├── CODING_STYLE.md
 │   ├── PROJECT_BRIEFING.md
 │   ├── DEVELOPMENT_GUIDELINES.md

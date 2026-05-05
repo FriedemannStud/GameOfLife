@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Date:** 2026-01-08
 **Author:** Gemini
-**Related Documents:** [ADR-0001](docs/ADR-0001-competitive-biotope-mode.md), [DEV_SPEC-0001](docs/DEV_SPEC-0001-competitive-biotope-mode.md)
+**Related Documents:** [ADR-0001](../adr/ADR-0001-competitive-biotope-mode.md), [DEV_SPEC-0001](../specs/DEV_SPEC-0001-competitive-biotope-mode.md)
 
 ---
 

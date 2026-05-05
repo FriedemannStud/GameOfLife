@@ -5,9 +5,9 @@ This document outlines the step-by-step implementation plan for the Integrated S
 **Developer:** Please follow these steps precisely. The plan is broken into phases and small steps to allow for interruptions and ensure stability. After each "Verification" step, report the outcome. This iterative process is crucial for maintaining quality.
 
 **Briefing Documents:**
-*   [ADR-0003: Integrated Simulation Protocol](../../docs/ADR-0003-integrated-simulation-protocol.md)
-*   [DEV_SPEC-0003: Integrated Simulation Protocol Spec](../../docs/DEV_SPEC-0003-integrated-simulation-protocol.md)
-*   [DEV_TECH_DESIGN-0003: Technical Specification](../../docs/DEV_TECH_DESIGN-0003-integrated-simulation-protocol.md)
+*   [ADR-0003: Integrated Simulation Protocol](../adr/ADR-0003-integrated-simulation-protocol.md)
+*   [DEV_SPEC-0003: Integrated Simulation Protocol Spec](../specs/DEV_SPEC-0003-integrated-simulation-protocol.md)
+*   [DEV_TECH_DESIGN-0003: Technical Specification](../tech_design/DEV_TECH_DESIGN-0003-integrated-simulation-protocol.md)
 
 ---
 

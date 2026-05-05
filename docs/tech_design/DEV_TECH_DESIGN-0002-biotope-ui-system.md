@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Date:** 2026-01-09
 **Author:** Gemini
-**Related Documents:** [ADR-0002](docs/ADR-0002-biotope-ui-system.md), [DEV_SPEC-0002](docs/DEV_SPEC-0002-biotope-ui-system.md)
+**Related Documents:** [ADR-0002](../adr/ADR-0002-biotope-ui-system.md), [DEV_SPEC-0002](../specs/DEV_SPEC-0002-biotope-ui-system.md)
 
 ---
 

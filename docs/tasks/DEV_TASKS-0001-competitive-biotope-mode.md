@@ -6,9 +6,9 @@
 **Developer:** Please follow these steps precisely. The plan is broken into phases and small steps to allow for interruptions and ensure stability. After each "Verification" step, report the outcome. This iterative process is crucial for maintaining quality.
 
 **Briefing Documents:**
-*   [ADR-0001: Competitive Biotope Mode (Red vs Blue)](../../docs/ADR-0001-competitive-biotope-mode.md)
-*   [DEV_SPEC-0001: Requirements Specification](../../docs/DEV_SPEC-0001-competitive-biotope-mode.md)
-*   [DEV_TECH_DESIGN-0001: Technical Design](../../docs/DEV_TECH_DESIGN-0001-competitive-biotope-mode.md)
+*   [ADR-0001: Competitive Biotope Mode (Red vs Blue)](../adr/ADR-0001-competitive-biotope-mode.md)
+*   [DEV_SPEC-0001: Requirements Specification](../specs/DEV_SPEC-0001-competitive-biotope-mode.md)
+*   [DEV_TECH_DESIGN-0001: Technical Design](../tech_design/DEV_TECH_DESIGN-0001-competitive-biotope-mode.md)
 
 ---
 

@@ -7,9 +7,9 @@ This task list details the implementation steps for the interactive "Biotope" ga
 **Important:** Every single code change (new lines or modifications) must be commented with `// KI-Agent unterstützt`.
 
 **Briefing Documents:**
-*   [ADR-0002: Interactive UI System](../../docs/ADR-0002-biotope-ui-system.md)
-*   [DEV_SPEC-0002: Requirements Specification](../../docs/DEV_SPEC-0002-biotope-ui-system.md)
-*   [DEV_TECH_DESIGN-0002: Technical Specification](../../docs/DEV_TECH_DESIGN-0002-biotope-ui-system.md)
+*   [ADR-0002: Interactive UI System](../adr/ADR-0002-biotope-ui-system.md)
+*   [DEV_SPEC-0002: Requirements Specification](../specs/DEV_SPEC-0002-biotope-ui-system.md)
+*   [DEV_TECH_DESIGN-0002: Technical Specification](../tech_design/DEV_TECH_DESIGN-0002-biotope-ui-system.md)
 
 ---
 

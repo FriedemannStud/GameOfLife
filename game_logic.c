@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <time.h>
+#include <stdbool.h>
 #ifndef PLATFORM_WEB
 #include <omp.h>
 #endif
@@ -11,8 +12,13 @@ World* create_world(int rows, int cols) {
     w->rows = rows;
     w->cols = cols;
     // PADDED GRID: (rows + 2) * (cols + 2)
-    // Correct parenthesis and 2 arguments for calloc(count, size)
-    w->grid = calloc((rows + 2) * (cols + 2), sizeof(int)); // calloc() belegt den Speicher explizit mit 0.
+    w->grid = calloc((rows + 2) * (cols + 2), sizeof(int)); 
+
+    // CHUNKING (Epic Scale)
+    w->chunk_rows = (rows + CHUNK_SIZE - 1) / CHUNK_SIZE;
+    w->chunk_cols = (cols + CHUNK_SIZE - 1) / CHUNK_SIZE;
+    w->chunk_map = calloc(w->chunk_rows * w->chunk_cols, sizeof(unsigned char));
+
     return w;
 }
 
@@ -20,6 +26,7 @@ World* create_world(int rows, int cols) {
 void free_world(World *w) {
     if (w) {
         if (w->grid) free(w->grid);
+        if (w->chunk_map) free(w->chunk_map);
         free(w);
     }
 }
@@ -39,8 +46,10 @@ void init_world(World *current_gen, int rows, int cols) {
             int val = rand() % 100; 
             if (val < 10) {
                 current_gen->grid[i] = TEAM_RED;
+                activate_chunk_at(current_gen, r - 1, c - 1);
             } else if (val < 20) {
                 current_gen->grid[i] = TEAM_BLUE;
+                activate_chunk_at(current_gen, r - 1, c - 1);
             } else {
                 current_gen->grid[i] = DEAD;
             }
@@ -72,71 +81,112 @@ void sync_ghost_borders(World *w) {
 }
 
 
-// KI-Agent unterstützt: Parallelized update using OpenMP
+// Helper for update_generation: checks if a chunk or any of its 8 neighbors were active
+static bool is_chunk_or_neighbors_active(World *w, int cr, int cc) {
+    for (int dr = -1; dr <= 1; dr++) {
+        for (int dc = -1; dc <= 1; dc++) {
+            int ncr = cr + dr;
+            int ncc = cc + dc;
+            // Wrapping chunk coordinates
+            if (ncr < 0) ncr = w->chunk_rows - 1;
+            else if (ncr >= w->chunk_rows) ncr = 0;
+            if (ncc < 0) ncc = w->chunk_cols - 1;
+            else if (ncc >= w->chunk_cols) ncc = 0;
+            
+            if (w->chunk_map[ncr * w->chunk_cols + ncc]) return true;
+        }
+    }
+    return false;
+}
+
+// KI-Agent unterstützt: Parallelized update using OpenMP with Active Chunk Heuristic
 void update_generation(World *current_gen, World *next_gen, int rows, int cols, int *red_pop, int *blue_pop) {
-    // Vor der Berechnung: Geister-Ränder mit echten Daten füllen (Wrapping)
     sync_ghost_borders(current_gen);
 
     int stride = cols + 2;
-    int local_red = 0;
-    int local_blue = 0;
+    int total_red = 0;
+    int total_blue = 0;
 
-    // OpenMP Parallelization: Split the outer loop across CPU cores
-    // reduction(+:local_red, local_blue) ensures each thread counts safely
-#ifndef PLATFORM_WEB
-    #pragma omp parallel for reduction(+:local_red, local_blue)
-#endif
-    for (int r = 1; r <= rows; r++) {
-        for (int c = 1; c <= cols; c++) {
-            int i = r * stride + c;
-            
-            int red_neighbors = 0;
-            int blue_neighbors = 0;
-
-            // Manual neighbor check (Top row)
-            if (current_gen->grid[i - stride - 1] == TEAM_RED) red_neighbors++;
-            else if (current_gen->grid[i - stride - 1] == TEAM_BLUE) blue_neighbors++;
-            if (current_gen->grid[i - stride] == TEAM_RED) red_neighbors++;
-            else if (current_gen->grid[i - stride] == TEAM_BLUE) blue_neighbors++;
-            if (current_gen->grid[i - stride + 1] == TEAM_RED) red_neighbors++;
-            else if (current_gen->grid[i - stride + 1] == TEAM_BLUE) blue_neighbors++;
-            
-            // Middle row
-            if (current_gen->grid[i - 1] == TEAM_RED) red_neighbors++;
-            else if (current_gen->grid[i - 1] == TEAM_BLUE) blue_neighbors++;
-            if (current_gen->grid[i + 1] == TEAM_RED) red_neighbors++;
-            else if (current_gen->grid[i + 1] == TEAM_BLUE) blue_neighbors++;
-            
-            // Bottom row
-            if (current_gen->grid[i + stride - 1] == TEAM_RED) red_neighbors++;
-            else if (current_gen->grid[i + stride - 1] == TEAM_BLUE) blue_neighbors++;
-            if (current_gen->grid[i + stride] == TEAM_RED) red_neighbors++;
-            else if (current_gen->grid[i + stride] == TEAM_BLUE) blue_neighbors++;
-            if (current_gen->grid[i + stride + 1] == TEAM_RED) red_neighbors++;
-            else if (current_gen->grid[i + stride + 1] == TEAM_BLUE) blue_neighbors++;
-
-            int total_neighbors = red_neighbors + blue_neighbors;
-            int current_cell = current_gen->grid[i];
-            int new_state = DEAD;
-
-            if (current_cell != DEAD) {
-                if (total_neighbors == 2 || total_neighbors == 3) new_state = current_cell;
-            } else {
-                if (total_neighbors == 3) {
-                    new_state = (red_neighbors > blue_neighbors) ? TEAM_RED : TEAM_BLUE;
-                }
-            }
-            
-            next_gen->grid[i] = new_state;
-            
-            if (new_state == TEAM_RED) local_red++;
-            else if (new_state == TEAM_BLUE) local_blue++;
+    // 1. Clear the NEXT generation's chunk map
+    if (next_gen->chunk_map) {
+        for (int i = 0; i < next_gen->chunk_rows * next_gen->chunk_cols; i++) {
+            next_gen->chunk_map[i] = 0;
         }
     }
 
-    // Write final totals back
-    *red_pop = local_red;
-    *blue_pop = local_blue;
+    // 2. Iterate over CHUNKS
+#ifndef PLATFORM_WEB
+    #pragma omp parallel for reduction(+:total_red, total_blue)
+#endif
+    for (int cr = 0; cr < current_gen->chunk_rows; cr++) {
+        for (int cc = 0; cc < current_gen->chunk_cols; cc++) {
+            int chunk_idx = cr * current_gen->chunk_cols + cc;
+
+            // Heuristic Bypass: If this chunk and neighbors are DEAD, skip!
+            if (current_gen->chunk_map && !is_chunk_or_neighbors_active(current_gen, cr, cc)) {
+                continue;
+            }
+
+            int start_r = cr * CHUNK_SIZE + 1;
+            int end_r = (cr + 1) * CHUNK_SIZE;
+            if (end_r > rows) end_r = rows;
+
+            int start_c = cc * CHUNK_SIZE + 1;
+            int end_c = (cc + 1) * CHUNK_SIZE;
+            if (end_c > cols) end_c = cols;
+
+            bool chunk_has_life = false;
+
+            for (int r = start_r; r <= end_r; r++) {
+                for (int c = start_c; c <= end_c; c++) {
+                    int i = r * stride + c;
+                    
+                    int red_neighbors = 0;
+                    int blue_neighbors = 0;
+
+                    // Manual neighbor check
+                    int n_indices[8] = {
+                        i - stride - 1, i - stride, i - stride + 1,
+                        i - 1,                      i + 1,
+                        i + stride - 1, i + stride, i + stride + 1
+                    };
+
+                    for (int k = 0; k < 8; k++) {
+                        int val = current_gen->grid[n_indices[k]];
+                        if (val == TEAM_RED) red_neighbors++;
+                        else if (val == TEAM_BLUE) blue_neighbors++;
+                    }
+
+                    int total_neighbors = red_neighbors + blue_neighbors;
+                    int current_cell = current_gen->grid[i];
+                    int new_state = DEAD;
+
+                    if (current_cell != DEAD) {
+                        if (total_neighbors == 2 || total_neighbors == 3) new_state = current_cell;
+                    } else {
+                        if (total_neighbors == 3) {
+                            new_state = (red_neighbors > blue_neighbors) ? TEAM_RED : TEAM_BLUE;
+                        }
+                    }
+                    
+                    next_gen->grid[i] = new_state;
+                    
+                    if (new_state != DEAD) {
+                        chunk_has_life = true;
+                        if (new_state == TEAM_RED) total_red++;
+                        else total_blue++;
+                    }
+                }
+            }
+
+            if (chunk_has_life && next_gen->chunk_map) {
+                next_gen->chunk_map[chunk_idx] = 1;
+            }
+        }
+    }
+
+    *red_pop = total_red;
+    *blue_pop = total_blue;
 }
 // KI-Agent unterstützt: Forces a 10x10 area to DEAD state
 void apply_catalyst(World *w, int center_r, int center_c) {
@@ -149,7 +199,18 @@ void apply_catalyst(World *w, int center_r, int center_c) {
             if (r >= 1 && r <= w->rows && c >= 1 && c <= w->cols) {
                 int index = r * stride + c;
                 w->grid[index] = DEAD;
+                activate_chunk_at(w, r - 1, c - 1);
             }
         }
+    }
+}
+
+// Helper to activate a chunk given a 0-based grid coordinate
+void activate_chunk_at(World *w, int r, int c) {
+    if (!w || !w->chunk_map) return;
+    int cr = r / CHUNK_SIZE;
+    int cc = c / CHUNK_SIZE;
+    if (cr >= 0 && cr < w->chunk_rows && cc >= 0 && cc < w->chunk_cols) {
+        w->chunk_map[cr * w->chunk_cols + cc] = 1;
     }
 }

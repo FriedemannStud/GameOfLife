@@ -13,6 +13,7 @@ typedef enum {
     STATE_IGNITION, // Dramatic reveal countdown
     STATE_LOAD,     // For browsing protocol archive
     STATE_RUNNING,
+    STATE_OBSERVER,
     STATE_FINISHED, 
     STATE_GAME_OVER
 } AppState;

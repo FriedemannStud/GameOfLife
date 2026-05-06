@@ -134,18 +134,47 @@ int load_grid(const char *filename, World *w, GameConfig *c) {
     c->current_red_pop = 0;
     
     int r_in, c_in, team;
-    while (fscanf(f, "%d %d %d", &r_in, &c_in, &team) == 3) {
-        if (r_in >= 0 && r_in < rows && c_in >= 0 && c_in < cols) {
-            // Map 0-indexed file coordinates to padded grid indices (r+1, c+1)
-            int idx = (r_in + 1) * stride + (c_in + 1);
-            w->grid[idx] = team;
-            if (team == TEAM_RED) c->current_red_pop++;
-            if (team == TEAM_BLUE) c->current_blue_pop++;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "#RESULTS", 8) == 0) break; // Stop at results
+        if (strncmp(line, "#HISTORY", 8) == 0) break; // Stop at history
+
+        if (sscanf(line, "%d %d %d", &r_in, &c_in, &team) == 3) {
+            if (r_in >= 0 && r_in < rows && c_in >= 0 && c_in < cols) {
+                // Map 0-indexed file coordinates to padded grid indices (r+1, c+1)
+                int idx = (r_in + 1) * stride + (c_in + 1);
+                w->grid[idx] = team;
+                if (team == TEAM_RED) c->current_red_pop++;
+                if (team == TEAM_BLUE) c->current_blue_pop++;
+            }
+        }
+    }
+
+    // Now look for history specifically
+    fseek(f, 0, SEEK_SET); // Reset to find #HISTORY anywhere (usually at end)
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "#HISTORY", 8) == 0) {
+            int hCount = 0;
+            sscanf(line, "#HISTORY %d", &hCount);
+            if (hCount > 0) {
+                // Allocate if not already
+                if (c->history_red_pop) free(c->history_red_pop);
+                if (c->history_blue_pop) free(c->history_blue_pop);
+                c->history_red_pop = malloc(c->max_rounds * sizeof(int));
+                c->history_blue_pop = malloc(c->max_rounds * sizeof(int));
+                c->history_count = 0;
+
+                for (int i = 0; i < hCount && i < c->max_rounds; i++) {
+                    if (fscanf(f, "%d %d", &c->history_red_pop[i], &c->history_blue_pop[i]) == 2) {
+                        c->history_count++;
+                    }
+                }
+            }
+            break;
         }
     }
     
     fclose(f);
-    printf("Loaded from %s\n", filename);
+    printf("Loaded from %s (History: %d points)\n", filename, c->history_count);
     return 1; // Success
 }
 
@@ -190,17 +219,24 @@ int list_protocol_files(const char *dir_path, ProtocolInfo **out_list) {
 }
 
 // KI-Agent unterstützt
-void append_protocol_result(const char *filename, int winner, int red, int blue) {
+void append_protocol_result(const char *filename, GameConfig *c, int winner) {
     FILE *f = fopen(filename, "a"); // "a" for append
     if (!f) return;
     
     fprintf(f, "\n#RESULTS\n");
     fprintf(f, "WINNER %d\n", winner);
-    fprintf(f, "RED %d\n", red);
-    fprintf(f, "BLUE %d\n", blue);
+    fprintf(f, "RED %d\n", c->current_red_pop);
+    fprintf(f, "BLUE %d\n", c->current_blue_pop);
+
+    if (c->history_count > 0 && c->history_red_pop && c->history_blue_pop) {
+        fprintf(f, "#HISTORY %d\n", c->history_count);
+        for (int i = 0; i < c->history_count; i++) {
+            fprintf(f, "%d %d\n", c->history_red_pop[i], c->history_blue_pop[i]);
+        }
+    }
     
     fclose(f);
-    printf("Appended results to %s\n", filename);
+    printf("Appended results and history to %s\n", filename);
 }
 
 // KI-Agent unterstützt

@@ -29,7 +29,7 @@ int save_grid(const char *filename, World *w, GameConfig *c);
 // KI-Agent unterstützt
 int load_grid(const char *filename, World *w, GameConfig *c);
 // KI-Agent unterstützt
-void append_protocol_result(const char *filename, int winner, int red, int blue);
+void append_protocol_result(const char *filename, GameConfig *c, int winner);
 // KI-Agent unterstützt
 void export_stats_md(const char *filename, GameConfig *c, int winner);
 

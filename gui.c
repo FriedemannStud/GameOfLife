@@ -6,6 +6,12 @@
 #include <time.h>   // For time()
 #include <string.h> // For strncpy
 
+#ifndef PLATFORM_WEB
+    #define MAX_GRID_SIZE 5000
+#else
+    #define MAX_GRID_SIZE 500
+#endif
+
 // Global World Pointer for GUI
 World *gui_world = NULL;
 World *swap_world = NULL;
@@ -32,6 +38,7 @@ const Color THEME_HIGHLIGHT = { 255, 255, 255, 40 }; // Selection Glow
 // --- NEW SHADER PIPELINE GLOBALS ---
 static Shader biotopeShader;
 static unsigned char *gpu_data_buffer = NULL;
+static Camera2D observer_camera = { 0 };
 
 // Texture Management (Moved to file scope for cleanup)
 static Texture2D gridTex = { 0 };
@@ -155,7 +162,11 @@ void DrawGridAndCells(GameConfig *config, int screenWidth, int screenHeight, boo
     // Note: y-axis is flipped in OpenGL textures when rendered to FBO
     Rectangle screenSource = { 0.0f, 0.0f, (float)drawWidth, -(float)drawHeight };
     Rectangle screenDest = { (float)startX, (float)startY, (float)drawWidth, (float)drawHeight };
-    DrawTexturePro(pingPongTarget[pingPongIndex].texture, screenSource, screenDest, origin, 0.0f, WHITE);
+    
+    // Applying Camera2D for Observer Mode
+    BeginMode2D(observer_camera);
+        DrawTexturePro(pingPongTarget[pingPongIndex].texture, screenSource, screenDest, origin, 0.0f, WHITE);
+    EndMode2D();
 
     // Swap buffers
     pingPongIndex = 1 - pingPongIndex;
@@ -169,7 +180,9 @@ void DrawGridAndCells(GameConfig *config, int screenWidth, int screenHeight, boo
     // 5. Draw Hemisphere Separator
     int midCol = config->cols / 2;
     int midX = startX + midCol * cellW;
-    DrawLine(midX, startY, midX, startY + drawHeight, Fade(THEME_TEXT, 0.3f));
+    BeginMode2D(observer_camera);
+        DrawLine(midX, startY, midX, startY + drawHeight, Fade(THEME_TEXT, 0.3f));
+    EndMode2D();
 }
 
 // KI-Agent unterstützt: Pattern Definitions
@@ -235,6 +248,7 @@ void PlacePattern(World *w, GameConfig *c, int startR, int startC, int type) {
             if (w->grid[idx] == DEAD) {
                 w->grid[idx] = team;
                 (*current_pop)++;
+                activate_chunk_at(w, r, col);
             }
         }
     }
@@ -294,6 +308,13 @@ static double ignitionStartTime = 0.0;
 void init_gui_app(void) {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(screenWidth, screenHeight, "Biotope - Game of Life");
+    
+    // Observer Camera Init
+    observer_camera.zoom = 1.0f;
+    observer_camera.target = (Vector2){ 0, 0 };
+    observer_camera.offset = (Vector2){ 0, 0 };
+    observer_camera.rotation = 0.0f;
+
 #ifndef PLATFORM_WEB
     SetTargetFPS(120);
     biotopeShader = LoadShader(0, "resources/shaders/biotope_base.fs");
@@ -347,10 +368,14 @@ void UpdateDrawFrame(void) {
                 break;
             case STATE_CONFIG:           // Spieleinstellungen mit Tasten im Fenster Biotope Configuration
                 // Interaction: Change Grid Size
-                if (IsActionTriggered(KEY_RIGHT)) config.cols += 10;
+                if (IsActionTriggered(KEY_RIGHT) && config.cols < MAX_GRID_SIZE) config.cols += 10;
                 if (IsActionTriggered(KEY_LEFT) && config.cols > 10) config.cols -= 10;
-                if (IsActionTriggered(KEY_UP)) config.rows += 10;
+                if (IsActionTriggered(KEY_UP) && config.rows < MAX_GRID_SIZE) config.rows += 10;
                 if (IsActionTriggered(KEY_DOWN) && config.rows > 10) config.rows -= 10;
+                
+                // Extra Clamp for Presets or other logic
+                if (config.cols > MAX_GRID_SIZE) config.cols = MAX_GRID_SIZE;
+                if (config.rows > MAX_GRID_SIZE) config.rows = MAX_GRID_SIZE;
                 
                 // Interaction: Change Delay (incl. German Layout)
                 if (IsActionTriggered(KEY_KP_ADD) || IsActionTriggered(KEY_EQUAL) || IsActionTriggered(KEY_RIGHT_BRACKET)) 
@@ -457,17 +482,21 @@ void UpdateDrawFrame(void) {
                                 if (editAction == 2 && gui_world->grid[index] == TEAM_RED) {
                                     gui_world->grid[index] = DEAD;
                                     config.current_red_pop--;
+                                    activate_chunk_at(gui_world, row, col);
                                 } else if (editAction == 1 && gui_world->grid[index] == DEAD && config.current_red_pop < config.max_population) {
                                     gui_world->grid[index] = TEAM_RED;
                                     config.current_red_pop++;
+                                    activate_chunk_at(gui_world, row, col);
                                 }
                             } else {
                                 if (editAction == 2 && gui_world->grid[index] == TEAM_BLUE) {
                                     gui_world->grid[index] = DEAD;
                                     config.current_blue_pop--;
+                                    activate_chunk_at(gui_world, row, col);
                                 } else if (editAction == 1 && gui_world->grid[index] == DEAD && config.current_blue_pop < config.max_population) {
                                     gui_world->grid[index] = TEAM_BLUE;
                                     config.current_blue_pop++;
+                                    activate_chunk_at(gui_world, row, col);
                                 }
                             }
                         }
@@ -504,6 +533,7 @@ void UpdateDrawFrame(void) {
                                     if (gui_world->grid[idx] == TEAM_RED) config.current_red_pop--;
                                     else config.current_blue_pop--;
                                     gui_world->grid[idx] = DEAD;
+                                    activate_chunk_at(gui_world, r, c);
                                 }
                             }
                         }
@@ -532,6 +562,7 @@ void UpdateDrawFrame(void) {
                         if (gui_world->grid[idx] == DEAD) {
                             gui_world->grid[idx] = team;
                             (*currentPop)++;
+                            activate_chunk_at(gui_world, r, c);
                         }
                         attempts++;
                     }
@@ -609,6 +640,16 @@ void UpdateDrawFrame(void) {
                     break;
                 }
 
+                // Toggle Observer Mode
+                if (IsKeyPressed(KEY_O)) {
+                    state = STATE_OBSERVER;
+                    observer_camera.zoom = 1.0f;
+                    observer_camera.target = (Vector2){ 0, 0 };
+                    observer_camera.offset = (Vector2){ 0, 0 };
+                    strcpy(statusMsg, "OBSERVER MODE: ON");
+                    statusTimer = 2.0f;
+                }
+
                 // --- Catalyst Interaction ---
                 if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
                     Vector2 mousePos = GetMousePosition();
@@ -673,6 +714,62 @@ void UpdateDrawFrame(void) {
                     }
                 }
                 break;
+
+            case STATE_OBSERVER:
+                // Exit Observer Mode
+                if (IsKeyPressed(KEY_O) || IsKeyPressed(KEY_ESCAPE)) {
+                    state = STATE_RUNNING;
+                    strcpy(statusMsg, "OBSERVER MODE: OFF");
+                    statusTimer = 2.0f;
+                }
+
+                // --- Camera Controls ---
+                
+                // Pan: Right Click + Drag
+                if (IsMouseButtonDown(MOUSE_RIGHT_BUTTON)) {
+                    Vector2 delta = GetMouseDelta();
+                    observer_camera.target.x -= delta.x / observer_camera.zoom;
+                    observer_camera.target.y -= delta.y / observer_camera.zoom;
+                }
+
+                // Zoom: Mouse Wheel
+                float wheel = GetMouseWheelMove();
+                if (wheel != 0) {
+                    Vector2 mouseWorldPos = GetScreenToWorld2D(GetMousePosition(), observer_camera);
+                    observer_camera.offset = GetMousePosition();
+                    observer_camera.target = mouseWorldPos;
+                    const float zoomIncrement = 0.125f;
+                    observer_camera.zoom += (wheel * zoomIncrement);
+                    if (observer_camera.zoom < 0.125f) observer_camera.zoom = 0.125f;
+                }
+
+                // --- Simulation Logic (Shared with RUNNING) ---
+                static float obsTimeAccumulator = 0.0f;
+                obsTimeAccumulator += GetFrameTime();
+                if (obsTimeAccumulator >= config.delay_ms / 1000.0f) {
+                    obsTimeAccumulator = 0.0f;
+                    
+                    update_generation(gui_world, swap_world, config.rows, config.cols, &config.current_red_pop, &config.current_blue_pop);
+                    
+                    if (config.history_count < config.max_rounds) {
+                        config.history_red_pop[config.history_count] = config.current_red_pop;
+                        config.history_blue_pop[config.history_count] = config.current_blue_pop;
+                        config.history_count++;
+                    }
+
+                    World *temp = gui_world;
+                    gui_world = swap_world;
+                    swap_world = temp;
+
+                    config.current_round++;
+                    
+                    if (config.current_round >= config.max_rounds || 
+                        config.current_red_pop == 0 ||               
+                        config.current_blue_pop == 0) {              
+                        state = STATE_FINISHED;
+                    }
+                }
+                break;
                 
             case STATE_FINISHED:
                 if (IsKeyPressed(KEY_ENTER)) {
@@ -683,9 +780,8 @@ void UpdateDrawFrame(void) {
                      
                      // Append to Protocol
                      if (strlen(currentProtocolFilename) > 0) {
-                        append_protocol_result(currentProtocolFilename, winner, config.current_red_pop, config.current_blue_pop);
-                     }
-                }
+                        append_protocol_result(currentProtocolFilename, &config, winner);
+                     }                }
                 if (IsKeyPressed(KEY_Q)) {
                     if (gui_world) free_world(gui_world);
                     gui_world = NULL;
@@ -904,9 +1000,14 @@ void UpdateDrawFrame(void) {
                 DrawText("[UP/DOWN] NAVIGATE  |  [ENTER] LOAD  |  [Q/ESC] CANCEL", 20, screenHeight - 28, 20, THEME_TEXT);
                 break;
 
+            case STATE_OBSERVER:
             case STATE_RUNNING:
                 DrawText("SIMULATION ACTIVE", 20, 18, 24, THEME_RED);
                 
+                if (state == STATE_OBSERVER) {
+                    DrawText("(OBSERVER MODE)", 230, 22, 18, DARKGRAY);
+                }
+
                 // Centered Scoreboard (Vital for competitive feedback)
                 char bluePopRun[32], redPopRun[32];
                 sprintf(bluePopRun, "BLUE: %d", config.current_blue_pop);
@@ -929,7 +1030,11 @@ void UpdateDrawFrame(void) {
                 DrawText("BLUE", 120, screenHeight - 65, 18, config.blue_catalyst_used ? DARKGRAY : THEME_BLUE);
                 DrawText("RED", 180, screenHeight - 65, 18, config.red_catalyst_used ? DARKGRAY : THEME_RED);
 
-                DrawText("[Q] ABORT SIMULATION", 20, screenHeight - 30, 20, DARKGRAY);
+                if (state == STATE_RUNNING) {
+                    DrawText("[Q] ABORT  |  [O] OBSERVER MODE", 20, screenHeight - 30, 20, DARKGRAY);
+                } else {
+                    DrawText("[MOUSE RIGHT] PAN  |  [WHEEL] ZOOM  |  [O] EXIT OBSERVER", 20, screenHeight - 30, 20, DARKGRAY);
+                }
                 break;
                 
             case STATE_FINISHED:

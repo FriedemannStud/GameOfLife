@@ -1,14 +1,17 @@
 #ifndef GUI_H
 #define GUI_H
 
+#include <stdbool.h>
 #include "game_logic.h"
 
 // KI-Agent unterstützt
 typedef enum {
-    STATE_PUZZLE,   // NEW: Tutorial/Onboarding
+    STATE_PUZZLE,   // Tutorial/Onboarding
     STATE_CONFIG,
-    STATE_EDIT,
-    STATE_LOAD,     // NEW: For browsing protocol archive
+    STATE_EDIT_RED,
+    STATE_EDIT_BLUE,
+    STATE_IGNITION, // Dramatic reveal countdown
+    STATE_LOAD,     // For browsing protocol archive
     STATE_RUNNING,
     STATE_FINISHED, 
     STATE_GAME_OVER
@@ -32,6 +35,13 @@ typedef struct {
     int current_red_pop;
     int current_blue_pop;
     int current_round;
+    // Catalyst Tracking
+    bool red_catalyst_used;
+    bool blue_catalyst_used;
+    // Telemetry Arrays (Dynamically allocated based on max_rounds)
+    int *history_red_pop;
+    int *history_blue_pop;
+    int history_count;
 } GameConfig;
 
 // KI-Agent unterstützt

@@ -20,5 +20,6 @@ void free_world(World *w);
 void init_world(World *current_gen, int rows, int cols);
 void sync_ghost_borders(World *w);
 void update_generation(World *current_gen, World *next_gen, int rows, int cols, int *red_pop, int *blue_pop);
+void apply_catalyst(World *w, int center_r, int center_c);
 
 #endif // GAME_LOGIC_H

@@ -167,8 +167,9 @@ void DrawGridAndCells(GameConfig *config, int screenWidth, int screenHeight, boo
     }
     
     // 5. Draw Hemisphere Separator
-    DrawLine(startX + (config->cols / 2) * cellW, startY, 
-             startX + (config->cols / 2) * cellW, startY + drawHeight, Fade(THEME_TEXT, 0.3f));
+    int midCol = config->cols / 2;
+    int midX = startX + midCol * cellW;
+    DrawLine(midX, startY, midX, startY + drawHeight, Fade(THEME_TEXT, 0.3f));
 }
 
 // KI-Agent unterstützt: Pattern Definitions
@@ -281,10 +282,14 @@ static GameConfig config = {
     .max_rounds = 1000,
     .current_red_pop = 0,
     .current_blue_pop = 0,
-    .current_round = 0
+    .current_round = 0,
+    .history_red_pop = NULL,
+    .history_blue_pop = NULL,
+    .history_count = 0
 };
 static char statusMsg[64] = "";
 static float statusTimer = 0.0f;
+static double ignitionStartTime = 0.0;
 
 void init_gui_app(void) {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
@@ -408,16 +413,16 @@ void UpdateDrawFrame(void) {
                     config.current_blue_pop = 0;
                     config.current_red_pop = 0;
                     config.current_round = 0;
+                    config.red_catalyst_used = false;
+                    config.blue_catalyst_used = false;
                     
-                    state = STATE_EDIT;
+                    state = STATE_EDIT_RED;
                 }                break;
 
-            case STATE_EDIT:    // Startkonfiguration für Simulation auf Screen mit Maus setzen
-                // --- Mouse & Pattern Interaction ---
+            case STATE_EDIT_RED:
+            case STATE_EDIT_BLUE:
                 {
-                    Vector2 mousePos = GetMousePosition();  // Raylib Input-Steuerung: Gibt aktuelle x,y-Mauspos. als Vector2 zurück 
-                    
-                    // Constants must match DrawGridAndCells layout
+                    Vector2 mousePos = GetMousePosition();
                     const int headerHeight = 60;
                     const int footerHeight = 40;
                     const int margin = 20;
@@ -425,15 +430,13 @@ void UpdateDrawFrame(void) {
                     int drawHeight = screenHeight - headerHeight - footerHeight - margin;
                     int startX = margin;
                     int startY = headerHeight;
-                    
                     float cellW = (float)drawWidth / config.cols;
                     float cellH = (float)drawHeight / config.rows;
+                    int midCol = config.cols / 2;
                     
-                    // State for Drag-and-Paint interaction
                     static int editAction = 0; // 0:Idle, 1:Place, 2:Remove
-                    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) editAction = 0; // Raylib Input-Steuerung: TRUE in dem Frame, in dem Maustaste losgelassen wird
+                    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) editAction = 0;
 
-                    // Check if mouse is inside the grid area
                     if (mousePos.x >= startX && mousePos.x < startX + drawWidth &&
                         mousePos.y >= startY && mousePos.y < startY + drawHeight) {
                         
@@ -442,26 +445,15 @@ void UpdateDrawFrame(void) {
                         int stride = config.cols + 2;
                         int index = (row + 1) * stride + (col + 1);
                         
-                        // Handle Clicks (Single Cell) & Drag
-                        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {  // Raylib Input-Steuerung: TRUE in dem Frame, in dem Maustaste gedrückt wird.
-                            // Determine action based on initial cell state: Place (1) or Remove (2)
+                        bool isCorrectSide = (state == STATE_EDIT_RED) ? (col >= midCol) : (col < midCol);
+
+                        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && isCorrectSide) {
                             if (gui_world->grid[index] == DEAD) editAction = 1;
                             else editAction = 2;
                         }
 
-                        if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) && editAction != 0) {  // Raylib Input-Steuerung: TRUE, solange Maustaste gedrückt wird.
-                            int midCol = config.cols / 2;
-
-                            // Check Hemispheres and Population Limits
-                            if (col < midCol) {
-                                if (editAction == 2 && gui_world->grid[index] == TEAM_BLUE) {
-                                    gui_world->grid[index] = DEAD;
-                                    config.current_blue_pop--;
-                                } else if (editAction == 1 && gui_world->grid[index] == DEAD && config.current_blue_pop < config.max_population) {
-                                    gui_world->grid[index] = TEAM_BLUE;
-                                    config.current_blue_pop++;
-                                }
-                            } else {
+                        if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) && editAction != 0 && isCorrectSide) {
+                            if (state == STATE_EDIT_RED) {
                                 if (editAction == 2 && gui_world->grid[index] == TEAM_RED) {
                                     gui_world->grid[index] = DEAD;
                                     config.current_red_pop--;
@@ -469,98 +461,111 @@ void UpdateDrawFrame(void) {
                                     gui_world->grid[index] = TEAM_RED;
                                     config.current_red_pop++;
                                 }
+                            } else {
+                                if (editAction == 2 && gui_world->grid[index] == TEAM_BLUE) {
+                                    gui_world->grid[index] = DEAD;
+                                    config.current_blue_pop--;
+                                } else if (editAction == 1 && gui_world->grid[index] == DEAD && config.current_blue_pop < config.max_population) {
+                                    gui_world->grid[index] = TEAM_BLUE;
+                                    config.current_blue_pop++;
+                                }
                             }
                         }
                         
-                        // Handle Patterns
-                        if (IsKeyPressed(KEY_G)) {
-                            PlacePattern(gui_world, &config, row, col, 1); // 1 = Glider
-                            strcpy(statusMsg, "Deployed: GLIDER");
-                            statusTimer = 2.0f;
-                        }
-                        if (IsKeyPressed(KEY_T)) {
-                            PlacePattern(gui_world, &config, row, col, 2); // 2 = Traveler
-                            strcpy(statusMsg, "Deployed: TRAVELER");
-                            statusTimer = 2.0f;
-                        }
-                        if (IsKeyPressed(KEY_B)) {
-                            PlacePattern(gui_world, &config, row, col, 3); // 3 = Blaster
-                            strcpy(statusMsg, "Deployed: BLASTER");
-                            statusTimer = 2.0f;
+                        if (isCorrectSide) {
+                            if (IsKeyPressed(KEY_G)) PlacePattern(gui_world, &config, row, col, 1);
+                            if (IsKeyPressed(KEY_T)) PlacePattern(gui_world, &config, row, col, 2);
+                            if (IsKeyPressed(KEY_B)) PlacePattern(gui_world, &config, row, col, 3);
                         }
                     }
                 }
                 
-                // File I/O
-                if (IsKeyPressed(KEY_S)) {
-                    if (save_grid("setup.bio", gui_world, &config)) {
-                        strcpy(statusMsg, "Saved to setup.bio!");
-                        statusTimer = 2.0f;
-                    } else {
-                        strcpy(statusMsg, "Save Failed!");
-                        statusTimer = 2.0f;
-                    }
-                }
+                if (IsKeyPressed(KEY_S)) save_grid("setup.bio", gui_world, &config);
                 
-                // NEW: Load State Transition
                 if (IsKeyPressed(KEY_L)) {
                     fileCount = list_protocol_files("biotope_results", &fileList);
                     selectedFileIndex = 0;
-                    state = STATE_LOAD;  // Absprung alte Spiele laden
+                    state = STATE_LOAD;
                 }
                 
-                // KI-Agent unterstützt: Random Placement Logic
-                if (IsKeyPressed(KEY_R)) {    // Spielfeld wird mit Zufallsmuster gefüllt
+                if (IsKeyPressed(KEY_R)) {
+                    // Randomize only current player's side
                     int stride = config.cols + 2;
-                    // Reset grid (including borders)
-                    for(int i=0; i < (config.rows + 2) * (config.cols + 2); i++) gui_world->grid[i] = DEAD;
-                    
-                    config.current_blue_pop = 0;
-                    config.current_red_pop = 0;
-                    
                     int midCol = config.cols / 2;
                     srand(time(NULL));
-                    
+
+                    // 1. Clear side
                     for(int r=0; r<config.rows; r++) {
                         for(int c=0; c<config.cols; c++) {
-                            int idx = (r + 1) * stride + (c + 1);
-                            if ((rand() % 100) < 20) {
-                                if (c < midCol) {
-                                    if (config.current_blue_pop < config.cols * config.rows) {
-                                        gui_world->grid[idx] = TEAM_BLUE;
-                                        config.current_blue_pop++;
-                                    }
-                                } else {
-                                    if (config.current_red_pop < config.cols * config.rows) {
-                                        gui_world->grid[idx] = TEAM_RED;
-                                        config.current_red_pop++;
-                                    }
+                            bool isCorrectSide = (state == STATE_EDIT_RED) ? (c >= midCol) : (c < midCol);
+                            if (isCorrectSide) {
+                                int idx = (r + 1) * stride + (c + 1);
+                                if (gui_world->grid[idx] != DEAD) {
+                                    if (gui_world->grid[idx] == TEAM_RED) config.current_red_pop--;
+                                    else config.current_blue_pop--;
+                                    gui_world->grid[idx] = DEAD;
                                 }
                             }
                         }
                     }
-                    strcpy(statusMsg, "Randomized Grid!");
-                    statusTimer = 2.0f;
+
+                    // 2. Sprinkle cells: Exactly 3% of the total grid area
+                    int totalCells = config.rows * config.cols;
+                    int targetPop = (int)(totalCells * 0.03f);
+                    if (targetPop < 1) targetPop = 1;
+
+                    // Sync config max_population to this 3% for the UI counter
+                    config.max_population = targetPop;
+
+                    int *currentPop = (state == STATE_EDIT_RED) ? &config.current_red_pop : &config.current_blue_pop;
+                    int team = (state == STATE_EDIT_RED) ? TEAM_RED : TEAM_BLUE;
+                    int sideWidth = (state == STATE_EDIT_RED) ? (config.cols - midCol) : midCol;
+                    int startCol = (state == STATE_EDIT_RED) ? midCol : 0;
+
+                    // Safety: limit attempts
+                    int attempts = 0;
+                    int maxAttempts = targetPop * 10; 
+                    while (*currentPop < targetPop && attempts < maxAttempts) {
+                        int r = rand() % config.rows;
+                        int c = startCol + (rand() % sideWidth);
+                        int idx = (r + 1) * stride + (c + 1);
+                        if (gui_world->grid[idx] == DEAD) {
+                            gui_world->grid[idx] = team;
+                            (*currentPop)++;
+                        }
+                        attempts++;
+                    }
                 }
                 
-                // Transition: Start Simulation initiale Belegung wird gespeichert "....bio"
                 if (IsKeyPressed(KEY_ENTER)) {
-                    // Phase 3: Auto-Save on Start
-                    char autoFilename[128];
-                    time_t now = time(NULL);
-                    struct tm *t = localtime(&now);
-                    strftime(autoFilename, sizeof(autoFilename), "biotope_results/run_%Y%m%d_%H%M%S.bio", t);
-                    
-                    // Store for result appending later
-                    strcpy(currentProtocolFilename, autoFilename);
-                    
-                    if (save_grid(autoFilename, gui_world, &config)) {
-                        printf("Auto-save successful: %s\n", autoFilename);
+                    if (state == STATE_EDIT_RED) {
+                        state = STATE_EDIT_BLUE;
                     } else {
-                        printf("Auto-save failed!\n");
+                        // Auto-Save and Start
+                        char autoFilename[128];
+                        time_t now = time(NULL);
+                        strftime(autoFilename, sizeof(autoFilename), "biotope_results/run_%Y%m%d_%H%M%S.bio", localtime(&now));
+                        strcpy(currentProtocolFilename, autoFilename);
+                        save_grid(autoFilename, gui_world, &config);
+                        state = STATE_IGNITION;   
+                    }
+                }
+                break;
+
+            case STATE_IGNITION:
+                {
+                    if (ignitionStartTime == 0.0) {
+                        ignitionStartTime = GetTime();
+                        // Step 4.1: Allocate telemetry arrays
+                        config.history_red_pop = (int*)malloc(config.max_rounds * sizeof(int));
+                        config.history_blue_pop = (int*)malloc(config.max_rounds * sizeof(int));
+                        config.history_count = 0;
                     }
                     
-                    state = STATE_RUNNING;   
+                    if (GetTime() - ignitionStartTime >= 3.0) {
+                        ignitionStartTime = 0.0;
+                        state = STATE_RUNNING;
+                    }
                 }
                 break;
 
@@ -583,13 +588,13 @@ void UpdateDrawFrame(void) {
                     }
                     if (fileList) free(fileList);
                     fileList = NULL;
-                    state = STATE_EDIT;
+                    state = STATE_EDIT_RED;
                 }
                 
                 if (IsKeyPressed(KEY_Q) || IsKeyPressed(KEY_ESCAPE)) {
                     if (fileList) free(fileList);
                     fileList = NULL;
-                    state = STATE_EDIT;   
+                    state = STATE_EDIT_RED;   
                 }
                 break;
             
@@ -600,7 +605,42 @@ void UpdateDrawFrame(void) {
                     gui_world = NULL;
                     swap_world = NULL;
                     state = STATE_CONFIG;
+                    ignitionStartTime = 0.0;
                     break;
+                }
+
+                // --- Catalyst Interaction ---
+                if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                    Vector2 mousePos = GetMousePosition();
+                    const int headerHeight = 60;
+                    const int footerHeight = 40;
+                    const int margin = 20;
+                    int drawWidth = screenWidth - (margin * 2);
+                    int drawHeight = screenHeight - headerHeight - footerHeight - margin;
+                    int startX = margin;
+                    int startY = headerHeight;
+                    
+                    if (mousePos.x >= startX && mousePos.x < startX + drawWidth &&
+                        mousePos.y >= startY && mousePos.y < startY + drawHeight) {
+                        
+                        float cellW = (float)drawWidth / config.cols;
+                        float cellH = (float)drawHeight / config.rows;
+                        int col = (int)((mousePos.x - startX) / cellW);
+                        int row = (int)((mousePos.y - startY) / cellH);
+                        int midCol = config.cols / 2;
+
+                        if (col >= midCol && !config.red_catalyst_used) {
+                            apply_catalyst(gui_world, row + 1, col + 1);
+                            config.red_catalyst_used = true;
+                            strcpy(statusMsg, "RED CATALYST ACTIVATED!");
+                            statusTimer = 2.0f;
+                        } else if (col < midCol && !config.blue_catalyst_used) {
+                            apply_catalyst(gui_world, row + 1, col + 1);
+                            config.blue_catalyst_used = true;
+                            strcpy(statusMsg, "BLUE CATALYST ACTIVATED!");
+                            statusTimer = 2.0f;
+                        }
+                    }
                 }
 
                 // --- Simulation Logic ---
@@ -612,6 +652,13 @@ void UpdateDrawFrame(void) {
                     
                     update_generation(gui_world, swap_world, config.rows, config.cols, &config.current_red_pop, &config.current_blue_pop);
                     
+                    // Step 4.2: Record Telemetry
+                    if (config.history_count < config.max_rounds) {
+                        config.history_red_pop[config.history_count] = config.current_red_pop;
+                        config.history_blue_pop[config.history_count] = config.current_blue_pop;
+                        config.history_count++;
+                    }
+
                     // Pointer Swap (Double Buffering)
                     World *temp = gui_world;
                     gui_world = swap_world;
@@ -642,6 +689,9 @@ void UpdateDrawFrame(void) {
                 if (IsKeyPressed(KEY_Q)) {
                     if (gui_world) free_world(gui_world);
                     gui_world = NULL;
+                    // Step 4.1 Cleanup
+                    if (config.history_red_pop) { free(config.history_red_pop); config.history_red_pop = NULL; }
+                    if (config.history_blue_pop) { free(config.history_blue_pop); config.history_blue_pop = NULL; }
                     state = STATE_CONFIG;
                 }
                 break;
@@ -650,6 +700,9 @@ void UpdateDrawFrame(void) {
                 if (IsKeyPressed(KEY_ONE)) {
                      if (gui_world) free_world(gui_world);
                      gui_world = NULL;
+                     // Step 4.1 Cleanup
+                     if (config.history_red_pop) { free(config.history_red_pop); config.history_red_pop = NULL; }
+                     if (config.history_blue_pop) { free(config.history_blue_pop); config.history_blue_pop = NULL; }
                      state = STATE_CONFIG;
                 }
                 break;
@@ -714,23 +767,27 @@ void UpdateDrawFrame(void) {
                 DrawText("PRESS [ENTER] TO INITIALIZE SYSTEM", 40, 475, 20, THEME_HIGHLIGHT);
                 break;
 
-            case STATE_EDIT:
+            case STATE_EDIT_RED:
+            case STATE_EDIT_BLUE:
                 DrawText("EDITOR MODE", 20, 18, 24, THEME_BLUE);
-                // KI-Agent unterstützt: Increased font size to 16 for better readability
-                DrawText("LEFT: BLUE SQUAD  |  RIGHT: RED SQUAD", 220, 24, 16, DARKGRAY);
                 
-                // Draw Population Counters
-                char popBuf[64];
-                sprintf(popBuf, "BLUE: %03d/%03d", config.current_blue_pop, config.max_population);
-                DrawText(popBuf, screenWidth - 300, 20, 20, THEME_BLUE);
-                sprintf(popBuf, "RED: %03d/%03d", config.current_red_pop, config.max_population);
-                DrawText(popBuf, screenWidth - 140, 20, 20, THEME_RED);
+                // Centered Scoreboard
+                char bluePopBuf[64], redPopBuf[64];
+                sprintf(bluePopBuf, "BLUE: %03d/%03d", config.current_blue_pop, config.max_population);
+                sprintf(redPopBuf, "RED: %03d/%03d", config.current_red_pop, config.max_population);
+                int blueW = MeasureText(bluePopBuf, 20);
+                DrawText(bluePopBuf, screenWidth/2 - blueW - 20, 20, 20, THEME_BLUE);
+                DrawText(redPopBuf, screenWidth/2 + 20, 20, 20, THEME_RED);
+
+                // Right-aligned Instruction
+                const char* inst = (state == STATE_EDIT_RED) ? "P1: RED SQUAD (RIGHT)" : "P2: BLUE SQUAD (LEFT)";
+                DrawText(inst, screenWidth - MeasureText(inst, 16) - 20, 24, 16, (state == STATE_EDIT_RED) ? THEME_RED : THEME_BLUE);
+                
                 
                 // Ghost Cursor (Visual Polish)
                 Vector2 mousePos = GetMousePosition();
-                // ... Re-calculate grid metrics for ghost cursor ...
                 {
-                     const int headerHeight = 60;
+                    const int headerHeight = 60;
                     const int footerHeight = 40;
                     const int margin = 20;
                     int drawWidth = screenWidth - (margin * 2);
@@ -744,19 +801,34 @@ void UpdateDrawFrame(void) {
                         mousePos.y >= startY && mousePos.y < startY + drawHeight) {
                         int col = (int)((mousePos.x - startX) / cellW);
                         int row = (int)((mousePos.y - startY) / cellH);
-                        // Draw Ghost
-                        Color ghostColor = (col < config.cols/2) ? Fade(THEME_BLUE, 0.2f) : Fade(THEME_RED, 0.2f);
-                        DrawRectangle(startX + col * cellW, startY + row * cellH, cellW, cellH, ghostColor);
+                        // Draw Ghost only if on correct side
+                        bool isCorrectSide = (state == STATE_EDIT_RED) ? (col >= config.cols/2) : (col < config.cols/2);
+                        if (isCorrectSide) {
+                            Color ghostColor = (state == STATE_EDIT_BLUE) ? Fade(THEME_BLUE, 0.2f) : Fade(THEME_RED, 0.2f);
+                            DrawRectangle(startX + col * cellW, startY + row * cellH, cellW, cellH, ghostColor);
+                        }
                     }
                 }
                 
-                // KI-Agent unterstützt: Draw grid lines only if grid is not too dense (> 150)
                 bool showLines = (config.rows <= 150 && config.cols <= 150);
                 DrawGridAndCells(&config, screenWidth, screenHeight, showLines); 
 
-                // KI-Agent unterstützt: Updated Footer Menu Font Size to 14
-                DrawText("[ENTER] RUN | [S] SAVE | [L] LOAD | [R] RANDOM | [G] GLIDER | [T] TRAVELER | [B] BLASTER", 
+                DrawText("[ENTER] NEXT/DONE | [S] SAVE | [L] LOAD | [R] RANDOM | [G] GLIDER | [T] TRAVELER | [B] BLASTER", 
                          20, screenHeight - 28, 20, THEME_TEXT);
+                break;
+
+            case STATE_IGNITION:
+                DrawText("SYSTEM IGNITION", 20, 18, 24, THEME_RED);
+                DrawGridAndCells(&config, screenWidth, screenHeight, false);
+                {
+                    double elapsed = GetTime() - ignitionStartTime;
+                    int countdown = 3 - (int)elapsed;
+                    if (countdown < 1) countdown = 1;
+                    char countBuf[16];
+                    sprintf(countBuf, "%d", countdown);
+                    DrawText(countBuf, screenWidth/2 - MeasureText(countBuf, 120)/2, screenHeight/2 - 60, 120, THEME_HIGHLIGHT);
+                    DrawText("REVEALING BIOTOPE...", screenWidth/2 - MeasureText("REVEALING BIOTOPE...", 20)/2, screenHeight/2 + 60, 20, THEME_TEXT);
+                }
                 break;
 
             case STATE_LOAD:
@@ -835,25 +907,28 @@ void UpdateDrawFrame(void) {
             case STATE_RUNNING:
                 DrawText("SIMULATION ACTIVE", 20, 18, 24, THEME_RED);
                 
-                // KI-Agent unterstützt: Stable positioning for Label and Counter
-                const char* labelText = "ECO-BLOOM CYCLE:";
+                // Centered Scoreboard (Vital for competitive feedback)
+                char bluePopRun[32], redPopRun[32];
+                sprintf(bluePopRun, "BLUE: %d", config.current_blue_pop);
+                sprintf(redPopRun, "RED: %d", config.current_red_pop);
+                int blueWRun = MeasureText(bluePopRun, 20);
+                DrawText(bluePopRun, screenWidth/2 - blueWRun - 20, 20, 20, THEME_BLUE);
+                DrawText(redPopRun, screenWidth/2 + 20, 20, 20, THEME_RED);
+
+                // Right-aligned Round Counter (Compact)
                 char roundBuf[32];
-                sprintf(roundBuf, "%04d / %04d", config.current_round, config.max_rounds);
+                sprintf(roundBuf, "CYCLE: %04d/%04d", config.current_round, config.max_rounds);
+                int roundW = MeasureText(roundBuf, 20);
+                DrawText(roundBuf, screenWidth - roundW - 20, 20, 20, THEME_TEXT);
                 
-                // Calculate widths based on a "worst-case" wide string to prevent jitter
-                int maxCounterWidth = MeasureText("0000 / 0000", 20); 
-                int labelWidth = MeasureText(labelText, 20);
-                int gap = 10;
-                int rightMargin = 20;
-                
-                // Draw Label (Fixed position relative to right edge)
-                DrawText(labelText, screenWidth - rightMargin - maxCounterWidth - gap - labelWidth, 20, 20, THEME_TEXT);
-                
-                // Draw Counter (Fixed start position)
-                DrawText(roundBuf, screenWidth - rightMargin - maxCounterWidth, 20, 20, THEME_TEXT);
                 
                 DrawGridAndCells(&config, screenWidth, screenHeight, false); // false = No Grid Lines (Performance!)
                 
+                // Catalyst Indicators
+                DrawText("CATALYST:", 20, screenHeight - 65, 18, DARKGRAY);
+                DrawText("BLUE", 120, screenHeight - 65, 18, config.blue_catalyst_used ? DARKGRAY : THEME_BLUE);
+                DrawText("RED", 180, screenHeight - 65, 18, config.red_catalyst_used ? DARKGRAY : THEME_RED);
+
                 DrawText("[Q] ABORT SIMULATION", 20, screenHeight - 30, 20, DARKGRAY);
                 break;
                 
@@ -885,7 +960,42 @@ void UpdateDrawFrame(void) {
                 sprintf(buf, "RED: %d  vs  BLUE: %d", config.current_red_pop, config.current_blue_pop);
                 DrawText(buf, screenWidth/2 - MeasureText(buf, 20)/2, 260, 20, GRAY);
                 
-                DrawText("Stats exported to file.", screenWidth/2 - MeasureText("Stats exported to file.", 20)/2, 400, 20, DARKGRAY);
+                // --- Step 4.3: Telemetry Graph ---
+                int graphW = 400;
+                int graphH = 100;
+                int graphX = screenWidth/2 - graphW/2;
+                int graphY = 300;
+                DrawRectangle(graphX, graphY, graphW, graphH, THEME_HUD);
+                DrawRectangleLines(graphX, graphY, graphW, graphH, DARKGRAY);
+
+                if (config.history_count > 1) {
+                    // Find Peak Population for Dynamic Scaling
+                    int peakPop = 0;
+                    for (int i = 0; i < config.history_count; i++) {
+                        if (config.history_red_pop[i] > peakPop) peakPop = config.history_red_pop[i];
+                        if (config.history_blue_pop[i] > peakPop) peakPop = config.history_blue_pop[i];
+                    }
+                    
+                    // Safety: Avoid division by zero and add 10% margin
+                    float yMax = (peakPop > 0) ? (float)peakPop * 1.1f : (float)(config.rows * config.cols);
+
+                    for (int i = 0; i < config.history_count - 1; i++) {
+                        float x1 = graphX + ((float)i / config.max_rounds) * graphW;
+                        float x2 = graphX + ((float)(i + 1) / config.max_rounds) * graphW;
+                        
+                        // Scale Y using the dynamic peak
+                        float y1_red = graphY + graphH - ((float)config.history_red_pop[i] / yMax) * graphH;
+                        float y2_red = graphY + graphH - ((float)config.history_red_pop[i+1] / yMax) * graphH;
+                        
+                        float y1_blue = graphY + graphH - ((float)config.history_blue_pop[i] / yMax) * graphH;
+                        float y2_blue = graphY + graphH - ((float)config.history_blue_pop[i+1] / yMax) * graphH;
+                        
+                        DrawLine(x1, y1_red, x2, y2_red, THEME_RED);
+                        DrawLine(x1, y1_blue, x2, y2_blue, THEME_BLUE);
+                    }
+                }
+
+                DrawText("Stats exported to file.", screenWidth/2 - MeasureText("Stats exported to file.", 20)/2, 420, 20, DARKGRAY);
                 DrawText("PRESS [1] TO RESTART SYSTEM", screenWidth/2 - MeasureText("PRESS [1] TO RESTART SYSTEM", 20)/2, 500, 20, THEME_HIGHLIGHT);
                 break;
         }

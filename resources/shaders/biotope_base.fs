@@ -23,6 +23,7 @@ void main() {
     } else if (state > 0.4) {
         currentColor = COLOR_BLUE;
     } else {
+        // Temporal trails (fossils)
         currentColor = max(COLOR_BG, prevColor * fadeRate);
     }
 

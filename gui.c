@@ -33,6 +33,22 @@ const Color THEME_HIGHLIGHT = { 255, 255, 255, 40 }; // Selection Glow
 static Shader biotopeShader;
 static unsigned char *gpu_data_buffer = NULL;
 
+// Texture Management (Moved to file scope for cleanup)
+static Texture2D gridTex = { 0 };
+static int texW = 0;
+static int texH = 0;
+static int lastDrawWidth = 0;
+static int lastDrawHeight = 0;
+
+// Ping-Pong Targets
+static RenderTexture2D pingPongTarget[2] = { 0 };
+static int pingPongIndex = 0;
+static int locPrevFrame = -1;
+static int locFadeRate = -1;
+static int locUseMetaballs = -1;
+static int locRenderSize = -1;
+static bool useMetaballs = false;
+
 void DrawGridAndCells(GameConfig *config, int screenWidth, int screenHeight, bool drawGridLines) {
     if (!gui_world) return;
 
@@ -49,18 +65,7 @@ void DrawGridAndCells(GameConfig *config, int screenWidth, int screenHeight, boo
     float cellW = (float)drawWidth / config->cols;
     float cellH = (float)drawHeight / config->rows;
     
-    // --- 1. Texture Management (Static to persist across frames) ---
-    static Texture2D gridTex = { 0 };
-    static int texW = 0;
-    static int texH = 0;
-    static int lastDrawWidth = 0;
-    static int lastDrawHeight = 0;
-
-    // Ping-Pong Targets
-    static RenderTexture2D pingPongTarget[2] = { 0 };
-    static int pingPongIndex = 0;
-    static int locPrevFrame = -1;
-    static int locFadeRate = -1;
+    // --- 1. Resource Management ---
     
     // Check if grid size changed or not initialized
     if (config->cols != texW || config->rows != texH || drawWidth != lastDrawWidth || drawHeight != lastDrawHeight) {
@@ -102,6 +107,8 @@ void DrawGridAndCells(GameConfig *config, int screenWidth, int screenHeight, boo
         // Get Shader Locations
         locPrevFrame = GetShaderLocation(biotopeShader, "previousFrame");
         locFadeRate = GetShaderLocation(biotopeShader, "fadeRate");
+        locUseMetaballs = GetShaderLocation(biotopeShader, "useMetaballs");
+        locRenderSize = GetShaderLocation(biotopeShader, "renderSize");
     }
     
     // --- 2. Update Pixel Data (CPU side) ---
@@ -135,7 +142,7 @@ void DrawGridAndCells(GameConfig *config, int screenWidth, int screenHeight, boo
         // Bind previous frame
         SetShaderValueTexture(biotopeShader, locPrevFrame, pingPongTarget[1 - pingPongIndex].texture);
         
-        // Set fade rate
+        // Set uniforms
         float fade = 0.95f;
         SetShaderValue(biotopeShader, locFadeRate, &fade, SHADER_UNIFORM_FLOAT);
         
@@ -293,8 +300,18 @@ void init_gui_app(void) {
 void close_gui_app(void) {
     if (gui_world) free_world(gui_world);
     if (swap_world) free_world(swap_world);
+    
+    // Shader & Texture Cleanup
     if (biotopeShader.id > 0) UnloadShader(biotopeShader);
-    if (gpu_data_buffer) free(gpu_data_buffer);
+    if (gridTex.id > 0) UnloadTexture(gridTex);
+    if (pingPongTarget[0].id > 0) UnloadRenderTexture(pingPongTarget[0]);
+    if (pingPongTarget[1].id > 0) UnloadRenderTexture(pingPongTarget[1]);
+    
+    if (gpu_data_buffer) {
+        free(gpu_data_buffer);
+        gpu_data_buffer = NULL;
+    }
+    
     CloseWindow();
 }
 
@@ -306,6 +323,14 @@ void UpdateDrawFrame(void) {
         if (statusTimer > 0) {
             statusTimer -= GetFrameTime();
             if (statusTimer <= 0) strcpy(statusMsg, "");
+        }
+
+        // --- Global Interactions ---
+        if (IsKeyPressed(KEY_M)) {
+            useMetaballs = !useMetaballs;
+            if (useMetaballs) strcpy(statusMsg, "METABALLS: ON");
+            else strcpy(statusMsg, "METABALLS: OFF");
+            statusTimer = 2.0f;
         }
         
         // --- Logic per State ---

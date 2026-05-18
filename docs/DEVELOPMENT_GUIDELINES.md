@@ -48,11 +48,12 @@ GameOfLife/
 - Use small test drivers for logic and interactive verification for UI.
 
 ### **Execution**
-1. **Build project:**
+1. **Quick Start:** See [START_ROUTINE.md](START_ROUTINE.md) for detailed build and run instructions.
+2. **Build project:**
    ```bash
    make clean && make
    ```
-2. **Run application:**
+3. **Run application:**
    ```bash
    ./biotope
    ```

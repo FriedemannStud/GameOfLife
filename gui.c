@@ -31,6 +31,8 @@ const Color THEME_GRID = { 40, 44, 52, 255 };      // Faint Grid Lines
 const Color THEME_RED = { 255, 60, 100, 255 };     // Neon Red/Pink
 const Color THEME_BLUE = { 0, 220, 255, 255 };     // Neon Cyan
 const Color THEME_TEXT = { 220, 220, 220, 255 };   // Off-White
+const Color THEME_HINT = { 130, 140, 160, 255 };   // Muted Grey-Blue for hints (Arrows, +/-)
+const Color THEME_ACCENT = { 180, 190, 210, 255 }; // Call to action / Secondary Header
 const Color THEME_HIGHLIGHT = { 255, 255, 255, 40 }; // Selection Glow
 
 // Helper to draw the grid (reused in multiple states)
@@ -829,19 +831,19 @@ void UpdateDrawFrame(void) {
                 char buf[64];
                 sprintf(buf, "GRID SIZE:  %03d x %03d", config.rows, config.cols);
                 DrawText(buf, 40, 100, 20, THEME_BLUE);
-                DrawText("(Arrows)", 300, 100, 18, DARKGRAY);
+                DrawText("(Arrows)", 300, 100, 18, THEME_HINT);
                 
                 sprintf(buf, "DELAY:      %04d ms", config.delay_ms);
                 DrawText(buf, 40, 140, 20, THEME_RED);
-                DrawText("(+/-)", 300, 140, 18, DARKGRAY);
+                DrawText("(+/-)", 300, 140, 18, THEME_HINT);
                 
                 sprintf(buf, "MAX ROUNDS: %04d", config.max_rounds);
                 DrawText(buf, 40, 180, 20, THEME_BLUE);
-                DrawText("(PageUp/PageDown)", 300, 180, 18, DARKGRAY);
+                DrawText("(PageUp/PageDown)", 300, 180, 18, THEME_HINT);
                 
                 sprintf(buf, "MAX INIT POP:    %04d", config.max_population);
                 DrawText(buf, 40, 220, 20, THEME_RED);
-                DrawText("(Insert/Delete)", 300, 220, 18, DARKGRAY);
+                DrawText("(Insert/Delete)", 300, 220, 18, THEME_HINT);
 
 
                 
@@ -849,18 +851,18 @@ void UpdateDrawFrame(void) {
                 int rulesX = screenWidth / 2 + 40;
                 DrawLine(rulesX - 20, 100, rulesX - 20, 240, Fade(THEME_TEXT, 0.3f)); // Vertical Separator
                 
-                DrawText("CONWAY'S MISSION PROTOCOL", rulesX, 100, 20, THEME_HIGHLIGHT);
+                DrawText("CONWAY'S MISSION PROTOCOL", rulesX, 100, 20, THEME_ACCENT);
                 DrawText("- SURVIVAL: 2 or 3 neighbors", rulesX, 135, 20, THEME_TEXT);
                 DrawText("- BIRTH: 3 neighbors (Majority Rule of parents)", rulesX, 160, 20, THEME_TEXT);
                 DrawText("- TEAMS: RED vs BLUE", rulesX, 185, 20, THEME_TEXT);
                 DrawText("- GOAL: Max Population after timeout", rulesX, 210, 20, THEME_TEXT);
 
 
-                DrawText("PRESET", 40, 300, 20, THEME_HIGHLIGHT);
-                DrawText("[1] CONWAY'S CHESS", 40, 335, 20, THEME_HIGHLIGHT);
-                DrawText("[2] OUTER SPACE BATTLE", 40, 370, 20, THEME_HIGHLIGHT);
-                DrawText("[3] TURING SANDBOX", 40, 405, 20, THEME_HIGHLIGHT);
-                DrawText("PRESS [ENTER] TO INITIALIZE SYSTEM", 40, 475, 20, THEME_HIGHLIGHT);
+                DrawText("PRESET", 40, 300, 20, THEME_ACCENT);
+                DrawText("[1] CONWAY'S CHESS", 40, 335, 20, THEME_ACCENT);
+                DrawText("[2] OUTER SPACE BATTLE", 40, 370, 20, THEME_ACCENT);
+                DrawText("[3] TURING SANDBOX", 40, 405, 20, THEME_ACCENT);
+                DrawText("PRESS [ENTER] TO INITIALIZE SYSTEM", 40, 475, 20, THEME_ACCENT);
                 break;
 
             case STATE_EDIT_RED:
@@ -922,14 +924,14 @@ void UpdateDrawFrame(void) {
                     if (countdown < 1) countdown = 1;
                     char countBuf[16];
                     sprintf(countBuf, "%d", countdown);
-                    DrawText(countBuf, screenWidth/2 - MeasureText(countBuf, 120)/2, screenHeight/2 - 60, 120, THEME_HIGHLIGHT);
+                    DrawText(countBuf, screenWidth/2 - MeasureText(countBuf, 120)/2, screenHeight/2 - 60, 120, THEME_ACCENT);
                     DrawText("REVEALING BIOTOPE...", screenWidth/2 - MeasureText("REVEALING BIOTOPE...", 20)/2, screenHeight/2 + 60, 20, THEME_TEXT);
                 }
                 break;
 
             case STATE_LOAD:
                 DrawText("PROTOCOL ARCHIVE", 20, 15, 30, THEME_TEXT);
-                DrawText("SELECT A SIMULATION RUN TO REPLAY", 400, 24, 16, DARKGRAY);
+                DrawText("SELECT A SIMULATION RUN TO REPLAY", 400, 24, 16, THEME_HINT);
 
                 if (fileCount == 0) {
                     DrawText("NO PROTOCOLS FOUND IN 'biotope_results/'", 40, 100, 20, THEME_RED);
@@ -957,7 +959,7 @@ void UpdateDrawFrame(void) {
                     int previewX = 460;
                     DrawLine(previewX - 20, 100, previewX - 20, screenHeight - 60, Fade(THEME_TEXT, 0.3f));
                     
-                    DrawText("PROTOCOL PREVIEW", previewX, 100, 20, THEME_HIGHLIGHT);
+                    DrawText("PROTOCOL PREVIEW", previewX, 100, 20, THEME_ACCENT);
                     
                     ProtocolInfo *sel = &fileList[selectedFileIndex];
                     char infoBuf[128];
@@ -967,7 +969,7 @@ void UpdateDrawFrame(void) {
                         strftime(infoBuf, sizeof(infoBuf), "DATE: %d.%m.%Y %H:%M:%S", t);
                         DrawText(infoBuf, previewX, 140, 20, THEME_TEXT);
                     } else {
-                        DrawText("DATE: LEGACY FORMAT", previewX, 140, 20, DARKGRAY);
+                        DrawText("DATE: LEGACY FORMAT", previewX, 140, 20, THEME_HINT);
                     }
                     
                     sprintf(infoBuf, "GRID: %d x %d", sel->rows, sel->cols);
@@ -981,17 +983,17 @@ void UpdateDrawFrame(void) {
                     
                     if (sel->has_results) {
                         DrawLine(previewX - 10, 260, previewX + 250, 260, Fade(THEME_TEXT, 0.3f));
-                        DrawText("RESULTS:", previewX, 270, 20, THEME_HIGHLIGHT);
+                        DrawText("RESULTS:", previewX, 270, 20, THEME_ACCENT);
                         
                         if (sel->winner == 1) DrawText("WINNER: RED", previewX, 300, 20, THEME_RED);
                         else if (sel->winner == 2) DrawText("WINNER: BLUE", previewX, 300, 20, THEME_BLUE);
-                        else DrawText("WINNER: DRAW", previewX, 300, 20, DARKGRAY);
+                        else DrawText("WINNER: DRAW", previewX, 300, 20, THEME_HINT);
                         
                         char scoreBuf[64];
                         sprintf(scoreBuf, "R:%d  B:%d", sel->final_red, sel->final_blue);
                         DrawText(scoreBuf, previewX, 330, 20, THEME_TEXT);
                     } else {
-                        DrawText("NO RESULTS YET", previewX, 270, 18, DARKGRAY);
+                        DrawText("NO RESULTS YET", previewX, 270, 18, THEME_HINT);
                     }
 
                     DrawText("PRESS [ENTER] TO LOAD", previewX, 380, 20, GREEN);
@@ -1005,7 +1007,7 @@ void UpdateDrawFrame(void) {
                 DrawText("SIMULATION ACTIVE", 20, 18, 24, THEME_RED);
                 
                 if (state == STATE_OBSERVER) {
-                    DrawText("(OBSERVER MODE)", 230, 22, 18, DARKGRAY);
+                    DrawText("(OBSERVER MODE)", 230, 22, 18, THEME_HINT);
                 }
 
                 // Centered Scoreboard (Vital for competitive feedback)
@@ -1026,14 +1028,14 @@ void UpdateDrawFrame(void) {
                 DrawGridAndCells(&config, screenWidth, screenHeight, false); // false = No Grid Lines (Performance!)
                 
                 // Catalyst Indicators
-                DrawText("CATALYST:", 20, screenHeight - 65, 18, DARKGRAY);
-                DrawText("BLUE", 120, screenHeight - 65, 18, config.blue_catalyst_used ? DARKGRAY : THEME_BLUE);
-                DrawText("RED", 180, screenHeight - 65, 18, config.red_catalyst_used ? DARKGRAY : THEME_RED);
+                DrawText("CATALYST:", 20, screenHeight - 65, 18, THEME_HINT);
+                DrawText("BLUE", 120, screenHeight - 65, 18, config.blue_catalyst_used ? THEME_HINT : THEME_BLUE);
+                DrawText("RED", 180, screenHeight - 65, 18, config.red_catalyst_used ? THEME_HINT : THEME_RED);
 
                 if (state == STATE_RUNNING) {
-                    DrawText("[Q] ABORT  |  [O] OBSERVER MODE", 20, screenHeight - 30, 20, DARKGRAY);
+                    DrawText("[Q] ABORT  |  [O] OBSERVER MODE", 20, screenHeight - 30, 20, THEME_HINT);
                 } else {
-                    DrawText("[MOUSE RIGHT] PAN  |  [WHEEL] ZOOM  |  [O] EXIT OBSERVER", 20, screenHeight - 30, 20, DARKGRAY);
+                    DrawText("[MOUSE RIGHT] PAN  |  [WHEEL] ZOOM  |  [O] EXIT OBSERVER", 20, screenHeight - 30, 20, THEME_HINT);
                 }
                 break;
                 
@@ -1042,7 +1044,7 @@ void UpdateDrawFrame(void) {
                 
                 DrawGridAndCells(&config, screenWidth, screenHeight, false);
                 
-                DrawText("[ENTER] VIEW RESULTS  |  [Q] MENU", 20, screenHeight - 30, 20, THEME_HIGHLIGHT);
+                DrawText("[ENTER] VIEW RESULTS  |  [Q] MENU", 20, screenHeight - 30, 20, THEME_ACCENT);
                 break;
 
             case STATE_GAME_OVER:
@@ -1071,7 +1073,7 @@ void UpdateDrawFrame(void) {
                 int graphX = screenWidth/2 - graphW/2;
                 int graphY = 300;
                 DrawRectangle(graphX, graphY, graphW, graphH, THEME_HUD);
-                DrawRectangleLines(graphX, graphY, graphW, graphH, DARKGRAY);
+                DrawRectangleLines(graphX, graphY, graphW, graphH, THEME_HINT);
 
                 if (config.history_count > 1) {
                     // Find Peak Population for Dynamic Scaling
@@ -1100,8 +1102,8 @@ void UpdateDrawFrame(void) {
                     }
                 }
 
-                DrawText("Stats exported to file.", screenWidth/2 - MeasureText("Stats exported to file.", 20)/2, 420, 20, DARKGRAY);
-                DrawText("PRESS [1] TO RESTART SYSTEM", screenWidth/2 - MeasureText("PRESS [1] TO RESTART SYSTEM", 20)/2, 500, 20, THEME_HIGHLIGHT);
+                DrawText("Stats exported to file.", screenWidth/2 - MeasureText("Stats exported to file.", 20)/2, 420, 20, THEME_HINT);
+                DrawText("PRESS [1] TO RESTART SYSTEM", screenWidth/2 - MeasureText("PRESS [1] TO RESTART SYSTEM", 20)/2, 500, 20, THEME_ACCENT);
                 break;
         }
 

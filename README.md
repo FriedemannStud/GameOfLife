@@ -1,4 +1,9 @@
 # Conway's Game of Life in einer C-Umgebung - Bonus: Interaktiver Wettbewerb um das nachhaltigste Zell-Biotop
+
+> [!IMPORTANT]
+> **🚀 Neu hier oder lange nicht da gewesen?**  
+> Schau dir die [**Start-Routine**](docs/START_ROUTINE.md) an, um die App in 2 Minuten zu bauen und zu starten!
+
 #### Author1: Friedemann Decker / 2203777
 #### Video: <URL> oder "VC"
 #### Description:

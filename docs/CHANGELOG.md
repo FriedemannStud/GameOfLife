@@ -31,3 +31,12 @@ feat ADR-0006: GPU Aesthetic Overhaul - Migration des Renderings von CPU-basiert
 feat ADR-0007: Competitive 1v1 USP Focus - Implementierung des "Catalyst Strike": Einmalige 10x10 Vernichtungsaktion pro Team pro Match. - Einführung der "Ignition Sequence": Dramatischer 3-Sekunden-Countdown vor Simulationsstart. - Blind-Draft Phase: Turn-based Editor (Rot vs. Blau) mit versteckter Gegnerseite. - Dynamische Telemetrie: Automatisch skalierende Populationsgraphen basierend auf dem Peak-Wert. - Navbar-Scoreboard: Zentrierte Echtzeit-Statistiken für bessere competitive Übersicht.
 
 feat ADR-0008: Epic Scale Tournament Architecture - Erweiterung der Gitterlimits auf 5000x5000 für native Desktop-Builds. - Implementierung einer "Active Chunk" Heuristik zur drastischen Performance-Steigerung bei großen Spielfeldern (Überspringen toter Sektoren). - Neuer `STATE_OBSERVER` (Observer-Modus) mit spezialisierten Broadcast-Tools. - Integration einer 2D-Kamera (Raylib `Camera2D`) für stufenlosen Zoom und freies Panning. - Optimierte Randomisierungs-Logik: Gleichmäßige 3%-Verteilung über die gesamte Hemisphäre.
+
+20.05.2026:
+feat(gui): Enhanced Random Population Density - Increased the random start cell density from 3% to 37.5% per team for the [R]andom key in editor mode.
+
+feat(wasm): Persistent Browser Storage (IDBFS) - Added automatic creation and mounting of the 'biotope_results/' directory to IndexedDB (IDBFS). - Ensured filesystem persistence so saved .bio files are retained after browser refreshes. - Added -lidbfs.js and -s FORCE_FILESYSTEM=1 to the WASM build flags.
+
+fix(load): Simulation Logic After Load - Resolved a critical bug where loaded configurations failed to simulate (black screen). - Fixed the 'load_grid' function to properly initialize and update the 'chunk_map' (spatial partitioning) for loaded cells.
+
+perf(build): Robust Docker Build Environment - Renamed 'Makefile.web' to 'Makefile.wasm' to avoid GNU Make naming conflicts with legacy 'tangle' rules. - Implemented automatic 'emcc' path detection in 'Makefile.wasm' to ensure the compiler is found even in non-interactive Docker shells.

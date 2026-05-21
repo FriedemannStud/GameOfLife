@@ -4,120 +4,155 @@
 #include <string.h>
 #include <dirent.h>
 #include "file_io.h"
+#include "cJSON.h"
 
 #if defined(PLATFORM_WEB)
 #include <emscripten/emscripten.h>
 #endif
 
-// Comparator for qsort to sort by timestamp descending
+// Helper to write string to file
+static int write_string_to_file(const char *filename, const char *str) {
+    FILE *f = fopen(filename, "w");
+    if (!f) return 0;
+    fputs(str, f);
+    fclose(f);
+    return 1;
+}
+
+// Helper to read file to string
+static char* read_file_to_string(const char *filename) {
+    FILE *f = fopen(filename, "r");
+    if (!f) return NULL;
+    fseek(f, 0, SEEK_END);
+    long length = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    char *buffer = malloc(length + 1);
+    if (buffer) {
+        size_t read_bytes = fread(buffer, 1, length, f);
+        buffer[read_bytes] = '\0';
+    }
+    fclose(f);
+    return buffer;
+}
+
 static int compare_protocol_info(const void *a, const void *b) {
-    ProtocolInfo *pa = (ProtocolInfo *)a;  // typedef struct in file_io.h definiert
+    ProtocolInfo *pa = (ProtocolInfo *)a;
     ProtocolInfo *pb = (ProtocolInfo *)b;
     if (pb->timestamp > pa->timestamp) return 1;
     if (pb->timestamp < pa->timestamp) return -1;
     return 0;
 }
 
-// KI-Agent unterstützt
+// Format ISO 8601 string
+static void get_iso8601_time(char *buf, size_t size, time_t t) {
+    struct tm *tm_info = gmtime(&t);
+    strftime(buf, size, "%Y-%m-%dT%H:%M:%SZ", tm_info);
+}
+
+// KI-Agent unterstützt: Unified JSON save logic (Hard Cut)
 int save_grid(const char *filename, World *w, GameConfig *c) {
-    FILE *f = fopen(filename, "w");
-    if (!f) {
-        printf("Error saving file %s\n", filename);
-        return 0;
-    }
+    cJSON *root = cJSON_CreateObject();
     
-    // v2 Header: Version Timestamp Rows Cols MaxPop MaxRounds Delay
-    // Version 2
-    long long timestamp = (long long)time(NULL);
-    fprintf(f, "2 %lld %d %d %d %d %d\n", 
-            timestamp, 
-            c->rows, c->cols, 
-            c->max_population, 
-            c->max_rounds, 
-            c->delay_ms);
+    // Metadata
+    cJSON *metadata = cJSON_CreateObject();
+    cJSON_AddStringToObject(metadata, "player_id", "local_user");
+    cJSON_AddStringToObject(metadata, "nickname", "local");
+    cJSON_AddStringToObject(metadata, "league", "local");
     
-    // Save live cells only: r c team
+    time_t now = time(NULL);
+    char time_str[64];
+    get_iso8601_time(time_str, sizeof(time_str), now);
+    cJSON_AddStringToObject(metadata, "timestamp", time_str);
+    cJSON_AddNumberToObject(metadata, "unix_timestamp", (double)now);
+    
+    cJSON_AddItemToObject(root, "metadata", metadata);
+    
+    // Config
+    cJSON *config = cJSON_CreateObject();
+    cJSON_AddNumberToObject(config, "bounding_box_x", c->cols);
+    cJSON_AddNumberToObject(config, "bounding_box_y", c->rows);
+    cJSON_AddNumberToObject(config, "max_rounds", c->max_rounds);
+    cJSON_AddNumberToObject(config, "max_population", c->max_population);
+    cJSON_AddNumberToObject(config, "delay_ms", c->delay_ms);
+    
+    cJSON *cells = cJSON_CreateArray();
+    int cell_count = 0;
     int stride = c->cols + 2;
+    
     for(int r = 1; r <= c->rows; r++) {
         for(int col = 1; col <= c->cols; col++) {
             int idx = r * stride + col;
             if (w->grid[idx] != DEAD) {
-                // Save coordinates relative to the active area (0-indexed)
-                fprintf(f, "%d %d %d\n", r - 1, col - 1, w->grid[idx]);
+                cJSON *cell = cJSON_CreateArray();
+                cJSON_AddItemToArray(cell, cJSON_CreateNumber(col - 1)); // X
+                cJSON_AddItemToArray(cell, cJSON_CreateNumber(r - 1));   // Y
+                // Fallback team data for local preservation
+                cJSON_AddItemToArray(cell, cJSON_CreateNumber(w->grid[idx])); 
+                cJSON_AddItemToArray(cells, cell);
+                cell_count++;
             }
         }
     }
     
-    fclose(f);
-    printf("Saved to %s\n", filename);
-
+    cJSON_AddNumberToObject(config, "cell_count", cell_count);
+    cJSON_AddItemToObject(config, "cells", cells);
+    cJSON_AddItemToObject(root, "config", config);
+    
+    char *json_string = cJSON_Print(root);
+    int success = write_string_to_file(filename, json_string);
+    
+    free(json_string);
+    cJSON_Delete(root);
+    
+    if (success) {
+        printf("Saved JSON to %s\n", filename);
 #if defined(PLATFORM_WEB)
-    EM_ASM({
-        FS.syncfs(false, function(err) {
-            if (err) {
-                console.error("IndexedDB sync error:", err);
-            } else {
-                console.log("Biotope saved to IndexedDB");
-            }
+        EM_ASM({
+            FS.syncfs(false, function(err) {
+                if (err) console.error("IndexedDB sync error:", err);
+                else console.log("Biotope saved to IndexedDB");
+            });
         });
-    });
 #endif
-
-    return 1;
-}
-
-// KI-Agent unterstützt
-int load_grid(const char *filename, World *w, GameConfig *c) {
-    FILE *f = fopen(filename, "r");
-    if (!f) {
-        printf("Error opening file %s\n", filename);
-        return 0; // Fail
+    } else {
+        printf("Error saving JSON to %s\n", filename);
     }
     
-    int rows, cols, max_pop;
-    int max_rounds = 1000; // Default legacy
-    int delay_ms = 100;    // Default legacy
-    long long timestamp = 0;
-    int version = 1;
+    return success;
+}
 
-    char line[256];
-    if (!fgets(line, sizeof(line), f)) {
-        fclose(f);
+// KI-Agent unterstützt: Unified JSON load logic (Hard Cut)
+int load_grid(const char *filename, World *w, GameConfig *c) {
+    char *json_string = read_file_to_string(filename);
+    if (!json_string) {
+        printf("Error opening file %s\n", filename);
         return 0;
     }
     
-    // Try parsing as v2
-    int items = sscanf(line, "%d %lld %d %d %d %d %d", 
-                       &version, &timestamp, &rows, &cols, &max_pop, &max_rounds, &delay_ms);
-                       
-    if (items == 7 && version == 2) {
-        printf("Detected Protocol v2. Timestamp: %lld\n", timestamp);
-    } else {
-        // Fallback to legacy v1
-        items = sscanf(line, "%d %d %d", &rows, &cols, &max_pop);
-        if (items == 3) {
-            version = 1;
-            printf("Detected Legacy Format (v1).\n");
-        } else {
-            printf("Error: Unknown file format.\n");
-            fclose(f);
-            return 0;
-        }
+    cJSON *root = cJSON_Parse(json_string);
+    free(json_string);
+    
+    if (!root) {
+        printf("Error parsing JSON in %s\n", filename);
+        return 0;
     }
+    
+    cJSON *config = cJSON_GetObjectItemCaseSensitive(root, "config");
+    if (!config) {
+        printf("Error: Invalid JSON schema (missing config)\n");
+        cJSON_Delete(root);
+        return 0;
+    }
+    
+    int cols = cJSON_GetObjectItemCaseSensitive(config, "bounding_box_x")->valueint;
+    int rows = cJSON_GetObjectItemCaseSensitive(config, "bounding_box_y")->valueint;
     
     // Check if loaded config matches current world size
     if (rows != c->rows || cols != c->cols) {
         printf("Resizing world from %dx%d to %dx%d...\n", c->rows, c->cols, rows, cols);
         free(w->grid);
-        // PADDED GRID allocation: (rows + 2) * (cols + 2)
         w->grid = (int*)calloc((rows + 2) * (cols + 2), sizeof(int));
-        if (!w->grid) {
-            printf("Error: Failed to allocate memory for new grid size.\n");
-            fclose(f);
-            return 0;
-        }
-
-        // KI-Agent unterstützt: Also resize chunk map for Epic Scale performance
+        
         if (w->chunk_map) free(w->chunk_map);
         w->chunk_rows = (rows + CHUNK_SIZE - 1) / CHUNK_SIZE;
         w->chunk_cols = (cols + CHUNK_SIZE - 1) / CHUNK_SIZE;
@@ -129,16 +164,19 @@ int load_grid(const char *filename, World *w, GameConfig *c) {
         c->cols = cols;
     }
     
-    // Update config
-    c->max_population = max_pop;
-    c->max_rounds = max_rounds;
-    c->delay_ms = delay_ms;
+    // Update config (with defaults if missing)
+    cJSON *max_pop = cJSON_GetObjectItemCaseSensitive(config, "max_population");
+    if (max_pop) c->max_population = max_pop->valueint;
     
-    // Clear grid (all cells including ghost borders)
+    cJSON *max_rounds = cJSON_GetObjectItemCaseSensitive(config, "max_rounds");
+    if (max_rounds) c->max_rounds = max_rounds->valueint;
+    
+    cJSON *delay_ms = cJSON_GetObjectItemCaseSensitive(config, "delay_ms");
+    if (delay_ms) c->delay_ms = delay_ms->valueint;
+    
+    // Clear grid
     int stride = cols + 2;
     for(int i=0; i < (rows + 2) * (cols + 2); i++) w->grid[i] = DEAD;
-    
-    // KI-Agent unterstützt: Clear chunk map too
     if (w->chunk_map) {
         for (int i = 0; i < w->chunk_rows * w->chunk_cols; i++) w->chunk_map[i] = 0;
     }
@@ -146,61 +184,168 @@ int load_grid(const char *filename, World *w, GameConfig *c) {
     c->current_blue_pop = 0;
     c->current_red_pop = 0;
     
-    int r_in, c_in, team;
-    while (fgets(line, sizeof(line), f)) {
-        if (strncmp(line, "#RESULTS", 8) == 0) break; // Stop at results
-        if (strncmp(line, "#HISTORY", 8) == 0) break; // Stop at history
-
-        if (sscanf(line, "%d %d %d", &r_in, &c_in, &team) == 3) {
-            if (r_in >= 0 && r_in < rows && c_in >= 0 && c_in < cols) {
-                // Map 0-indexed file coordinates to padded grid indices (r+1, c+1)
-                int idx = (r_in + 1) * stride + (c_in + 1);
-                w->grid[idx] = team;
-                if (team == TEAM_RED) c->current_red_pop++;
-                if (team == TEAM_BLUE) c->current_blue_pop++;
-
-                // KI-Agent unterstützt: Activate the chunk for simulation!
-                activate_chunk_at(w, r_in, c_in);
-            }
+    cJSON *cells = cJSON_GetObjectItemCaseSensitive(config, "cells");
+    cJSON *cell = NULL;
+    cJSON_ArrayForEach(cell, cells) {
+        int x = cJSON_GetArrayItem(cell, 0)->valueint;
+        int y = cJSON_GetArrayItem(cell, 1)->valueint;
+        int team = TEAM_RED; // Default
+        
+        if (cJSON_GetArraySize(cell) > 2) {
+            team = cJSON_GetArrayItem(cell, 2)->valueint;
+        } else {
+            // Server assigned color fallback for pure single-player drafting JSONs
+            team = (x < cols / 2) ? TEAM_BLUE : TEAM_RED;
         }
-    }
-
-    // Now look for history specifically
-    fseek(f, 0, SEEK_SET); // Reset to find #HISTORY anywhere (usually at end)
-    while (fgets(line, sizeof(line), f)) {
-        if (strncmp(line, "#HISTORY", 8) == 0) {
-            int hCount = 0;
-            sscanf(line, "#HISTORY %d", &hCount);
-            if (hCount > 0) {
-                // Allocate if not already
-                if (c->history_red_pop) free(c->history_red_pop);
-                if (c->history_blue_pop) free(c->history_blue_pop);
-                c->history_red_pop = malloc(c->max_rounds * sizeof(int));
-                c->history_blue_pop = malloc(c->max_rounds * sizeof(int));
-                c->history_count = 0;
-
-                for (int i = 0; i < hCount && i < c->max_rounds; i++) {
-                    if (fscanf(f, "%d %d", &c->history_red_pop[i], &c->history_blue_pop[i]) == 2) {
-                        c->history_count++;
-                    }
-                }
-            }
-            break;
+        
+        if (x >= 0 && x < cols && y >= 0 && y < rows) {
+            int idx = (y + 1) * stride + (x + 1);
+            w->grid[idx] = team;
+            if (team == TEAM_RED) c->current_red_pop++;
+            if (team == TEAM_BLUE) c->current_blue_pop++;
+            activate_chunk_at(w, y, x);
         }
     }
     
-    fclose(f);
-    printf("Loaded from %s (History: %d points)\n", filename, c->history_count);
-    return 1; // Success
+    // Load History
+    cJSON *history = cJSON_GetObjectItemCaseSensitive(root, "history");
+    if (history) {
+        cJSON *count = cJSON_GetObjectItemCaseSensitive(history, "count");
+        if (count && count->valueint > 0) {
+            int hCount = count->valueint;
+            if (c->history_red_pop) free(c->history_red_pop);
+            if (c->history_blue_pop) free(c->history_blue_pop);
+            c->history_red_pop = malloc(c->max_rounds * sizeof(int));
+            c->history_blue_pop = malloc(c->max_rounds * sizeof(int));
+            c->history_count = 0;
+            
+            cJSON *red_arr = cJSON_GetObjectItemCaseSensitive(history, "red");
+            cJSON *blue_arr = cJSON_GetObjectItemCaseSensitive(history, "blue");
+            
+            for (int i = 0; i < hCount && i < c->max_rounds; i++) {
+                cJSON *r_val = cJSON_GetArrayItem(red_arr, i);
+                cJSON *b_val = cJSON_GetArrayItem(blue_arr, i);
+                if (r_val && b_val) {
+                    c->history_red_pop[i] = r_val->valueint;
+                    c->history_blue_pop[i] = b_val->valueint;
+                    c->history_count++;
+                }
+            }
+        }
+    }
+    
+    cJSON_Delete(root);
+    printf("Loaded JSON from %s\n", filename);
+    return 1;
 }
 
-// KI-Agent unterstützt
+// KI-Agent unterstützt: Parse metadata for preview panel
+int load_protocol_metadata(const char *filename, ProtocolInfo *info) {
+    char *json_string = read_file_to_string(filename);
+    if (!json_string) return 0;
+    
+    cJSON *root = cJSON_Parse(json_string);
+    free(json_string);
+    if (!root) return 0;
+    
+    info->has_results = 0;
+    info->winner = 0;
+    info->final_red = 0;
+    info->final_blue = 0;
+    info->timestamp = 0;
+    
+    cJSON *metadata = cJSON_GetObjectItemCaseSensitive(root, "metadata");
+    if (metadata) {
+        cJSON *ts = cJSON_GetObjectItemCaseSensitive(metadata, "unix_timestamp");
+        if (ts) info->timestamp = (time_t)ts->valuedouble;
+        
+        cJSON *winner = cJSON_GetObjectItemCaseSensitive(metadata, "winner");
+        if (winner) {
+            info->has_results = 1;
+            info->winner = winner->valueint;
+            
+            cJSON *final_red = cJSON_GetObjectItemCaseSensitive(metadata, "final_red");
+            if (final_red) info->final_red = final_red->valueint;
+            
+            cJSON *final_blue = cJSON_GetObjectItemCaseSensitive(metadata, "final_blue");
+            if (final_blue) info->final_blue = final_blue->valueint;
+        }
+    }
+    
+    cJSON *config = cJSON_GetObjectItemCaseSensitive(root, "config");
+    if (config) {
+        cJSON *rows = cJSON_GetObjectItemCaseSensitive(config, "bounding_box_y");
+        if (rows) info->rows = rows->valueint;
+        
+        cJSON *cols = cJSON_GetObjectItemCaseSensitive(config, "bounding_box_x");
+        if (cols) info->cols = cols->valueint;
+        
+        cJSON *max_pop = cJSON_GetObjectItemCaseSensitive(config, "max_population");
+        if (max_pop) info->max_population = max_pop->valueint;
+        
+        cJSON *max_rounds = cJSON_GetObjectItemCaseSensitive(config, "max_rounds");
+        if (max_rounds) info->max_rounds = max_rounds->valueint;
+    }
+    
+    cJSON_Delete(root);
+    return 1;
+}
+
+// KI-Agent unterstützt: Append results by parsing, updating, and saving JSON
+void append_protocol_result(const char *filename, GameConfig *c, int winner) {
+    char *json_string = read_file_to_string(filename);
+    if (!json_string) return;
+    
+    cJSON *root = cJSON_Parse(json_string);
+    free(json_string);
+    if (!root) return;
+    
+    cJSON *metadata = cJSON_GetObjectItemCaseSensitive(root, "metadata");
+    if (!metadata) {
+        metadata = cJSON_CreateObject();
+        cJSON_AddItemToObject(root, "metadata", metadata);
+    }
+    
+    cJSON_AddNumberToObject(metadata, "has_results", 1);
+    cJSON_AddNumberToObject(metadata, "winner", winner);
+    cJSON_AddNumberToObject(metadata, "final_red", c->current_red_pop);
+    cJSON_AddNumberToObject(metadata, "final_blue", c->current_blue_pop);
+    
+    if (c->history_count > 0 && c->history_red_pop && c->history_blue_pop) {
+        cJSON *history = cJSON_CreateObject();
+        cJSON_AddNumberToObject(history, "count", c->history_count);
+        
+        cJSON *red_arr = cJSON_CreateArray();
+        cJSON *blue_arr = cJSON_CreateArray();
+        for (int i = 0; i < c->history_count; i++) {
+            cJSON_AddItemToArray(red_arr, cJSON_CreateNumber(c->history_red_pop[i]));
+            cJSON_AddItemToArray(blue_arr, cJSON_CreateNumber(c->history_blue_pop[i]));
+        }
+        cJSON_AddItemToObject(history, "red", red_arr);
+        cJSON_AddItemToObject(history, "blue", blue_arr);
+        cJSON_AddItemToObject(root, "history", history);
+    }
+    
+    char *new_json = cJSON_Print(root);
+    write_string_to_file(filename, new_json);
+    
+    free(new_json);
+    cJSON_Delete(root);
+    printf("Appended results and history to %s\n", filename);
+
+#if defined(PLATFORM_WEB)
+    EM_ASM({
+        FS.syncfs(false, function(err) {
+            if (err) console.error("IndexedDB sync error:", err);
+        });
+    });
+#endif
+}
+
+// KI-Agent unterstützt: List only .json protocol files
 int list_protocol_files(const char *dir_path, ProtocolInfo **out_list) {
     DIR *d = opendir(dir_path);
-    if (!d) {
-        printf("Error: Could not open directory %s\n", dir_path);
-        return 0;
-    }
+    if (!d) return 0;
 
     struct dirent *dir;
     int count = 0;
@@ -208,9 +353,9 @@ int list_protocol_files(const char *dir_path, ProtocolInfo **out_list) {
     ProtocolInfo *list = malloc(capacity * sizeof(ProtocolInfo));
 
     while ((dir = readdir(d)) != NULL) {
-        // Filter for .bio extension
         char *ext = strrchr(dir->d_name, '.');
-        if (ext && strcmp(ext, ".bio") == 0) {
+        // Search ONLY for .json files now! (Hard Cut)
+        if (ext && strcmp(ext, ".json") == 0) {
             ProtocolInfo info;
             snprintf(info.filename, sizeof(info.filename), "%s", dir->d_name);
             snprintf(info.filepath, sizeof(info.filepath), "%s/%s", dir_path, dir->d_name);
@@ -226,91 +371,13 @@ int list_protocol_files(const char *dir_path, ProtocolInfo **out_list) {
     }
     closedir(d);
 
-    if (count > 0) {
-        qsort(list, count, sizeof(ProtocolInfo), compare_protocol_info);
-    }
+    if (count > 0) qsort(list, count, sizeof(ProtocolInfo), compare_protocol_info);
 
     *out_list = list;
     return count;
 }
 
-// KI-Agent unterstützt
-void append_protocol_result(const char *filename, GameConfig *c, int winner) {
-    FILE *f = fopen(filename, "a"); // "a" for append
-    if (!f) return;
-    
-    fprintf(f, "\n#RESULTS\n");
-    fprintf(f, "WINNER %d\n", winner);
-    fprintf(f, "RED %d\n", c->current_red_pop);
-    fprintf(f, "BLUE %d\n", c->current_blue_pop);
-
-    if (c->history_count > 0 && c->history_red_pop && c->history_blue_pop) {
-        fprintf(f, "#HISTORY %d\n", c->history_count);
-        for (int i = 0; i < c->history_count; i++) {
-            fprintf(f, "%d %d\n", c->history_red_pop[i], c->history_blue_pop[i]);
-        }
-    }
-    
-    fclose(f);
-    printf("Appended results and history to %s\n", filename);
-}
-
-// KI-Agent unterstützt
-int load_protocol_metadata(const char *filename, ProtocolInfo *info) {
-    FILE *f = fopen(filename, "r");
-    if (!f) return 0;
-
-    // Initialize defaults
-    info->has_results = 0;
-    info->winner = 0;
-    info->final_red = 0;
-    info->final_blue = 0;
-
-    char line[256];
-    if (!fgets(line, sizeof(line), f)) {
-        fclose(f);
-        return 0;
-    }
-
-    int version;
-    long long temp_ts;
-    int items = sscanf(line, "%d %lld %d %d %d %d", 
-                       &version, &temp_ts, &info->rows, &info->cols, 
-                       &info->max_population, &info->max_rounds);
-
-    if (items == 6 && version == 2) {
-        info->timestamp = (time_t)temp_ts;
-        // Header OK
-    } else {
-        // Try legacy
-        items = sscanf(line, "%d %d %d", &info->rows, &info->cols, &info->max_population);
-        if (items == 3) {
-            info->timestamp = 0;
-            info->max_rounds = 1000;
-        } else {
-            fclose(f);
-            return 0; // Unknown format
-        }
-    }
-
-    // Scan for #RESULTS footer
-    // We continue reading line by line until end
-    while (fgets(line, sizeof(line), f)) {
-        if (strncmp(line, "#RESULTS", 8) == 0) {
-            info->has_results = 1;
-        }
-        if (info->has_results) {
-            if (strncmp(line, "WINNER", 6) == 0) sscanf(line, "WINNER %d", &info->winner);
-            if (strncmp(line, "RED", 3) == 0) sscanf(line, "RED %d", &info->final_red);
-            if (strncmp(line, "BLUE", 4) == 0) sscanf(line, "BLUE %d", &info->final_blue);
-        }
-    }
-
-    fclose(f);
-    return 1;
-}
-
-// KI-Agent unterstützt
+// Legacy markdown export remains for backward compatibility of external tools
 void export_stats_md(const char *filename, GameConfig *c, int winner) {
     FILE *f = fopen(filename, "w");
     if (!f) return; 

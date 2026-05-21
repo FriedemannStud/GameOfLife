@@ -18,8 +18,8 @@ CC = gcc
 CFLAGS = -Wall -Wextra -std=c99 -O3 -fopenmp
 
 # 3. Dateilisten
-SOURCES = main.c game_logic.c gui.c file_io.c
-HEADERS = game_logic.h gui.h file_io.h
+SOURCES = main.c game_logic.c gui.c file_io.c cJSON.c
+HEADERS = game_logic.h gui.h file_io.h cJSON.h
 
 # 4. Standard-Ziel
 all: $(TARGET)

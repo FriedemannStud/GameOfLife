@@ -40,3 +40,6 @@ feat(wasm): Persistent Browser Storage (IDBFS) - Added automatic creation and mo
 fix(load): Simulation Logic After Load - Resolved a critical bug where loaded configurations failed to simulate (black screen). - Fixed the 'load_grid' function to properly initialize and update the 'chunk_map' (spatial partitioning) for loaded cells.
 
 perf(build): Robust Docker Build Environment - Renamed 'Makefile.web' to 'Makefile.wasm' to avoid GNU Make naming conflicts with legacy 'tangle' rules. - Implemented automatic 'emcc' path detection in 'Makefile.wasm' to ensure the compiler is found even in non-interactive Docker shells.
+
+21.05.2026:
+feat ADR-0009: Multiplayer JSON Ecosystem (Hard Cut) - Vollständiger Austausch des veralteten `.bio` Textformats durch ein web-kompatibles `.json` Format für die Client-Server-Kommunikation. - Spezifikation von Ligen (Einsteiger, Rookie, Champions) mit individuellen Bounding-Boxen. - Einführung relativer Koordinaten zur Entkopplung von Mustern und Spielfeldpositionen. - Integration der quelloffenen `cJSON` Bibliothek in die C-Codebasis und Anpassung der Build-Systeme. - Komplettes Refactoring von `file_io.c` (`save_grid`, `load_grid`) zur Vermeidung von Format-Fragmentierung (Single Source of Truth).

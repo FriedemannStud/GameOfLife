@@ -534,7 +534,7 @@ void UpdateDrawFrame(void) {
                     }
                 }
                 
-                if (IsKeyPressed(KEY_S)) save_grid("setup.bio", gui_world, &config);
+                if (IsKeyPressed(KEY_S)) save_grid("setup.json", gui_world, &config);
                 
                 if (IsKeyPressed(KEY_L)) {
                     fileCount = list_protocol_files("biotope_results", &fileList);
@@ -600,7 +600,7 @@ void UpdateDrawFrame(void) {
                         // Auto-Save and Start
                         char autoFilename[128];
                         time_t now = time(NULL);
-                        strftime(autoFilename, sizeof(autoFilename), "biotope_results/run_%Y%m%d_%H%M%S.bio", localtime(&now));
+                        strftime(autoFilename, sizeof(autoFilename), "biotope_results/run_%Y%m%d_%H%M%S.json", localtime(&now));
                         strcpy(currentProtocolFilename, autoFilename);
                         save_grid(autoFilename, gui_world, &config);
                         state = STATE_IGNITION;   

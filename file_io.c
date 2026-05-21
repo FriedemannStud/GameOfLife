@@ -28,8 +28,8 @@ int save_grid(const char *filename, World *w, GameConfig *c) {
     
     // v2 Header: Version Timestamp Rows Cols MaxPop MaxRounds Delay
     // Version 2
-    long timestamp = (long)time(NULL);
-    fprintf(f, "2 %ld %d %d %d %d %d\n", 
+    long long timestamp = (long long)time(NULL);
+    fprintf(f, "2 %lld %d %d %d %d %d\n", 
             timestamp, 
             c->rows, c->cols, 
             c->max_population, 
@@ -77,7 +77,7 @@ int load_grid(const char *filename, World *w, GameConfig *c) {
     int rows, cols, max_pop;
     int max_rounds = 1000; // Default legacy
     int delay_ms = 100;    // Default legacy
-    long timestamp = 0;
+    long long timestamp = 0;
     int version = 1;
 
     char line[256];
@@ -87,11 +87,11 @@ int load_grid(const char *filename, World *w, GameConfig *c) {
     }
     
     // Try parsing as v2
-    int items = sscanf(line, "%d %ld %d %d %d %d %d", 
+    int items = sscanf(line, "%d %lld %d %d %d %d %d", 
                        &version, &timestamp, &rows, &cols, &max_pop, &max_rounds, &delay_ms);
                        
     if (items == 7 && version == 2) {
-        printf("Detected Protocol v2. Timestamp: %ld\n", timestamp);
+        printf("Detected Protocol v2. Timestamp: %lld\n", timestamp);
     } else {
         // Fallback to legacy v1
         items = sscanf(line, "%d %d %d", &rows, &cols, &max_pop);
@@ -116,6 +116,13 @@ int load_grid(const char *filename, World *w, GameConfig *c) {
             fclose(f);
             return 0;
         }
+
+        // KI-Agent unterstützt: Also resize chunk map for Epic Scale performance
+        if (w->chunk_map) free(w->chunk_map);
+        w->chunk_rows = (rows + CHUNK_SIZE - 1) / CHUNK_SIZE;
+        w->chunk_cols = (cols + CHUNK_SIZE - 1) / CHUNK_SIZE;
+        w->chunk_map = (unsigned char*)calloc(w->chunk_rows * w->chunk_cols, sizeof(unsigned char));
+
         w->rows = rows;
         w->cols = cols;
         c->rows = rows;
@@ -130,6 +137,12 @@ int load_grid(const char *filename, World *w, GameConfig *c) {
     // Clear grid (all cells including ghost borders)
     int stride = cols + 2;
     for(int i=0; i < (rows + 2) * (cols + 2); i++) w->grid[i] = DEAD;
+    
+    // KI-Agent unterstützt: Clear chunk map too
+    if (w->chunk_map) {
+        for (int i = 0; i < w->chunk_rows * w->chunk_cols; i++) w->chunk_map[i] = 0;
+    }
+
     c->current_blue_pop = 0;
     c->current_red_pop = 0;
     
@@ -145,6 +158,9 @@ int load_grid(const char *filename, World *w, GameConfig *c) {
                 w->grid[idx] = team;
                 if (team == TEAM_RED) c->current_red_pop++;
                 if (team == TEAM_BLUE) c->current_blue_pop++;
+
+                // KI-Agent unterstützt: Activate the chunk for simulation!
+                activate_chunk_at(w, r_in, c_in);
             }
         }
     }
@@ -257,11 +273,13 @@ int load_protocol_metadata(const char *filename, ProtocolInfo *info) {
     }
 
     int version;
-    int items = sscanf(line, "%d %ld %d %d %d %d", 
-                       &version, &info->timestamp, &info->rows, &info->cols, 
+    long long temp_ts;
+    int items = sscanf(line, "%d %lld %d %d %d %d", 
+                       &version, &temp_ts, &info->rows, &info->cols, 
                        &info->max_population, &info->max_rounds);
 
     if (items == 6 && version == 2) {
+        info->timestamp = (time_t)temp_ts;
         // Header OK
     } else {
         // Try legacy

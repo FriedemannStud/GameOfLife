@@ -5,6 +5,12 @@
 #include <stdlib.h> // For abs
 #include <time.h>   // For time()
 #include <string.h> // For strncpy
+#include <sys/stat.h> // For mkdir
+#include <errno.h>    // For errno
+
+#ifdef PLATFORM_WEB
+    #include <emscripten/emscripten.h>
+#endif
 
 #ifndef PLATFORM_WEB
     #define MAX_GRID_SIZE 5000
@@ -54,8 +60,6 @@ static RenderTexture2D pingPongTarget[2] = { 0 };
 static int pingPongIndex = 0;
 static int locPrevFrame = -1;
 static int locFadeRate = -1;
-static int locUseMetaballs = -1;
-static int locRenderSize = -1;
 static bool useMetaballs = false;
 
 void DrawGridAndCells(GameConfig *config, int screenWidth, int screenHeight, bool drawGridLines) {
@@ -116,8 +120,6 @@ void DrawGridAndCells(GameConfig *config, int screenWidth, int screenHeight, boo
         // Get Shader Locations
         locPrevFrame = GetShaderLocation(biotopeShader, "previousFrame");
         locFadeRate = GetShaderLocation(biotopeShader, "fadeRate");
-        locUseMetaballs = GetShaderLocation(biotopeShader, "useMetaballs");
-        locRenderSize = GetShaderLocation(biotopeShader, "renderSize");
     }
     
     // --- 2. Update Pixel Data (CPU side) ---
@@ -310,7 +312,14 @@ static double ignitionStartTime = 0.0;
 void init_gui_app(void) {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(screenWidth, screenHeight, "Biotope - Game of Life");
-    
+
+    // KI-Agent unterstützt: Ensure results directory exists
+#ifdef _WIN32
+    mkdir("biotope_results");
+#else
+    mkdir("biotope_results", 0777);
+#endif
+
     // Observer Camera Init
     observer_camera.zoom = 1.0f;
     observer_camera.target = (Vector2){ 0, 0 };
@@ -321,6 +330,20 @@ void init_gui_app(void) {
     SetTargetFPS(120);
     biotopeShader = LoadShader(0, "resources/shaders/biotope_base.fs");
 #else
+    // KI-Agent unterstützt: WASM Persistent Storage Setup
+    EM_ASM({
+        try {
+            FS.mkdir('/biotope_results');
+        } catch (e) {
+            // Directory might already exist, ignore
+        }
+        FS.mount(FS.filesystems.IDBFS, {}, '/biotope_results');
+        FS.syncfs(true, function(err) {
+            if (err) console.error("IDBFS Sync Error:", err);
+            else console.log("Biotope Archive Synced from IndexedDB");
+        });
+    });
+
     biotopeShader = LoadShader(0, "resources/shaders/biotope_base_web.fs");
 #endif
 }
@@ -541,9 +564,9 @@ void UpdateDrawFrame(void) {
                         }
                     }
 
-                    // 2. Sprinkle cells: Exactly 3% of the total grid area
+                    // 2. Sprinkle cells: Exactly 37.5% of the total grid area
                     int totalCells = config.rows * config.cols;
-                    int targetPop = (int)(totalCells * 0.03f);
+                    int targetPop = (int)(totalCells * 0.375f);
                     if (targetPop < 1) targetPop = 1;
 
                     // Sync config max_population to this 3% for the UI counter

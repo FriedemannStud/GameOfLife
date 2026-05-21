@@ -1,7 +1,15 @@
-# Makefile.web
-CC = emcc
+# Makefile.wasm
+# KI-Agent unterstützt: Auto-detect emcc path for Docker
+EMCC_CHECK := $(shell which emcc 2> /dev/null)
+ifdef EMCC_CHECK
+    CC = emcc
+else
+    # Fallback for Docker environment where PATH might not be sourced in make
+    CC = /opt/emsdk/upstream/emscripten/emcc
+endif
+
 CFLAGS = -Os -Wall -I. -I/opt/raylib_web/include -s USE_GLFW=3 -s ASYNCIFY -s TOTAL_MEMORY=67108864 -s ALLOW_MEMORY_GROWTH=1 -DPLATFORM_WEB
-LDFLAGS = -L/opt/raylib_web/lib -lraylib
+LDFLAGS = -L/opt/raylib_web/lib -lraylib --preload-file resources -lidbfs.js -s FORCE_FILESYSTEM=1
 
 SOURCES = main.c game_logic.c gui.c file_io.c
 HEADERS = game_logic.h gui.h file_io.h

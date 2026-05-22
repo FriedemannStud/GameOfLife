@@ -74,7 +74,7 @@ Wenn du keine Bibliotheken (wie Raylib oder Emscripten) lokal installieren möch
    docker-compose exec c-dev bash
    ```
 3. **Innerhalb von Docker bauen:**
-   Jetzt bist du "im" System und kannst einfach `make` oder `make -f Makefile.web` nutzen.
+   Jetzt bist du "im" System und kannst einfach `make` oder `make -f Makefile.wasm` nutzen.
 
 ---
 

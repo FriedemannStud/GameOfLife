@@ -20,12 +20,16 @@ CFLAGS = -Wall -Wextra -std=c99 -O3 -fopenmp
 # 3. Dateilisten
 SOURCES = main.c game_logic.c gui.c file_io.c cJSON.c
 HEADERS = game_logic.h gui.h file_io.h cJSON.h
+HEADLESS_SOURCES = main_headless.c game_logic.c file_io.c cJSON.c
 
 # 4. Standard-Ziel
 all: $(TARGET)
 
 $(TARGET): $(SOURCES) $(HEADERS)
 	$(CC) $(SOURCES) $(CFLAGS) $(LDFLAGS) -o $(TARGET)
+
+headless: $(HEADLESS_SOURCES) $(HEADERS)
+	$(CC) $(HEADLESS_SOURCES) $(CFLAGS) -o biotope_headless -lm -lpthread
 
 # 5. Aufräumen
 clean:

@@ -16,10 +16,26 @@ services:
     volumes:
       - ./backend:/app
       - ./biotope_results:/app/results
+      - ./biotope_headless:/app/biotope_headless
     working_dir: /app
     ports:
       - "8000:8000"
     command: /bin/bash -c "pip install -r requirements.txt && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    env_file:
+      - .env
     # KI-Agent unterstützt: Environment variables for development
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  matchmaker:
+    image: python:3.11-slim
+    volumes:
+      - ./backend:/app
+      - ./biotope_results:/app/results
+      - ./biotope_headless:/app/biotope_headless
+    working_dir: /app
+    env_file:
+      - .env
+    command: /bin/bash -c "pip install -r requirements.txt && apt-get update && apt-get install -y libgomp1 && python3 app/worker.py"
     environment:
       - PYTHONUNBUFFERED=1

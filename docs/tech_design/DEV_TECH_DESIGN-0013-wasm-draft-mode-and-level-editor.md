@@ -1,6 +1,6 @@
-# Technical Design: WASM Draft Mode and Level Editor
+# Technical Design: Mobile-First Web Draft Editor
 
-**Version:** 1.0
+**Version:** 2.0
 **Date:** 2026-05-22
 **Author:** Gemini CLI
 **Related Documents:** [ADR-0013](../adr/ADR-0013-wasm-draft-mode-and-level-editor.md), [DEV_SPEC-0013](../specs/DEV_SPEC-0013-wasm-draft-mode-and-level-editor.md)
@@ -9,7 +9,7 @@
 
 ### 1. Introduction
 
-This document provides a detailed technical design for the **WASM Draft Mode and Level Editor** feature. It outlines the integration of interactive pattern editing into the Raylib-based GUI, the management of persistent player identities via browser `LocalStorage`, and the asynchronous submission protocol to the FastAPI backend.
+This document provides the technical design for the **Standalone Web Draft Editor**. Moving away from the integrated Raylib C editor, this solution focuses on a lightweight, mobile-first web interface to maximize accessibility and ease of use on smartphones.
 
 ---
 
@@ -17,125 +17,117 @@ This document provides a detailed technical design for the **WASM Draft Mode and
 
 #### 2.1. Component Overview
 
-*   **Frontend (C / Raylib / WASM):**
-    *   **UI State Manager:** A state machine in `gui.c` to toggle between `UI_STATE_VIEWER` and `UI_STATE_DRAFT`.
-    *   **Interactive Grid:** Logic to capture mouse clicks and translate them to relative coordinates within an 8x8 drafting box.
-    *   **Identity Manager:** Uses `EM_JS` to bridge C with JavaScript for UUID generation and `LocalStorage` persistence.
-    *   **Submission Engine:** Uses `cJSON` for payload construction and `emscripten_fetch` for non-blocking HTTP POST requests.
+*   **Micro-Frontend (HTML5 / CSS3 / Vanilla JS):**
+    *   **Responsive Grid:** A CSS Grid-based 8x8 interactive area.
+    *   **State Store:** A simple JavaScript object managing the grid state and metadata.
+    *   **Identity Manager:** Native JavaScript `localStorage` handling for `player_id` persistence.
+    *   **Networking:** Native `fetch()` API for asynchronous JSON submissions.
 
 *   **Backend (Python / FastAPI):**
-    *   **Config API:** Existing `/api/v1/submit_config` endpoint.
-    *   **Validation:** Pydantic-based enforcement of the 8x8 box and 24-cell limit (redundant to frontend validation for security).
+    *   **API:** `/api/v1/submit_config` endpoint.
+    *   **Security:** CORS middleware configured to allow requests from the web editor's origin.
 
-*   **Database (MongoDB Atlas):**
-    *   Stores `submissions` and `players`.
+*   **Main Application (C / Raylib / WASM):**
+    *   **Viewer:** Continues to function as the primary simulation and tournament hub.
+    *   **Redirection:** Links users to the `editor.html` via a simple URL or button.
 
 #### 2.2. Component Interaction Diagram
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant Raylib as GUI (Raylib/C)
-    participant JS as JS Bridge (LocalStorage)
+    participant Web as Web Editor (HTML/JS)
+    participant LS as LocalStorage
     participant API as FastAPI Backend
     participant DB as MongoDB Atlas
 
-    User->>Raylib: Switch to Draft Mode
-    Raylib->>JS: Check for existing player_id
-    JS-->>Raylib: Return UUID (or generate new)
-    User->>Raylib: Design Pattern (Click cells)
-    Raylib->>Raylib: Validate Biomass (<= 24)
-    User->>Raylib: Click Submit
-    Raylib->>Raylib: Serialize to JSON (cJSON)
-    Raylib->>API: POST /api/v1/submit_config
+    User->>Web: Open Editor URL
+    Web->>LS: Retrieve player_id
+    LS-->>Web: UUID (or generate new)
+    User->>Web: Toggle cells (8x8)
+    Web->>Web: Enforce 24-cell limit
+    User->>Web: Click Submit
+    Web->>API: POST /api/v1/submit_config (JSON)
     API->>DB: Upsert Player & Insert Submission
-    API-->>Raylib: 201 Created
-    Raylib->>User: Show Success Message
+    API-->>Web: 201 Created
+    Web->>User: Show Success Notification
 ```
 
 ---
 
 ### 3. Data Model Specification
 
-The frontend will construct a JSON object matching the `Submission` Pydantic model:
+The payload sent to `/api/v1/submit_config` strictly follows the `Submission` Pydantic model:
 
 ```json
 {
   "metadata": {
-    "player_id": "uuid-string-here",
-    "nickname": "UserEnteredName",
+    "player_id": "83be7b71-29e3-460d-85f2-959648259d60",
+    "nickname": "MobileGamer",
     "league": "local"
   },
   "config": {
     "bounding_box_x": 8,
     "bounding_box_y": 8,
-    "cells": [[x1, y1], [x2, y2], ...]
+    "cells": [[0, 0], [1, 1], [2, 2]]
   }
 }
 ```
 
 ---
 
-### 4. Identity and Persistence Specification
+### 4. Implementation Details
 
-To avoid requiring a login system while maintaining ranking continuity, we use **Persistent Guest Identities**:
+#### 4.1. The Grid (CSS & JS)
+- **HTML:** A container `<div id="grid-container">` with 64 `<div class="cell">` elements.
+- **CSS:** `display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px;`
+- **JS:** `eventDelegation` on the container to capture clicks. Toggle a `data-active` attribute.
 
-1.  **C-Function:** `char* get_or_create_player_id()`
-2.  **Implementation:**
-    ```c
-    #ifdef PLATFORM_WEB
-    EM_JS(char*, js_get_player_id, (), {
-        let id = localStorage.getItem('biotope_player_id');
-        if (!id) {
-            id = crypto.randomUUID();
-            localStorage.setItem('biotope_player_id', id);
-        }
-        let lengthBytes = lengthBytesUTF8(id) + 1;
-        let stringOnWasmHeap = _malloc(lengthBytes);
-        stringToUTF8(id, stringOnWasmHeap, lengthBytes);
-        return stringOnWasmHeap;
-    });
-    #endif
-    ```
+#### 4.2. Identity Persistence
+```javascript
+function getPlayerId() {
+    let id = localStorage.getItem('biotope_player_id');
+    if (!id) {
+        id = crypto.randomUUID();
+        localStorage.setItem('biotope_player_id', id);
+    }
+    return id;
+}
+```
+
+#### 4.3. Validation Logic
+```javascript
+function toggleCell(x, y) {
+    const activeCells = getActiveCells();
+    if (isCellActive(x, y)) {
+        removeCell(x, y);
+    } else if (activeCells.length < 24) {
+        addCell(x, y);
+    } else {
+        showError("Biomass limit (24) reached!");
+    }
+}
+```
 
 ---
 
-### 5. Frontend Specification (gui.c)
+### 5. Integration with Raylib Viewer
 
-#### 5.1. Grid Interaction Logic
-In `UI_STATE_DRAFT`, the `UpdateGUI()` loop will:
-1.  Calculate grid cell under mouse: `int gx = (mx - grid_offset_x) / cell_size`.
-2.  Restrict to `0 <= gx < 8` and `0 <= gy < 8`.
-3.  If `IsMouseButtonPressed(MOUSE_LEFT_BUTTON)`:
-    - If cell is dead AND `count < 24`: Add cell, `count++`.
-    - If cell is alive: Remove cell, `count--`.
-
-#### 5.2. UI Elements
-- **Overlay:** A semi-transparent `Color{ 0, 121, 241, 50 }` rectangle over the 8x8 area.
-- **Counter:** `DrawText(TextFormat("Biomass: %d/24", count), ...)`
-- **Nickname:** A simple input box using `GetCharPressed()` to fill a `char nickname[32]` buffer.
-- **Submit Button:** A `DrawRectangleRec` that triggers the submission logic when clicked.
-
-#### 5.3. Asynchronous Submission
-Using `emscripten_fetch`:
-- `emscripten_fetch_attr_t attr;`
-- `attr.requestMethod = "POST";`
-- `attr.onsuccess = handle_submit_success;`
-- `attr.onerror = handle_submit_error;`
-- Payload: `cJSON_PrintUnformatted(root)`.
+The Raylib application (`gui.c`) will provide a transition point:
+- **Web-Only:** A button using `OpenURL("editor.html")`.
+- **Desktop:** Display a QR code generated locally (or a static image) that points to the hosted URL of the editor.
 
 ---
 
 ### 6. Security Considerations
 
-- **Server-Side Validation:** The backend MUST re-validate the 8x8 box and 24-cell limit. We do not trust the WASM client.
-- **CORS:** The FastAPI backend must be configured to allow requests from the domain hosting `biotope.html`.
-- **Sanitization:** Nicknames must be sanitized on the backend to prevent injection attacks in future leaderboards.
+- **CORS:** Ensure `CORSMiddleware` in FastAPI includes the editor's domain.
+- **Input Sanitization:** Backend continues to validate all business rules.
+- **Payload Size:** Request body size is limited to prevent DoS attacks.
 
 ---
 
 ### 7. Performance Considerations
 
-- **Non-Blocking IO:** `emscripten_fetch` is used to ensure the GUI loop doesn't freeze while waiting for the network response.
-- **Memory Management:** `cJSON` objects must be explicitly deleted using `cJSON_Delete()` after serialization to prevent leaks in the long-running WASM environment.
-- **Redraw Efficiency:** Grid interaction logic is only executed when `UI_STATE_DRAFT` is active.
+- **Asset Weight:** Total page weight targets < 50KB for instant loading on mobile networks.
+- **Battery Life:** No continuous simulation loop in the editor; UI only updates on interaction.

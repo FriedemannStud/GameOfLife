@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 from .models import Submission, DBSubmission, Player
 from .validators import validate_biotope_rules
@@ -7,6 +8,15 @@ from .database import get_db
 # KI-Agent unterstützt: Biotope Backend with MongoDB integration for Matchmaking
 
 app = FastAPI(title="Biotope API")
+
+# KI-Agent unterstützt: Enable CORS for Mobile Web Editor
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # Allow all origins for MVP / Mobile access
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/")

@@ -383,6 +383,13 @@ void UpdateDrawFrame(void) {
             else strcpy(statusMsg, "METABALLS: OFF");
             statusTimer = 2.0f;
         }
+
+        // KI-Agent unterstützt: Web Editor Link (Phase 4.1)
+        Rectangle editorBtnRec = { (float)screenWidth - 220, 15, 200, 30 };
+        bool hoverEditor = (state != STATE_PUZZLE) && CheckCollisionPointRec(GetMousePosition(), editorBtnRec);
+        if (hoverEditor && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            OpenURL("editor.html");
+        }
         
         // --- Logic per State ---
         switch (state) {                 // Zustandsmaschine - Wert von State gibt Code-Block-Ausführung vor 
@@ -836,6 +843,13 @@ void UpdateDrawFrame(void) {
         // Draw HUD Backgrounds (Header & Footer)
         DrawRectangle(0, 0, screenWidth, 60, THEME_HUD); // Header // Raylib Zeichenfunktion: Rechteck zeichnen
         DrawRectangle(0, screenHeight - 40, screenWidth, 40, THEME_HUD); // Footer
+
+        // KI-Agent unterstützt: Draw Web Editor Button (Phase 4.1)
+        if (state != STATE_PUZZLE) {
+            DrawRectangleRec(editorBtnRec, hoverEditor ? THEME_BLUE : THEME_BG);
+            DrawRectangleLinesEx(editorBtnRec, 1, THEME_BLUE);
+            DrawText("MOBILE EDITOR", (int)editorBtnRec.x + 40, (int)editorBtnRec.y + 7, 16, hoverEditor ? THEME_BG : THEME_BLUE);
+        }
 
         // Draw Status Message Overlay
         if (statusTimer > 0) {

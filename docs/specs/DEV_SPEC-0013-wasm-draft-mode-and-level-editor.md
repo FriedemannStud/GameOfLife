@@ -1,63 +1,61 @@
-# Requirements Analysis & Specification: WASM Draft Mode and Level Editor
+# Requirements Analysis & Specification: Mobile-First Web Draft Editor
 
-This document details the requirements for the interactive pattern editor and submission system, as described in **ADR-0013**.
+This document details the requirements for the standalone web-based pattern editor and submission system, as described in **ADR-0013**.
 
 ---
 
 ### 1. Detailed Requirements Specification
 
-The **Draft Mode** (Level Editor) is an extension of the existing Biotope UI aimed at enabling user-generated content directly within the browser. 
+The **Draft Editor** is a standalone web application designed for smartphones, enabling users to create and submit Game of Life patterns for the competitive Biotope platform.
 
 #### **Core Functionality:**
-- **Interactive Grid Editing:** Users must be able to toggle cell states (Alive/Dead) by clicking on an 8x8 area of the grid.
-- **Visual Constraints:** An 8x8 "Bounding Box" must be rendered over the arena (which is 16x8) to guide the user.
-- **Biomass Validation:** The UI must display a real-time counter of placed cells (e.g., "Cells: 12/24"). Placements beyond 24 cells must be blocked.
-- **Identity Management:**
-    - **Nickname:** A text input field for the player's display name.
-    - **Automatic Player ID:** The system must automatically generate a unique `player_id` (UUID format). This ID should be persisted in the browser's `LocalStorage` so the user maintains their identity across sessions.
-- **Submission Lifecycle:**
-    - A "Submit" button that becomes active only if the pattern is valid (1-24 cells).
-    - Asynchronous transmission of the JSON configuration to the FastAPI backend.
-    - Visual feedback (Success/Error messages) following the submission attempt.
+- **Touch-Optimized Grid Editing:** Users toggle cell states (Alive/Dead) by tapping on a responsive 8x8 grid.
+- **Biomass Validation:** Real-time display of placed cells (e.g., "Cells: 12/24"). The UI prevents adding more than 24 cells.
+- **User Identity:**
+    - **Nickname:** A standard HTML text input field.
+    - **Persistent Player ID:** Automatic generation of a unique UUID on first visit, stored in `localStorage`.
+- **Submission System:**
+    - "Submit" button active only when the pattern is valid (1-24 cells).
+    - Asynchronous transmission to the FastAPI backend.
+    - Clear visual feedback for "Submitting...", "Success", and "Error".
 
 #### **Technical Constraints:**
-- Implemented in `gui.c` using Raylib.
-- Asynchronous networking via Emscripten's fetch API or JS injection.
-- JSON construction using `cJSON`.
+- **Technology Stack:** HTML5, CSS3 (Mobile-First), Vanilla JavaScript.
+- **Responsive Design:** Must fit comfortably on standard smartphone screens (portrait mode).
+- **Communication:** Browser `fetch()` API for JSON POST requests.
+- **Hosting:** Served as a static page (e.g., `editor.html`) alongside the main Biotope viewer or via a dedicated path.
 
 ---
 
 ### 2. User Stories & Acceptance Criteria
 
-**Epic: Pattern Design and Submission**
+**Epic: Mobile Pattern Design and Submission**
 
-*   **User Story 1: Interactive Editing**
-    *   **As a player,** I want to click on the grid to place or remove cells, **so that** I can design my competitive pattern.
+*   **User Story 1: Touch-Based Editing**
+    *   **As a mobile player,** I want to tap on a grid to design my pattern, **so that** I can easily participate from my smartphone.
     *   **Acceptance Criteria:**
-        *   Clicking an empty cell within the 8x8 box makes it alive.
-        *   Clicking a living cell removes it.
-        *   Cell placement is restricted to the defined 8x8 drafting area.
+        *   Tapping a grid cell toggles its state.
+        *   Grid is responsive and centered on mobile viewports.
+        *   Visual feedback on cell state (e.g., Neon Blue for Alive, Dark for Dead).
 
-*   **User Story 2: Real-time Validation**
-    *   **As a player,** I want to see how many cells I have placed, **so that** I don't exceed the biomass limit.
+*   **User Story 2: Mobile-Native Input**
+    *   **As a player,** I want to use my phone's keyboard to enter my name, **so that** I can identify my submissions.
     *   **Acceptance Criteria:**
-        *   The UI displays a counter (Current/Max).
-        *   The system prevents adding more than 24 cells.
-        *   The "Submit" button is disabled if 0 cells are placed.
+        *   Standard HTML text input activates the native mobile keyboard.
+        *   Input is clearly labeled and accessible.
 
-*   **User Story 3: Automatic Identity**
-    *   **As a player,** I want the system to remember me without forcing me to manage an ID, **so that** I can focus on designing patterns.
+*   **User Story 3: Identity Persistence**
+    *   **As a player,** I want the system to remember my ID on my phone, **so that** my ELO rating is correctly tracked across multiple submissions.
     *   **Acceptance Criteria:**
-        *   On first launch, a unique UUID is generated as `player_id`.
-        *   The `player_id` is stored in the browser's `LocalStorage`.
-        *   Subsequent visits retrieve the existing `player_id`.
+        *   UUID is generated once and stored in `localStorage`.
+        *   Subsequent submissions use the same `player_id`.
 
-*   **User Story 4: Pattern Submission**
-    *   **As a player,** I want to submit my pattern to the tournament, **so that** I can compete against others.
+*   **User Story 4: Instant Feedback & Submission**
+    *   **As a player,** I want to know if my pattern is valid before I hit submit, **so that** I don't waste time on rejected attempts.
     *   **Acceptance Criteria:**
-        *   Pressing "Submit" sends a valid JSON (Metadata + Config) to `/api/v1/submit_config`.
-        *   The UI displays a "Sending..." state.
-        *   A success message is shown upon `201 Created` response.
+        *   Real-time counter (X/24).
+        *   Submit button is disabled if rules are violated.
+        *   Success message provides confirmation after submission.
 
 ---
 
@@ -65,52 +63,32 @@ The **Draft Mode** (Level Editor) is an extension of the existing Biotope UI aim
 
 *   **Prioritization (MoSCoW Method):**
     *   **Must-Have (MVP):**
-        *   Toggle between "Simulation" and "Draft" modes.
-        *   8x8 Grid interaction (Place/Remove).
-        *   Automatic UUID generation and persistence (LocalStorage).
-        *   Submit button with API integration.
+        *   Responsive 8x8 Grid.
+        *   Cell toggle logic.
+        *   `localStorage` for `player_id`.
+        *   API integration (POST to `/api/v1/submit_config`).
     *   **Should-Have:**
-        *   Visual Bounding Box overlay.
-        *   Nickname text input field.
+        *   Visual polish (matching Biotope aesthetic).
         *   Success/Error toast notifications.
+        *   Loading spinner during submission.
     *   **Could-Have:**
-        *   "Clear Grid" button.
-        *   "Test Simulation" button (local preview before submit).
-    *   **Won't-Have (in this increment):**
-        *   Multi-layer patterns.
-        *   Advanced brush tools.
+        *   "Reset Grid" button.
+        *   QR Code link from the main Biotope viewer.
 
 *   **Dependencies:**
-    1.  **Emscripten/WASM Build:** The project must be buildable via `Makefile.wasm`.
-    2.  **FastAPI Backend:** The `/api/v1/submit_config` endpoint must be accessible (CORS configured).
-    3.  **cJSON Integration:** Required for generating the submission payload in C.
+    1.  **Backend Accessibility:** The API must have CORS enabled for the domain where the editor is hosted.
+    2.  **Schema Alignment:** The JSON payload must strictly match the `Submission` Pydantic model in the backend.
 
 ---
 
-### 4. Product Backlog
-
-| ID | Epic | User Story / Task | Priority |
-| :-- | :--- | :--- | :--- |
-| 1 | UI/UX | Implement State Machine (Sim/Draft) | Must |
-| 2 | Interaction | Mouse-based grid cell toggling | Must |
-| 3 | Identity | Automatic UUID generation & LocalStorage persistence | Must |
-| 4 | Networking | Emscripten-based JSON POST submission | Must |
-| 5 | Validation | Real-time cell counter and 24-cell limit | Must |
-| 6 | UI/UX | Nickname input field | Should |
-| 7 | UI/UX | Bounding Box visual overlay | Should |
-| 8 | Feedback | Status notifications (Success/Fail) | Should |
-
----
-
-### 5. Definition of Done (DoD)
+### 4. Definition of Done (DoD)
 
 A Product Backlog Item is considered "Done" when:
 
-*   **Code Quality:** C code adheres to `docs/CODING_STYLE.md` (snake_case, AI attribution).
+*   **Responsiveness:** The UI is fully functional on iOS (Safari) and Android (Chrome).
 *   **Validation:** 
-    *   The editor correctly prevents >24 cell placements.
-    *   The generated JSON matches the backend's expected schema.
-*   **Networking:** Submissions are successfully received and stored in MongoDB Atlas via the API.
-*   **Persistence:** `player_id` survives a browser refresh.
-*   **WASM Compatibility:** The feature works seamlessly in Chrome/Firefox/Safari via the `biotope.html` interface.
-*   **Documentation:** Updates to `CHANGELOG.md` and relevant technical docs are completed.
+    *   Frontend blocks >24 cell placements.
+    *   Backend confirms acceptance of generated JSON.
+*   **Networking:** `fetch()` call handles network errors gracefully.
+*   **Identity:** `player_id` is successfully retrieved from `localStorage` on reload.
+*   **Documentation:** `CHANGELOG.md` reflects the new web-based editor.

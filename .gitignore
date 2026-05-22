@@ -1,12 +1,27 @@
-# Compiled Binaries
+# --- Environment and Secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Compiled Binaries (C/C++) ---
+biotope
+biotope.exe
+biotope_headless
 main
 game
 test_logic
-*.exe
 *.out
 *.app
 
-# Objects and Libraries
+# --- WebAssembly (WASM) Outputs ---
+biotope.js
+biotope.wasm
+biotope.data
+biotope.html.proxy.js
+
+# --- Objects and Libraries ---
 *.o
 *.obj
 *.a
@@ -14,17 +29,48 @@ test_logic
 *.so
 *.dll
 
-# IDEs and Editors
+# --- Python (Backend & Scripts) ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv
+venv/
+ENV/
+.python-version
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
+# --- IDEs and Editors ---
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+*.sublime-project
+*.sublime-workspace
 
-# OS specific files
+# --- OS specific files ---
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
-# Project specific results
+# --- Project specific results & Temporary files ---
 biotope_results/
-biotope_results_*.md
+biotope.data
+result*.json
+setup.json
+test_*.json
+biotope.html
+!docs/specs/*.md
+!docs/adr/*.md
+!docs/tasks/*.md
+!docs/tech_design/*.md
+
+# --- Logs ---
+*.log
+docker-compose.override.yml

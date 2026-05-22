@@ -1,0 +1,15 @@
+{
+	"winner":	"draw",
+	"generations":	100,
+	"timestamp":	"2026-05-22T07:48:29Z",
+	"red":	{
+		"player_id":	"api_user",
+		"nickname":	"api_tester",
+		"population":	3
+	},
+	"blue":	{
+		"player_id":	"unknown",
+		"nickname":	"unknown",
+		"population":	3
+	}
+}

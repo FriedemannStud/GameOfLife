@@ -13,19 +13,19 @@ The primary goal is to transform the local Game of Life simulation into a distri
 - **Protocol:** Communication happens over HTTPS using RESTful patterns (primarily `POST` for submissions).
 - **Coordinate System:** Cells MUST be stored as relative `[x, y]` integer pairs. The origin `[0,0]` represents the top-left corner of the player's assigned bounding box.
 
-#### 1.2 League Tier Constraints
-The system MUST enforce strict limits based on the selected league to ensure fairness and performance:
+#### 1.2 Simulation Constraints
+The system MUST enforce strict limits to ensure fairness and performance:
 
-| League | Bounding Box | Total Cells | Biomass Limit (19%) |
-| :--- | :--- | :--- | :--- |
-| **Einsteiger** | 8x8 | 64 | Max 12 living cells |
-| **Rookie** | 50x50 | 2,500 | Max 475 living cells |
-| **Champions** | 100x100 | 10,000 | Max 1,900 living cells |
+| Parameter | Limit |
+| :--- | :--- |
+| **Bounding Box** | 8x8 |
+| **Total Cells** | 64 |
+| **Biomass Limit (38%)** | Max 24 living cells |
 
 #### 1.3 Validation Logic (Server-Side)
 The backend MUST validate every submission:
-1.  **Coordinate Check:** All cell coordinates must be within `[0, 0]` and `[limit-1, limit-1]`.
-2.  **Biomass Check:** Total count of living cells must not exceed the league's 19% limit.
+1.  **Coordinate Check:** All cell coordinates must be within `[0, 0]` and `[7, 7]`.
+2.  **Biomass Check:** Total count of living cells must not exceed the 38% limit (24 cells).
 3.  **Schema Check:** All mandatory metadata (player_id, nickname, league) must be present.
 
 #### 1.4 Evolutionary Features (Forking)
@@ -43,13 +43,13 @@ The backend MUST validate every submission:
     *   **Acceptance Criteria:**
         *   User can select a league (Einsteiger, Rookie, Champions).
         *   The editor restricts drawing to the league-specific bounding box.
-        *   The editor provides real-time feedback on the biomass limit (e.g., "10/12 cells used").
+        *   The editor provides real-time feedback on the biomass limit (e.g., "10/24 cells used").
         *   Successful submission triggers a "Success" message and provides a link to the live stream.
 
 *   **User Story 2: Server-Side Validation**
     *   **As a system administrator,** I want the server to strictly validate all incoming JSON payloads, **so that** malicious or invalid entries do not corrupt the competition or bypass limits.
     *   **Acceptance Criteria:**
-        *   Server rejects any payload exceeding the 19% biomass limit with a 400 Bad Request.
+        *   Server rejects any payload exceeding the 38% biomass limit with a 400 Bad Request.
         *   Server rejects any cells outside the specified bounding box.
         *   Server assigns a unique `config_id` to every valid submission and saves it to the database.
 
@@ -107,7 +107,7 @@ The backend MUST validate every submission:
 A Product Backlog Item (e.g., a User Story or a Task) is considered "Done" when all of the following criteria are met:
 
 *   **Code Quality:** The code follows `docs/CODING_STYLE.md` (snake_case, PascalCase, AI attribution).
-*   **Validation:** Server-side validation is implemented and tested with edge cases (e.g., exactly 19% vs 19.1%).
+*   **Validation:** Server-side validation is implemented and tested with edge cases (e.g., exactly 38% vs 38.1%).
 *   **Documentation:** Every function includes educational comments for 1st-semester students as per `gemini.md`.
 *   **Tests:**
     *   JSON parsing and validation are verified by unit tests.

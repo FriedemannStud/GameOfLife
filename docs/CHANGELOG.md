@@ -43,3 +43,8 @@ perf(build): Robust Docker Build Environment - Renamed 'Makefile.web' to 'Makefi
 
 21.05.2026:
 feat ADR-0009: Multiplayer JSON Ecosystem (Hard Cut) - Vollständiger Austausch des veralteten `.bio` Textformats durch ein web-kompatibles `.json` Format für die Client-Server-Kommunikation. - Spezifikation von Ligen (Einsteiger, Rookie, Champions) mit individuellen Bounding-Boxen. - Einführung relativer Koordinaten zur Entkopplung von Mustern und Spielfeldpositionen. - Integration der quelloffenen `cJSON` Bibliothek in die C-Codebasis und Anpassung der Build-Systeme. - Komplettes Refactoring von `file_io.c` (`save_grid`, `load_grid`) zur Vermeidung von Format-Fragmentierung (Single Source of Truth).
+
+22.05.2026:
+feat ADR-0010: Headless Simulation Worker - Implementierung eines CLI-basierten C-Workers (`biotope_headless`) zur automatisierten Match-Simulation auf Servern. - Entkopplung der Simulationslogik von der GUI (Raylib). - Unterstützung für rich metadata (`player_id`, `nickname`) und flexible Zellformate. - Generierung strukturierter Ergebnis-JSONs für das Backend-Matchmaking.
+
+feat ADR-0011: REST API & Server-Side Validation - Entwicklung eines robusten Backends mittels Python/FastAPI. - Implementierung des `POST /api/v1/submit_config` Endpunkts für Spieler-Einreichungen. - Einführung einer strikten serverseitigen Validierung (Fair Play): Max. 38% Biomasse (24 Zellen) und 8x8 Bounding-Box. - Automatisierte API-Dokumentation via Swagger/OpenAPI.

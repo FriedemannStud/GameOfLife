@@ -15,6 +15,7 @@ The Headless Simulation Worker is a core component of the massive-parallel multi
 
 #### 1.2 Simulation Constraints
 - **Grid Initialization:** The worker must load both 8x8 JSON configurations and place them into the appropriate positions within the overarching simulation arena.
+- **Metadata Support:** The worker must extract player metadata (`player_id`, `nickname`) from the input files and include it in the final result.
 - **Fixed Duration:** The simulation must execute for exactly 100 generations.
 - **Logic Consistency:** The simulation must use the exact same `game_logic.c` functions as the GUI version to guarantee consistent results.
 

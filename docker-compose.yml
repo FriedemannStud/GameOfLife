@@ -10,3 +10,16 @@ services:
     # KI-Agent unterstützt: Environment variables for X11 Forwarding
     environment:
       - DISPLAY=host.docker.internal:0
+
+  backend:
+    image: python:3.11-slim
+    volumes:
+      - ./backend:/app
+      - ./biotope_results:/app/results
+    working_dir: /app
+    ports:
+      - "8000:8000"
+    command: /bin/bash -c "pip install -r requirements.txt && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    # KI-Agent unterstützt: Environment variables for development
+    environment:
+      - PYTHONUNBUFFERED=1

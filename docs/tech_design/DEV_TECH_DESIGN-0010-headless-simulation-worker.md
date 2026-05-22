@@ -57,22 +57,34 @@ graph TD
 The worker expects JSON files with the following structure:
 ```json
 {
+  "metadata": {
+    "player_id": "string",
+    "nickname": "string"
+  },
   "config": {
     "cells": [[x1, y1], [x2, y2], ...]
   }
 }
 ```
-*Note: x and y are relative coordinates within the 8x8 box.*
+*Note: x and y are relative coordinates within the 8x8 box. Supports both [x, y] and [x, y, team] formats.*
 
 #### 3.2. Output Result (Match Outcome)
 The worker will produce a JSON result file (or stdout string):
 ```json
 {
   "winner": "red" | "blue" | "draw",
-  "red_population": number,
-  "blue_population": number,
   "generations": 100,
-  "timestamp": "ISO8601_string"
+  "timestamp": "ISO8601_string",
+  "red": {
+    "player_id": "string",
+    "nickname": "string",
+    "population": number
+  },
+  "blue": {
+    "player_id": "string",
+    "nickname": "string",
+    "population": number
+  }
 }
 ```
 

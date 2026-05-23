@@ -21,6 +21,7 @@ CFLAGS = -Wall -Wextra -std=c99 -O3 -fopenmp
 SOURCES = main.c game_logic.c gui.c file_io.c cJSON.c
 HEADERS = game_logic.h gui.h file_io.h cJSON.h
 HEADLESS_SOURCES = main_headless.c game_logic.c file_io.c cJSON.c
+HYPER_SOURCES = main_hyper.c game_logic.c file_io.c cJSON.c
 
 # 4. Standard-Ziel
 all: $(TARGET)
@@ -31,9 +32,12 @@ $(TARGET): $(SOURCES) $(HEADERS)
 headless: $(HEADLESS_SOURCES) $(HEADERS)
 	$(CC) $(HEADLESS_SOURCES) $(CFLAGS) -o biotope_headless -lm -lpthread
 
+hyper: $(HYPER_SOURCES) $(HEADERS)
+	$(CC) $(HYPER_SOURCES) $(CFLAGS) -o biotope_hyper_worker -lm -lpthread -fopenmp
+
 # 5. Aufräumen
 clean:
-	rm -f $(TARGET) biotope.exe biotope
+	rm -f $(TARGET) biotope.exe biotope biotope_headless biotope_hyper_worker
 
 # 6. Hilfs-Info
 help:

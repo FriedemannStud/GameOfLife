@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <stdbool.h>
 #ifndef PLATFORM_WEB
@@ -213,4 +214,63 @@ void activate_chunk_at(World *w, int r, int c) {
     if (cr >= 0 && cr < w->chunk_rows && cc >= 0 && cc < w->chunk_cols) {
         w->chunk_map[cr * w->chunk_cols + cc] = 1;
     }
+}
+
+// KI-Agent unterstützt: Thread-safe match execution with early termination detection
+MatchResult run_isolated_match(int left_cells[8][8], int right_cells[8][8], int max_gen) {
+    MatchResult result = { 0, 0, 0, 0 };
+    int rows = 8;
+    int cols = 16;
+    int r_pop = 0, b_pop = 0;
+
+    World *current = create_world(rows, cols);
+    World *next = create_world(rows, cols);
+
+    // Initialize grid with the two 8x8 patterns
+    // Team Red (Left): columns 1-8
+    for (int r = 0; r < 8; r++) {
+        for (int c = 0; c < 8; c++) {
+            if (left_cells[r][c]) {
+                current->grid[(r + 1) * (cols + 2) + (c + 1)] = TEAM_RED;
+                activate_chunk_at(current, r, c);
+            }
+        }
+    }
+    // Team Blue (Right): columns 9-16
+    for (int r = 0; r < 8; r++) {
+        for (int c = 0; c < 8; c++) {
+            if (right_cells[r][c]) {
+                current->grid[(r + 1) * (cols + 2) + (c + 8 + 1)] = TEAM_BLUE;
+                activate_chunk_at(current, r, c + 8);
+            }
+        }
+    }
+
+    // Simulation loop
+    for (int gen = 1; gen <= max_gen; gen++) {
+        update_generation(current, next, rows, cols, &r_pop, &b_pop);
+        
+        // KI-Agent unterstützt: Early Termination (Still-Life Check)
+        // Check if the world state changed (excluding ghost borders which are updated inside update_generation)
+        // Grid size is (rows+2)*(cols+2). For 8x16, it's 10x18.
+        if (memcmp(current->grid, next->grid, sizeof(int) * (rows + 2) * (cols + 2)) == 0) {
+            result.stable_at_generation = gen;
+            break;
+        }
+
+        World *temp = current;
+        current = next;
+        next = temp;
+    }
+
+    // Final result calculation
+    result.red_final_pop = r_pop;
+    result.blue_final_pop = b_pop;
+    if (r_pop > b_pop) result.winner = TEAM_RED;
+    else if (b_pop > r_pop) result.winner = TEAM_BLUE;
+    else result.winner = 0; // Draw
+
+    free_world(current);
+    free_world(next);
+    return result;
 }

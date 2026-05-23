@@ -21,6 +21,14 @@ typedef struct {
     int chunk_cols;
 } World;
 
+// KI-Agent unterstützt: Results of a single match
+typedef struct {
+    int winner; // 1 = Red, 2 = Blue, 0 = Draw
+    int red_final_pop;
+    int blue_final_pop;
+    int stable_at_generation; // 0 if never reached stable state
+} MatchResult;
+
 // KI-Agent unterstützt
 World* create_world(int rows, int cols);
 void free_world(World *w);
@@ -29,5 +37,8 @@ void sync_ghost_borders(World *w);
 void update_generation(World *current_gen, World *next_gen, int rows, int cols, int *red_pop, int *blue_pop);
 void apply_catalyst(World *w, int center_r, int center_c);
 void activate_chunk_at(World *w, int r, int c);
+
+// KI-Agent unterstützt: Thread-safe match execution
+MatchResult run_isolated_match(int left_cells[8][8], int right_cells[8][8], int max_gen);
 
 #endif // GAME_LOGIC_H

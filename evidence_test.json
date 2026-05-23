@@ -1,0 +1,17 @@
+{
+  "max_generations": 100,
+  "competitors": [
+    {
+      "player_id": "STILL_LIFE_BLOCK",
+      "cells": [[0,0], [0,1], [1,0], [1,1]]
+    },
+    {
+      "player_id": "MOVING_GLIDER",
+      "cells": [[1,0], [2,1], [0,2], [1,2], [2,2]]
+    },
+    {
+      "player_id": "EMPTY_PLAYER",
+      "cells": []
+    }
+  ]
+}

@@ -5,52 +5,62 @@ import sys
 import json
 import tempfile
 from datetime import datetime
+from bson import ObjectId
 
 # Path management MUST be first
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database import get_db
-from app.ranking import calculate_elo
 
-# KI-Agent unterstützt: Background worker with headless simulation integration
+# KI-Agent unterstützt: Epoch-based Tournament Worker
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("matchmaker")
+logger = logging.getLogger("epoch_worker")
 
-
-async def execute_match(db, a, b):
+async def execute_epoch(db):
     """
-    Executes a match between two submissions using the headless C-worker.
+    Executes a full tournament epoch using the C-Hyper-Worker.
     """
-    logger.info(
-        f"Executing match: {a['metadata']['nickname']} vs {b['metadata']['nickname']}"
-    )
+    logger.info("Starting Tournament Epoch...")
+    
+    # 1. Fetch all active submissions
+    # We use a large length limit for the university exhibition (up to 1000)
+    submissions = await db.submissions.find({"status": "active"}).to_list(length=1000)
+    
+    if len(submissions) < 2:
+        logger.info(f"Not enough submissions for a tournament (Found: {len(submissions)}). Skipping.")
+        return
 
-    # Prepare JSON serializable copies (convert ObjectId to string)
-    a_serializable = json.loads(json.dumps(a, default=str))
-    b_serializable = json.loads(json.dumps(b, default=str))
+    # 2. Prepare input batch
+    batch_input = {
+        "max_generations": 1000,
+        "competitors": []
+    }
+    
+    for s in submissions:
+        batch_input["competitors"].append({
+            "player_id": str(s["_id"]),
+            "cells": s["config"]["cells"]
+        })
 
-    # Create temp files for input
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".json", delete=False
-    ) as f_a, tempfile.NamedTemporaryFile(
-        mode="w", suffix=".json", delete=False
-    ) as f_b:
-
-        json.dump(a_serializable, f_a)
-        json.dump(b_serializable, f_b)
-        path_a = f_a.name
-        path_b = f_b.name
+    # Create temp files
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f_in:
+        json.dump(batch_input, f_in)
+        input_path = f_in.name
+    
+    output_path = input_path + ".out.json"
 
     try:
-        # Run biotope_headless
-        # Assuming the binary is in the root directory (one level up from app/)
-        binary_path = "./biotope_headless"
+        # 3. Run biotope_hyper_worker
+        binary_path = "./biotope_hyper_worker"
+        if not os.path.exists(binary_path):
+            logger.error(f"Binary not found at {binary_path}. Did you run 'make hyper'?")
+            return
 
         process = await asyncio.create_subprocess_exec(
             binary_path,
-            path_a,
-            path_b,
+            input_path,
+            output_path,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -58,133 +68,73 @@ async def execute_match(db, a, b):
         stdout, stderr = await process.communicate()
 
         if process.returncode != 0:
-            logger.error(f"Simulation failed: {stderr.decode()}")
+            logger.error(f"Hyper-Worker failed: {stderr.decode()}")
             return
 
-        # Parse output JSON (it's printed to stdout by biotope_headless)
-        result_data = json.loads(stdout.decode())
-        logger.info(f"Match Result: Winner={result_data['winner']}")
+        # 4. Parse results and Update Database
+        if not os.path.exists(output_path):
+            logger.error("Output file from Hyper-Worker missing.")
+            return
 
-        # 1. Update Elo Ratings
-        score_a = (
-            1.0
-            if result_data["winner"] == "red"
-            else (0.5 if result_data["winner"] == "draw" else 0.0)
-        )
-        score_b = 1.0 - score_a
+        with open(output_path, "r") as f_out:
+            results = json.load(f_out)
 
-        new_elo_a = calculate_elo(
-            a["elo_rating"], b["elo_rating"], score_a, a["matches_played"]
-        )
-        new_elo_b = calculate_elo(
-            b["elo_rating"], a["elo_rating"], score_b, b["matches_played"]
-        )
+        logger.info(f"Epoch finished. Matches played: {results['total_matches_played']}")
 
-        elo_delta_a = new_elo_a - a["elo_rating"]
+        # Batch update logic
+        for rank in results["rankings"]:
+            # We map 'win_rate * 1000' to 'elo_rating' to keep compatibility with existing frontend/schemas
+            # but we also store the raw total_score and avg_stability
+            mock_elo = int(rank["win_rate"] * 1000)
+            
+            await db.submissions.update_one(
+                {"_id": ObjectId(rank["player_id"])},
+                {
+                    "$set": {
+                        "elo_rating": mock_elo,
+                        "matches_played": rank["matches_played"],
+                        "total_score": rank["total_score"],
+                        "avg_stable_generation": rank["avg_stable_generation"],
+                        "last_epoch_at": datetime.utcnow()
+                    }
+                }
+            )
+            
+            # Also update the aggregate player ranking
+            submission = next((s for s in submissions if str(s["_id"]) == rank["player_id"]), None)
+            if submission:
+                await db.players.update_one(
+                    {"player_id": submission["metadata"]["player_id"]},
+                    {
+                        "$set": {
+                            "elo_rating": mock_elo,
+                            "matches_played": rank["matches_played"]
+                        }
+                    }
+                )
 
-        # 2. Update Database (Atomic updates)
-        # Update Submissions
-        await db.submissions.update_one(
-            {"_id": a["_id"]},
-            {
-                "$set": {"status": "active", "elo_rating": new_elo_a},
-                "$inc": {"matches_played": 1},
-            },
-        )
-        await db.submissions.update_one(
-            {"_id": b["_id"]},
-            {
-                "$set": {"status": "active", "elo_rating": new_elo_b},
-                "$inc": {"matches_played": 1},
-            },
-        )
-
-        # Update Global Player Ratings (Simplified: just update)
-        await db.players.update_one(
-            {"player_id": a["metadata"]["player_id"]},
-            {"$set": {"elo_rating": new_elo_a}, "$inc": {"matches_played": 1}},
-        )
-        await db.players.update_one(
-            {"player_id": b["metadata"]["player_id"]},
-            {"$set": {"elo_rating": new_elo_b}, "$inc": {"matches_played": 1}},
-        )
-
-        # 3. Log Match
-        match_log = {
-            "timestamp": datetime.utcnow(),
-            "red_submission_id": a["_id"],
-            "blue_submission_id": b["_id"],
-            "winner": result_data["winner"],
-            "red_population": result_data["red"]["population"],
-            "blue_population": result_data["blue"]["population"],
-            "elo_delta": elo_delta_a,
-        }
-        await db.matches.insert_one(match_log)
-        logger.info(
-            f"Match finalized. Elo A: {new_elo_a} ({elo_delta_a:+}), Elo B: {new_elo_b}"
-        )
+        logger.info("Database updated with Epoch results.")
 
     except Exception as e:
-        logger.error(f"Error during match execution: {e}")
-        # Rollback status
-        await db.submissions.update_many(
-            {"_id": {"$in": [a["_id"], b["_id"]]}}, {"$set": {"status": "active"}}
-        )
+        logger.error(f"Error during Epoch execution: {e}")
     finally:
-        # Cleanup temp files
-        if os.path.exists(path_a):
-            os.remove(path_a)
-        if os.path.exists(path_b):
-            os.remove(path_b)
+        # Cleanup
+        if os.path.exists(input_path):
+            os.remove(input_path)
+        if os.path.exists(output_path):
+            os.remove(output_path)
 
-
-async def find_match_pair(db):
-    target_a = await db.submissions.find_one_and_update(
-        {"status": "active"},
-        {"$set": {"status": "in_match"}},
-        sort=[("matches_played", 1), ("created_at", 1)],
-        return_document=True,
-    )
-    if not target_a:
-        return None, None
-
-    elo_a = target_a["elo_rating"]
-    player_id_a = target_a["metadata"]["player_id"]
-
-    target_b = await db.submissions.find_one_and_update(
-        {
-            "status": "active",
-            "metadata.player_id": {"$ne": player_id_a},
-            "elo_rating": {"$gte": elo_a - 150, "$lte": elo_a + 150},
-        },
-        {"$set": {"status": "in_match"}},
-        sort=[("matches_played", 1)],
-        return_document=True,
-    )
-
-    if not target_b:
-        await db.submissions.update_one(
-            {"_id": target_a["_id"]}, {"$set": {"status": "active"}}
-        )
-        return None, None
-
-    return target_a, target_b
-
-
-async def matchmaking_loop():
-    logger.info("Matchmaker Service started.")
+async def worker_loop():
+    logger.info("Biotope Epoch Worker started.")
     db = get_db()
     while True:
         try:
-            a, b = await find_match_pair(db)
-            if a and b:
-                await execute_match(db, a, b)
-            else:
-                await asyncio.sleep(5)
+            await execute_epoch(db)
+            # Sleep for 60 seconds until the next epoch
+            await asyncio.sleep(60)
         except Exception as e:
-            logger.error(f"Fatal error in loop: {e}")
+            logger.error(f"Fatal error in worker loop: {e}")
             await asyncio.sleep(10)
 
-
 if __name__ == "__main__":
-    asyncio.run(matchmaking_loop())
+    asyncio.run(worker_loop())

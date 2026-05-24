@@ -65,6 +65,16 @@ biotope.data
 result*.json
 setup.json
 test_*.json
+out_tc*.json
+tc*.json
+evidence_*.json
+output*.json
+stress_test_*.json
+transformed_*.json
+tests/test_*
+!tests/test_*.c
+!tests/test_*.md
+tests/out_tc*.json
 biotope.html
 !docs/specs/*.md
 !docs/adr/*.md

@@ -41,8 +41,6 @@
      funktionieren nun für die blaue (rechte) Seite.
    - [ ] Aktion: [R] drücken füllt die blaue Seite zufällig (Random).
    - [ ] Aktion: [C] drücken leert die blaue Seite (Clear).
-   - [ ] Aktion: [S] drücken speichert das aktuelle Gitter (Meldung "Gitter gespeichert"
-     sollte kurz erscheinen).
    - [ ] Aktion: [L] drücken öffnet das Archiv-Menü (Load State).
    - [ ] Aktion: [ENTER] drücken startet die Ignition-Sequenz (Zündung).
 
@@ -58,11 +56,8 @@
    - [ ] Zündung: Ein dramatischer Countdown (3 Sekunden) läuft ab. Keine Eingaben möglich.
    - [ ] Simulation: Das Spiel beginnt automatisch, rote und blaue Zellen interagieren.
    - [ ] Die Generationen-Anzeige (Round) und Populations-Zähler zählen korrekt hoch.
-   - [ ] Aktion: [LEERTASTE] drücken pausiert die Simulation (STATE_OBSERVER). Erneutes
+   - [ ] Aktion: [LEERTASTE] drücken pausiert die Simulation. Erneutes
      Drücken lässt sie weiterlaufen.
-   - [ ] Aktion (Catalyst Strike): Während das Spiel läuft, Linksklick auf eine dichte
-     Zellengruppe. Es sollte ein 10x10 großes Areal gelöscht werden (nur 1x pro Teamhälfte
-     erlaubt).
 
   7. Observer Modus (STATE_OBSERVER / Pausiert)
    - [ ] Das Wort "PAUSED" blinkt auf dem Bildschirm.

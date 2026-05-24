@@ -189,22 +189,6 @@ void update_generation(World *current_gen, World *next_gen, int rows, int cols, 
     *red_pop = total_red;
     *blue_pop = total_blue;
 }
-// KI-Agent unterstützt: Forces a 10x10 area to DEAD state
-void apply_catalyst(World *w, int center_r, int center_c) {
-    int stride = w->cols + 2;
-    int radius = 5; 
-    
-    for (int r = center_r - radius; r < center_r + radius; r++) {
-        for (int c = center_c - radius; c < center_c + radius; c++) {
-            // Strict bounds checking against the visible grid (excluding ghost borders)
-            if (r >= 1 && r <= w->rows && c >= 1 && c <= w->cols) {
-                int index = r * stride + c;
-                w->grid[index] = DEAD;
-                activate_chunk_at(w, r - 1, c - 1);
-            }
-        }
-    }
-}
 
 // Helper to activate a chunk given a 0-based grid coordinate
 void activate_chunk_at(World *w, int r, int c) {

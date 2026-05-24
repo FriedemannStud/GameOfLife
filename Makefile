@@ -38,6 +38,7 @@ hyper: $(HYPER_SOURCES) $(HEADERS)
 # 5. Aufräumen
 clean:
 	rm -f $(TARGET) biotope.exe biotope biotope_headless biotope_hyper_worker
+	touch biotope_headless && chmod +x biotope_headless
 
 # 6. Hilfs-Info
 help:

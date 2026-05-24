@@ -48,9 +48,8 @@ typedef struct {
     int current_red_pop;
     int current_blue_pop;
     int current_round;
-    // Catalyst Tracking
-    bool red_catalyst_used;
-    bool blue_catalyst_used;
+    // UI & Logic State
+    bool is_paused;
     // Telemetry Arrays (Dynamically allocated based on max_rounds)
     int *history_red_pop;
     int *history_blue_pop;

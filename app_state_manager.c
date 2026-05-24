@@ -28,6 +28,8 @@ AppState update_app_state(AppState current_state, GameConfig* config, World** cu
 
         case STATE_RUNNING:
         case STATE_OBSERVER:
+            if (config->is_paused) break; // Skip logic if paused
+
             timeAccumulator += delta_time;
             if (timeAccumulator >= config->delay_ms / 1000.0f) {
                 timeAccumulator = 0.0f;

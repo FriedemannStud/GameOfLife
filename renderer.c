@@ -8,6 +8,7 @@
 #include <string.h> // For strncpy
 #include <sys/stat.h> // For mkdir
 #include <errno.h>    // For errno
+#include <math.h>     // For sinf
 
 #ifdef PLATFORM_WEB
     #include <emscripten/emscripten.h>
@@ -456,8 +457,6 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
                     config->current_blue_pop = 0;
                     config->current_red_pop = 0;
                     config->current_round = 0;
-                    config->red_catalyst_used = false;
-                    config->blue_catalyst_used = false;
                     
                     state = STATE_EDIT_RED;
                 }                break;
@@ -526,8 +525,6 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
                         }
                     }
                 }
-                
-                if (IsKeyPressed(KEY_S)) save_grid("setup.json", gui_world, config);
                 
                 if (IsKeyPressed(KEY_L)) {
                     fileCount = list_protocol_files("biotope_results", &fileList);
@@ -636,16 +633,25 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
             
             case STATE_RUNNING:  // Hier zurücklehnen und zuschauen
                 if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_Q)) {
-                    
-                    
                     gui_world = NULL;
                     swap_world = NULL;
                     state = STATE_CONFIG;
                     ignitionStartTime = 0.0;
+                    config->is_paused = false; // Reset pause on exit
+                    
+                    // Reset Camera State
+                    observer_camera.zoom = 1.0f;
+                    observer_camera.target = (Vector2){ 0, 0 };
+                    observer_camera.offset = (Vector2){ 0, 0 };
                     break;
                 }
 
-                // Toggle Observer Mode
+                // Toggle Pause (Independent of mode)
+                if (IsKeyPressed(KEY_SPACE)) {
+                    config->is_paused = !config->is_paused;
+                }
+
+                // Toggle Observer Mode (Camera only)
                 if (IsKeyPressed(KEY_O)) {
                     state = STATE_OBSERVER;
                     observer_camera.zoom = 1.0f;
@@ -655,43 +661,14 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
                     statusTimer = 2.0f;
                 }
 
-                // --- Catalyst Interaction ---
-                if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-                    Vector2 mousePos = GetMousePosition();
-                    const int headerHeight = 60;
-                    const int footerHeight = 40;
-                    const int margin = 20;
-                    int drawWidth = screenWidth - (margin * 2);
-                    int drawHeight = screenHeight - headerHeight - footerHeight - margin;
-                    int startX = margin;
-                    int startY = headerHeight;
-                    
-                    if (mousePos.x >= startX && mousePos.x < startX + drawWidth &&
-                        mousePos.y >= startY && mousePos.y < startY + drawHeight) {
-                        
-                        float cellW = (float)drawWidth / config->cols;
-                        float cellH = (float)drawHeight / config->rows;
-                        int col = (int)((mousePos.x - startX) / cellW);
-                        int row = (int)((mousePos.y - startY) / cellH);
-                        int midCol = config->cols / 2;
-
-                        if (col >= midCol && !config->red_catalyst_used) {
-                            apply_catalyst(gui_world, row + 1, col + 1);
-                            config->red_catalyst_used = true;
-                            strcpy(statusMsg, "RED CATALYST ACTIVATED!");
-                            statusTimer = 2.0f;
-                        } else if (col < midCol && !config->blue_catalyst_used) {
-                            apply_catalyst(gui_world, row + 1, col + 1);
-                            config->blue_catalyst_used = true;
-                            strcpy(statusMsg, "BLUE CATALYST ACTIVATED!");
-                            statusTimer = 2.0f;
-                        }
-                    }
-                }
-
                 break;
 
             case STATE_OBSERVER:
+                // Toggle Pause (Still available in Observer mode)
+                if (IsKeyPressed(KEY_SPACE)) {
+                    config->is_paused = !config->is_paused;
+                }
+
                 // Exit Observer Mode
                 if (IsKeyPressed(KEY_O) || IsKeyPressed(KEY_ESCAPE)) {
                     state = STATE_RUNNING;
@@ -739,6 +716,13 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
                     if (config->history_red_pop) { free(config->history_red_pop); config->history_red_pop = NULL; }
                     if (config->history_blue_pop) { free(config->history_blue_pop); config->history_blue_pop = NULL; }
                     state = STATE_CONFIG;
+                    ignitionStartTime = 0.0;
+                    config->is_paused = false;
+                    
+                    // Reset Camera State
+                    observer_camera.zoom = 1.0f;
+                    observer_camera.target = (Vector2){ 0, 0 };
+                    observer_camera.offset = (Vector2){ 0, 0 };
                 }
                 break;
 
@@ -750,6 +734,13 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
                      if (config->history_red_pop) { free(config->history_red_pop); config->history_red_pop = NULL; }
                      if (config->history_blue_pop) { free(config->history_blue_pop); config->history_blue_pop = NULL; }
                      state = STATE_CONFIG;
+                     ignitionStartTime = 0.0;
+                     config->is_paused = false;
+                     
+                     // Reset Camera State
+                     observer_camera.zoom = 1.0f;
+                     observer_camera.target = (Vector2){ 0, 0 };
+                     observer_camera.offset = (Vector2){ 0, 0 };
                 }
                 break;
         }
@@ -762,8 +753,6 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
 void draw_current_state(AppState state, const GameConfig* config, const World* gui_world) {
     int screenWidth = GetScreenWidth();
     int screenHeight = GetScreenHeight();
-    Rectangle editorBtnRec = { (float)screenWidth - 220, 15, 200, 30 };
-    bool hoverEditor = (state != STATE_PUZZLE) && CheckCollisionPointRec(GetMousePosition(), editorBtnRec);
     // --- Drawing ---
         BeginDrawing(); // Raylib Anzeigesteuerung: Beginn einer neuen "Zeichenrunde"
         ClearBackground(THEME_BG); // Raylib Anzeigesteuerung: Gesamtes Fenster wird mit THEME_BG gefüllt
@@ -772,23 +761,31 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
         DrawRectangle(0, 0, screenWidth, 60, THEME_HUD); // Header // Raylib Zeichenfunktion: Rechteck zeichnen
         DrawRectangle(0, screenHeight - 40, screenWidth, 40, THEME_HUD); // Footer
 
-        // KI-Agent unterstützt: Draw Web Editor Button (Phase 4.1)
-        if (state != STATE_PUZZLE) {
-            DrawRectangleRec(editorBtnRec, hoverEditor ? THEME_BLUE : THEME_BG);
-            DrawRectangleLinesEx(editorBtnRec, 1, THEME_BLUE);
-            DrawText("MOBILE EDITOR", (int)editorBtnRec.x + 40, (int)editorBtnRec.y + 7, 16, hoverEditor ? THEME_BG : THEME_BLUE);
-        }
-
         // Draw Status Message Overlay
-        if (statusTimer > 0) {
+        if (strlen(statusMsg) > 0) {
             // KI-Agent unterstützt: Center status message to avoid collision with counters
             DrawText(statusMsg, screenWidth/2 - MeasureText(statusMsg, 20)/2, 20, 20, GREEN); // Raylib Zeichenfunktion: Text zeichnen
         }
 
         switch (state) {
             case STATE_PUZZLE:
-                DrawText("Tutorial Level 1", screenWidth/2 - MeasureText("Tutorial Level 1", 40)/2, screenHeight/2 - 20, 40, THEME_BLUE);
-                DrawText("PRESS [ENTER] TO CONTINUE", screenWidth/2 - MeasureText("PRESS [ENTER] TO CONTINUE", 20)/2, screenHeight/2 + 40, 20, THEME_TEXT);
+                DrawText("Tutorial Level 1", screenWidth/2 - MeasureText("Tutorial Level 1", 40)/2, screenHeight/2 - 120, 40, THEME_BLUE);
+                DrawText("PRESS [ENTER] TO CONTINUE", screenWidth/2 - MeasureText("PRESS [ENTER] TO CONTINUE", 20)/2, screenHeight/2 + 150, 20, THEME_TEXT);
+
+                // KI-Agent unterstützt: Mobile Editor Discovery (QR Placeholder + Link)
+                int qrSize = 100;
+                int qrX = screenWidth/2 - qrSize/2;
+                int qrY = screenHeight/2 - 40;
+                DrawRectangle(qrX - 5, qrY - 5, qrSize + 10, qrSize + 10, THEME_TEXT); // Border
+                DrawRectangle(qrX, qrY, qrSize, qrSize, BLACK); // Background
+                // Stylized QR pattern using dots
+                for (int i = 0; i < 5; i++) {
+                    for (int j = 0; j < 5; j++) {
+                        if ((i + j) % 2 == 0) DrawRectangle(qrX + i*20 + 5, qrY + j*20 + 5, 10, 10, THEME_BLUE);
+                    }
+                }
+                DrawText("MOBILE 8x8 EDITOR:", screenWidth/2 - MeasureText("MOBILE 8x8 EDITOR:", 16)/2, qrY + qrSize + 15, 16, THEME_HINT);
+                DrawText("biotope.io/editor", screenWidth/2 - MeasureText("biotope.io/editor", 18)/2, qrY + qrSize + 35, 18, THEME_BLUE);
                 break;
             case STATE_CONFIG:
                 DrawText("BIOTOPE CONFIGURATION", 20, 15, 30, THEME_TEXT);
@@ -876,8 +873,14 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                 bool showLines = (config->rows <= 150 && config->cols <= 150);
                 DrawGridAndCells(config, gui_world, screenWidth, screenHeight, showLines); 
 
-                DrawText("[ENTER] NEXT/DONE | [S] SAVE | [L] LOAD | [R] RANDOM | [G] GLIDER | [T] TRAVELER | [B] BLASTER", 
-                         20, screenHeight - 28, 20, THEME_TEXT);
+                // KI-Agent unterstützt: Dynamic Status-First Footer
+                char footerBuf[256];
+                if (config->is_paused) {
+                    sprintf(footerBuf, "PAUSED | [SPACE] CONTINUE SIM | [O] OBSERVER | [Q] ABORT");
+                } else {
+                    sprintf(footerBuf, "RUNNING | [SPACE] PAUSE SIM | [O] OBSERVER | [Q] ABORT");
+                }
+                DrawText(footerBuf, 20, screenHeight - 28, 20, THEME_TEXT);
                 break;
 
             case STATE_IGNITION:
@@ -992,16 +995,22 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                 
                 DrawGridAndCells(config, gui_world, screenWidth, screenHeight, false); // false = No Grid Lines (Performance!)
                 
-                // Catalyst Indicators
-                DrawText("CATALYST:", 20, screenHeight - 65, 18, THEME_HINT);
-                DrawText("BLUE", 120, screenHeight - 65, 18, config->blue_catalyst_used ? THEME_HINT : THEME_BLUE);
-                DrawText("RED", 180, screenHeight - 65, 18, config->red_catalyst_used ? THEME_HINT : THEME_RED);
-
-                if (state == STATE_RUNNING) {
-                    DrawText("[Q] ABORT  |  [O] OBSERVER MODE", 20, screenHeight - 30, 20, THEME_HINT);
+                // KI-Agent unterstützt: Dynamic Status-First Footer for Running/Observer
+                char simFooter[256];
+                if (config->is_paused) {
+                    if (state == STATE_RUNNING) {
+                        sprintf(simFooter, "PAUSED | [SPACE] CONTINUE SIM | [O] OBSERVER | [Q] ABORT");
+                    } else {
+                        sprintf(simFooter, "PAUSED | [SPACE] CONTINUE SIM | [O] EXIT | [MOUSE RIGHT] PAN | [WHEEL] ZOOM");
+                    }
                 } else {
-                    DrawText("[MOUSE RIGHT] PAN  |  [WHEEL] ZOOM  |  [O] EXIT OBSERVER", 20, screenHeight - 30, 20, THEME_HINT);
+                    if (state == STATE_RUNNING) {
+                        sprintf(simFooter, "RUNNING | [SPACE] PAUSE SIM | [O] OBSERVER | [Q] ABORT");
+                    } else {
+                        sprintf(simFooter, "RUNNING | [SPACE] PAUSE SIM | [O] EXIT | [MOUSE RIGHT] PAN | [WHEEL] ZOOM");
+                    }
                 }
+                DrawText(simFooter, 20, screenHeight - 28, 20, THEME_TEXT);
                 break;
                 
             case STATE_FINISHED:

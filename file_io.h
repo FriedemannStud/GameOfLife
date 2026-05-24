@@ -2,13 +2,13 @@
 #define FILE_IO_H
 
 #include <time.h>
+#include "core_types.h"
 #include "game_logic.h"
-#include "gui.h" // For GameConfig struct
 
 // Struct to hold file metadata for the browser
 typedef struct {
-    char filename[256]; // e.g., "run_20260117_120000.bio"
-    char filepath[512]; // Full relative path
+    char filename[MAX_FILENAME_LENGTH]; // e.g., "run_20260117_120000.bio"
+    char filepath[MAX_PATH_LENGTH]; // Full relative path
     time_t timestamp;   // For sorting
     
     // Preview Data
@@ -32,6 +32,13 @@ int load_grid(const char *filename, World *w, GameConfig *c);
 void append_protocol_result(const char *filename, GameConfig *c, int winner);
 // KI-Agent unterstützt
 void export_stats_md(const char *filename, GameConfig *c, int winner);
+
+// KI-Agent unterstützt: JSON I/O
+bool load_config_from_json(const char* filepath, GameConfig* config);
+bool initialize_world_from_file(const char* filepath, World* world, Team team, char* out_player_id, char* out_nickname);
+int parse_batch_file(const char* filepath, Competitor** competitors, int* count, int* max_gen);
+int save_batch_results(const char* filepath, RankingScore* scores, int count, double cpu_time_used);
+void save_headless_results(const char* filepath, const char* winner, int gens, const char* rp_id, const char* rp_nick, int rp_pop, const char* bp_id, const char* bp_nick, int bp_pop);
 
 // Lists .bio files in a directory. Returns count.
 // Caller must free the list.

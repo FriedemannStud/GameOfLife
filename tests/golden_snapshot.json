@@ -1,0 +1,15 @@
+{
+	"winner":	"red",
+	"generations":	100,
+	"timestamp":	"2026-05-24T06:10:48Z",
+	"red":	{
+		"player_id":	"e2e_red_player",
+		"nickname":	"GoldenRed",
+		"population":	7
+	},
+	"blue":	{
+		"player_id":	"e2e_blue_player",
+		"nickname":	"GoldenBlue",
+		"population":	5
+	}
+}

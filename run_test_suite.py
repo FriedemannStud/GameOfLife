@@ -35,6 +35,42 @@ def run_test(test_name, input_file, output_file):
         print("TIMEOUT (>120s)")
         return {"status": "TIMEOUT", "duration": 120}
 
+
+def run_e2e_test(test_name):
+    print(f"\n--- Running Test: {test_name} ---")
+    start = time.time()
+    try:
+        result = subprocess.run(
+            ["./biotope_headless", "tests/tc6_e2e_headless_red.json", "tests/tc6_e2e_headless_blue.json", "tests/out_tc6.json"],
+            capture_output=True, text=True, timeout=10
+        )
+        duration = time.time() - start
+        
+        if result.returncode != 0:
+            print(f"FAILED (Return Code {result.returncode})")
+            print(result.stderr)
+            return {"status": "FAILED", "duration": duration, "error": result.stderr}
+            
+        with open("tests/out_tc6.json", "r") as f:
+            out_data = json.load(f)
+        with open("tests/golden_snapshot.json", "r") as f:
+            golden_data = json.load(f)
+            
+        # Ignore timestamp for comparison
+        if "timestamp" in out_data: del out_data["timestamp"]
+        if "timestamp" in golden_data: del golden_data["timestamp"]
+        
+        if out_data == golden_data:
+            print(f"SUCCESS: Bit-for-bit identical to golden snapshot in {duration:.2f}s.")
+            return {"status": "SUCCESS", "duration": duration, "cpu_time": 0}
+        else:
+            print("FAILED: Output does not match golden snapshot.")
+            print(f"Expected: {golden_data}\nGot: {out_data}")
+            return {"status": "FAILED", "duration": duration, "error": "Mismatch with golden snapshot"}
+    except subprocess.TimeoutExpired:
+        print("TIMEOUT (>10s)")
+        return {"status": "TIMEOUT", "duration": 10}
+
 # 1. Standard
 comps_std = []
 for i in range(100):
@@ -75,6 +111,7 @@ results["TC-02 Still-Life (500)"] = run_test("TC-02 Early Termination", "tc2_sti
 results["TC-03 Chaos (200)"] = run_test("TC-03 Long Running", "tc3_chaos.json", "out_tc3.json")
 results["TC-04 Robustness"] = run_test("TC-04 Invalid Inputs", "tc4_invalid.json", "out_tc4.json")
 results["TC-05 Meltdown (1000, 2000gen)"] = run_test("TC-05 Meltdown", "tc5_meltdown.json", "out_tc5.json")
+results["TC-06 End-to-End System DEV_TEST"] = run_e2e_test("TC-06 End-to-End System DEV_TEST")
 
 print("\n--- SUMMARY ---")
 for k, v in results.items():

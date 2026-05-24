@@ -40,6 +40,12 @@
         2. Run the application `./biotope`.
         3. **Expected Result:** The application starts normally, and the grid dimensions/window sizes remain visually identical.
 
+- [ ] **Step 1.4: Establish Foundation DEV_TEST**
+    - [ ] **Action:** Create a state-of-the-art C unit test (e.g., in a new `tests/test_core_types.c` file or extending an existing test framework).
+    - [ ] **Action:** Verify the correct memory layout, alignment, and default initialization of `World` and `GameConfig` structs.
+    - [ ] **Action:** Validate that configuration macros from `config.h` fall within expected, safe boundaries.
+    - [ ] **Verification (Test Execution):** Compile and run the new tests, ensuring 100% pass rate and zero memory leaks.
+
 ---
 
 ## Phase 2: Centralize IO Logic
@@ -65,6 +71,12 @@
         2. Run `python3 run_test_suite.py`.
         3. **Expected Result:** The test suite passes completely, proving the headless/hyper workers still load JSON data correctly.
 
+- [ ] **Step 2.4: Establish IO Logic DEV_TEST**
+    - [ ] **Action:** Create a state-of-the-art unit test suite for `file_io.c` (e.g., `tests/test_file_io.c`).
+    - [ ] **Action:** Mock or provide edge-case JSON inputs (missing fields, out-of-bounds arrays, corrupted JSON strings).
+    - [ ] **Action:** Assert that `load_config_from_json` and `initialize_world_from_file` handle all edge cases gracefully without segmentation faults.
+    - [ ] **Verification (Test Execution):** Run the new test suite to ensure robust error handling and correct deserialization.
+
 ---
 
 ## Phase 3: Extract Application State Manager
@@ -76,6 +88,11 @@
     - [ ] **Action:** Create `app_state_manager.c`. Extract the logical state transition code (e.g., switching from `STATE_CONFIG` to `STATE_RUNNING` based on conditions, not UI clicks yet, or define a clean interface for UI events). *Note: This might require passing an input event struct or letting the manager poll input if decoupled from Raylib drawing.*
     - **Refined Action:** Let `update_app_state` handle the simulation clock and logical state transitions. It should NOT contain Raylib drawing calls.
     - [ ] **Verification (Compile Test):** Compile just the object file: `gcc -c app_state_manager.c -Wall -Wextra`.
+
+- [ ] **Step 3.2: Establish State Manager DEV_TEST**
+    - [ ] **Action:** Create a state-of-the-art unit test `tests/test_app_state_manager.c`.
+    - [ ] **Action:** Mock the inputs (`current_state`, `config`, `world`, and input events) to deterministically test state transitions (e.g., verifying `STATE_CONFIG` transitions to `STATE_RUNNING` only when all criteria are met).
+    - [ ] **Verification (Test Execution):** Compile and execute the test, proving that the state machine behaves predictably independent of Raylib rendering.
 
 ---
 
@@ -89,6 +106,11 @@
     - [ ] **Action:** Move all `DrawRectangle`, `DrawText`, `BeginDrawing`, and `EndDrawing` calls from `gui.c` into `renderer.c`.
     - [ ] **Action:** Move the UI interaction logic (button clicks) here, and have it return state change requests to be processed by the main loop or state manager.
     - [ ] **Verification (Compile Test):** Run `make`. Fix any missing include or variable scope issues.
+
+- [ ] **Step 4.2: Establish Renderer DEV_TEST**
+    - [ ] **Action:** Create a state-of-the-art test setup for UI logic (e.g., `tests/test_renderer.c`).
+    - [ ] **Action:** Since drawing is hard to unit test, focus on testing the UI interaction logic: mock user inputs (clicks, key presses) and verify that the correct state change requests are generated.
+    - [ ] **Verification (Test Execution):** Compile and run the mock UI tests, ensuring input handling does not crash under boundary-case conditions.
 
 ---
 
@@ -112,7 +134,12 @@
         5. Pause the simulation.
         6. **Expected Result:** The application behaves exactly as it did before the refactoring. No visual or logical regressions.
 
-- [ ] **Step 5.3: Final Documentation**
+- [ ] **Step 5.3: Establish End-to-End System DEV_TEST**
+    - [ ] **Action:** Expand the automated Python test suite (`run_test_suite.py`) to perform an end-to-end integration test of the refactored system.
+    - [ ] **Action:** Use a deterministic seed to verify that a full simulation cycle (load config, initialize, run N generations, save state) produces bit-for-bit identical results compared to a pre-refactoring golden snapshot.
+    - [ ] **Verification (Test Execution):** Run the complete end-to-end suite. The golden snapshot test must pass flawlessly to guarantee zero logical regressions.
+
+- [ ] **Step 5.4: Final Documentation**
     - [ ] **Action:** Update `docs/CHANGELOG.md` to reflect the architectural consolidation (ADR-0015).
     - [ ] **Action:** Ensure all modified files have the `// KI-Agent unterstützt` comment where significant structural changes occurred.
     - [ ] **Verification:** Read the changelog to ensure clarity.

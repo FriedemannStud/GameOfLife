@@ -406,3 +406,179 @@ void export_stats_md(const char *filename, GameConfig *c, int winner) {
     fclose(f);
     printf("Stats exported to %s\n", filename);
 }
+// KI-Agent unterstützt: Load Config from JSON
+bool load_config_from_json(const char* filepath, GameConfig* config) {
+    char *json_str = read_file_to_string(filepath);
+    if (!json_str) return false;
+    cJSON *root = cJSON_Parse(json_str);
+    free(json_str);
+    if (!root) return false;
+
+    // Default or extract config values
+    cJSON *cfg = cJSON_GetObjectItemCaseSensitive(root, "config");
+    if (cfg) {
+        cJSON *max_r = cJSON_GetObjectItemCaseSensitive(cfg, "max_rounds");
+        if (cJSON_IsNumber(max_r)) config->max_rounds = max_r->valueint;
+    }
+    
+    cJSON_Delete(root);
+    return true;
+}
+
+// KI-Agent unterstützt: Initialize World from File
+bool initialize_world_from_file(const char* filepath, World* world, Team team, char* out_player_id, char* out_nickname) {
+    char *json_str = read_file_to_string(filepath);
+    if (!json_str) return false;
+    cJSON *root = cJSON_Parse(json_str);
+    free(json_str);
+    if (!root) return false;
+
+    if (out_player_id) strcpy(out_player_id, "unknown");
+    if (out_nickname) strcpy(out_nickname, "unknown");
+
+    cJSON *meta = cJSON_GetObjectItemCaseSensitive(root, "metadata");
+    if (meta) {
+        cJSON *pid = cJSON_GetObjectItemCaseSensitive(meta, "player_id");
+        cJSON *nick = cJSON_GetObjectItemCaseSensitive(meta, "nickname");
+        if (pid && cJSON_IsString(pid) && out_player_id) strncpy(out_player_id, pid->valuestring, 63);
+        if (nick && cJSON_IsString(nick) && out_nickname) strncpy(out_nickname, nick->valuestring, 63);
+    }
+    
+    cJSON *config = cJSON_GetObjectItemCaseSensitive(root, "config");
+    cJSON *cells = cJSON_GetObjectItemCaseSensitive(config, "cells");
+    if (cJSON_IsArray(cells)) {
+        cJSON *cell;
+        cJSON_ArrayForEach(cell, cells) {
+            if (cJSON_IsArray(cell) && cJSON_GetArraySize(cell) >= 2) {
+                cJSON *cx = cJSON_GetArrayItem(cell, 0);
+                cJSON *cy = cJSON_GetArrayItem(cell, 1);
+                if (cJSON_IsNumber(cx) && cJSON_IsNumber(cy)) {
+                    int x = cx->valueint;
+                    int y = cy->valueint;
+                    if (x >= 0 && x < LOCAL_GRID_SIZE && y >= 0 && y < LOCAL_GRID_SIZE) {
+                        int offset_x = (team == TEAM_BLUE) ? LOCAL_GRID_SIZE : 0;
+                        world->grid[(y + 1) * (world->cols + 2) + (x + offset_x + 1)] = team;
+                    }
+                }
+            }
+        }
+    }
+    cJSON_Delete(root);
+    return true;
+}
+
+// KI-Agent unterstützt: Parse the batch JSON file
+int parse_batch_file(const char* filepath, Competitor** competitors, int* count, int* max_gen) {
+    char *json_str = read_file_to_string(filepath);
+    if (!json_str) return 0;
+    cJSON *root = cJSON_Parse(json_str);
+    if (!root) { free(json_str); return 0; }
+
+    cJSON *max_gen_obj = cJSON_GetObjectItemCaseSensitive(root, "max_generations");
+    *max_gen = (cJSON_IsNumber(max_gen_obj)) ? max_gen_obj->valueint : 1000;
+
+    cJSON *comps_array = cJSON_GetObjectItemCaseSensitive(root, "competitors");
+    if (!cJSON_IsArray(comps_array)) {
+        cJSON_Delete(root); free(json_str); return 0;
+    }
+
+    *count = cJSON_GetArraySize(comps_array);
+    *competitors = calloc(*count, sizeof(Competitor));
+
+    for (int i = 0; i < *count; i++) {
+        cJSON *item = cJSON_GetArrayItem(comps_array, i);
+        cJSON *pid = cJSON_GetObjectItemCaseSensitive(item, "player_id");
+        if (cJSON_IsString(pid)) strncpy((*competitors)[i].player_id, pid->valuestring, 63);
+
+        cJSON *cells = cJSON_GetObjectItemCaseSensitive(item, "cells");
+        if (cJSON_IsArray(cells)) {
+            int cell_count = cJSON_GetArraySize(cells);
+            (*competitors)[i].living_cells = 0;
+            for(int r=0; r<LOCAL_GRID_SIZE; r++) for(int c=0; c<LOCAL_GRID_SIZE; c++) (*competitors)[i].cells[r][c] = 0;
+            
+            for (int j = 0; j < cell_count; j++) {
+                cJSON *cell = cJSON_GetArrayItem(cells, j);
+                if (cJSON_IsArray(cell) && cJSON_GetArraySize(cell) >= 2) {
+                    int x = cJSON_GetArrayItem(cell, 0)->valueint;
+                    int y = cJSON_GetArrayItem(cell, 1)->valueint;
+                    if (x >= 0 && x < LOCAL_GRID_SIZE && y >= 0 && y < LOCAL_GRID_SIZE) {
+                        (*competitors)[i].cells[y][x] = 1;
+                        (*competitors)[i].living_cells++;
+                    }
+                }
+            }
+        }
+    }
+    cJSON_Delete(root); free(json_str);
+    return 1;
+}
+
+// KI-Agent unterstützt: Generate output JSON for batch results
+int save_batch_results(const char* filepath, RankingScore* scores, int count, double cpu_time_used) {
+    cJSON *output_root = cJSON_CreateObject();
+    cJSON_AddNumberToObject(output_root, "total_matches_played", (count * (count - 1)));
+    cJSON_AddNumberToObject(output_root, "execution_time_cpu_s", cpu_time_used);
+    
+    cJSON *rankings_array = cJSON_CreateArray();
+    for (int i = 0; i < count; i++) {
+        cJSON *rank_item = cJSON_CreateObject();
+        cJSON_AddStringToObject(rank_item, "player_id", scores[i].player_id);
+        cJSON_AddNumberToObject(rank_item, "total_score", scores[i].total_score);
+        cJSON_AddNumberToObject(rank_item, "matches_played", scores[i].matches_played);
+        cJSON_AddNumberToObject(rank_item, "win_rate", scores[i].matches_played > 0 ? scores[i].total_score / scores[i].matches_played : 0);
+        cJSON_AddNumberToObject(rank_item, "avg_stable_generation", scores[i].matches_played > 0 ? (double)scores[i].sum_stable_gen / scores[i].matches_played : 0);
+        cJSON_AddItemToArray(rankings_array, rank_item);
+    }
+    cJSON_AddItemToObject(output_root, "rankings", rankings_array);
+
+    char *output_str = cJSON_Print(output_root);
+    FILE *out_f = fopen(filepath, "w");
+    if (out_f) {
+        fprintf(out_f, "%s\n", output_str);
+        fclose(out_f);
+    }
+    free(output_str);
+    cJSON_Delete(output_root);
+    return out_f ? 1 : 0;
+}
+
+// KI-Agent unterstützt: Generate output JSON for headless results
+void save_headless_results(const char* filepath, const char* winner, int gens, const char* rp_id, const char* rp_nick, int rp_pop, const char* bp_id, const char* bp_nick, int bp_pop) {
+    cJSON *result_root = cJSON_CreateObject();
+    cJSON_AddStringToObject(result_root, "winner", winner);
+    cJSON_AddNumberToObject(result_root, "generations", gens);
+    
+    char timestamp[64];
+    get_iso8601_time(timestamp, sizeof(timestamp), time(NULL));
+    cJSON_AddStringToObject(result_root, "timestamp", timestamp);
+
+    cJSON *red_obj = cJSON_CreateObject();
+    cJSON_AddStringToObject(red_obj, "player_id", rp_id);
+    cJSON_AddStringToObject(red_obj, "nickname", rp_nick);
+    cJSON_AddNumberToObject(red_obj, "population", rp_pop);
+    cJSON_AddItemToObject(result_root, "red", red_obj);
+
+    cJSON *blue_obj = cJSON_CreateObject();
+    cJSON_AddStringToObject(blue_obj, "player_id", bp_id);
+    cJSON_AddStringToObject(blue_obj, "nickname", bp_nick);
+    cJSON_AddNumberToObject(blue_obj, "population", bp_pop);
+    cJSON_AddItemToObject(result_root, "blue", blue_obj);
+
+    char *json_output = cJSON_Print(result_root);
+    if (filepath) {
+        FILE *f = fopen(filepath, "w");
+        if (f) {
+            fputs(json_output, f);
+            fclose(f);
+            printf("Results saved to: %s\n", filepath);
+        } else {
+            fprintf(stderr, "Error: Could not open output file %s\n", filepath);
+            printf("%s\n", json_output); // Fallback to stdout
+        }
+    } else {
+        printf("%s\n", json_output);
+    }
+
+    free(json_output);
+    cJSON_Delete(result_root);
+}

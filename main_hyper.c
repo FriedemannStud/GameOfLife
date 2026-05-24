@@ -5,105 +5,9 @@
 #ifdef _OPENMP
 #include <omp.h>
 #endif
-#include "cJSON.h"
+#include "core_types.h"
 #include "game_logic.h"
-
-// KI-Agent unterstützt: Competitor structure for batch processing
-typedef struct {
-    char player_id[64];
-    int cells[8][8]; // 8x8 local grid for the starting pattern
-    int living_cells;
-} Competitor;
-
-// KI-Agent unterstützt: Ranking result for a player
-typedef struct {
-    char player_id[64];
-    double total_score;
-    int matches_played;
-    long long sum_stable_gen;
-} RankingScore;
-
-// KI-Agent unterstützt: Helper to read a file into a string
-static char* read_file_to_string(const char *filename) {
-    FILE *f = fopen(filename, "rb");
-    if (!f) return NULL;
-    fseek(f, 0, SEEK_END);
-    long length = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    char *buffer = malloc(length + 1);
-    if (buffer) {
-        size_t read_bytes = fread(buffer, 1, length, f);
-        buffer[read_bytes] = '\0';
-    }
-    fclose(f);
-    return buffer;
-}
-
-// KI-Agent unterstützt: Parse the batch JSON file
-static int parse_batch_file(const char* filepath, Competitor** competitors, int* count, int* max_gen) {
-    char *json_str = read_file_to_string(filepath);
-    if (!json_str) {
-        fprintf(stderr, "Error: Could not read file %s\n", filepath);
-        return 0;
-    }
-
-    cJSON *root = cJSON_Parse(json_str);
-    if (!root) {
-        fprintf(stderr, "Error: Could not parse JSON in %s\n", filepath);
-        free(json_str);
-        return 0;
-    }
-
-    cJSON *max_gen_obj = cJSON_GetObjectItemCaseSensitive(root, "max_generations");
-    if (cJSON_IsNumber(max_gen_obj)) {
-        *max_gen = max_gen_obj->valueint;
-    } else {
-        *max_gen = 1000; // Default
-    }
-
-    cJSON *comps_array = cJSON_GetObjectItemCaseSensitive(root, "competitors");
-    if (!cJSON_IsArray(comps_array)) {
-        fprintf(stderr, "Error: 'competitors' array not found\n");
-        cJSON_Delete(root);
-        free(json_str);
-        return 0;
-    }
-
-    *count = cJSON_GetArraySize(comps_array);
-    *competitors = calloc(*count, sizeof(Competitor));
-
-    for (int i = 0; i < *count; i++) {
-        cJSON *item = cJSON_GetArrayItem(comps_array, i);
-        cJSON *pid = cJSON_GetObjectItemCaseSensitive(item, "player_id");
-        if (cJSON_IsString(pid)) {
-            strncpy((*competitors)[i].player_id, pid->valuestring, 63);
-        }
-
-        cJSON *cells = cJSON_GetObjectItemCaseSensitive(item, "cells");
-        if (cJSON_IsArray(cells)) {
-            int cell_count = cJSON_GetArraySize(cells);
-            (*competitors)[i].living_cells = 0;
-            // Initialize cells array to 0
-            for(int r=0; r<8; r++) for(int c=0; c<8; c++) (*competitors)[i].cells[r][c] = 0;
-            
-            for (int j = 0; j < cell_count; j++) {
-                cJSON *cell = cJSON_GetArrayItem(cells, j);
-                if (cJSON_IsArray(cell) && cJSON_GetArraySize(cell) >= 2) {
-                    int x = cJSON_GetArrayItem(cell, 0)->valueint;
-                    int y = cJSON_GetArrayItem(cell, 1)->valueint;
-                    if (x >= 0 && x < 8 && y >= 0 && y < 8) {
-                        (*competitors)[i].cells[y][x] = 1;
-                        (*competitors)[i].living_cells++;
-                    }
-                }
-            }
-        }
-    }
-
-    cJSON_Delete(root);
-    free(json_str);
-    return 1;
-}
+#include "file_io.h"
 
 // KI-Agent unterstützt: Comparator for sorting ranking scores (descending)
 static int compare_rankings(const void *a, const void *b) {
@@ -183,36 +87,14 @@ int main(int argc, char *argv[]) {
     // Sort rankings
     qsort(scores, competitor_count, sizeof(RankingScore), compare_rankings);
 
-    // KI-Agent unterstützt: Generate output JSON
-    cJSON *output_root = cJSON_CreateObject();
-    cJSON_AddNumberToObject(output_root, "total_matches_played", (competitor_count * (competitor_count - 1)));
-    cJSON_AddNumberToObject(output_root, "execution_time_cpu_s", cpu_time_used);
-    
-    cJSON *rankings_array = cJSON_CreateArray();
-    for (int i = 0; i < competitor_count; i++) {
-        cJSON *rank_item = cJSON_CreateObject();
-        cJSON_AddStringToObject(rank_item, "player_id", scores[i].player_id);
-        cJSON_AddNumberToObject(rank_item, "total_score", scores[i].total_score);
-        cJSON_AddNumberToObject(rank_item, "matches_played", scores[i].matches_played);
-        cJSON_AddNumberToObject(rank_item, "win_rate", scores[i].matches_played > 0 ? scores[i].total_score / scores[i].matches_played : 0);
-        cJSON_AddNumberToObject(rank_item, "avg_stable_generation", scores[i].matches_played > 0 ? (double)scores[i].sum_stable_gen / scores[i].matches_played : 0);
-        cJSON_AddItemToArray(rankings_array, rank_item);
-    }
-    cJSON_AddItemToObject(output_root, "rankings", rankings_array);
-
-    char *output_str = cJSON_Print(output_root);
-    FILE *out_f = fopen(output_path, "w");
-    if (out_f) {
-        fprintf(out_f, "%s\n", output_str);
-        fclose(out_f);
-        printf("Results written to %s\n", output_path);
+    // KI-Agent unterstützt: Generate output JSON using file_io
+    if (save_batch_results(output_path, scores, competitor_count, cpu_time_used)) {
+        printf("Results written to %s (CPU Time: %.2fs)\n", output_path, cpu_time_used);
     } else {
-        fprintf(stderr, "Error: Could not open %s for writing\n", output_path);
+        fprintf(stderr, "Error: Could not save results to %s\n", output_path);
     }
 
     // Cleanup
-    free(output_str);
-    cJSON_Delete(output_root);
     free(scores);
     free(competitors);
 

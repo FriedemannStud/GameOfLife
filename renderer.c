@@ -1,5 +1,6 @@
 #include "raylib.h"
-#include "gui.h"
+#include "renderer.h"
+#include "config.h"
 #include "file_io.h" // KI-Agent unterstützt
 #include <stdio.h>
 #include <stdlib.h> // For abs
@@ -19,8 +20,6 @@
 #endif
 
 // Global World Pointer for GUI
-World *gui_world = NULL;
-World *swap_world = NULL;
 
 // Protocol Archive State
 static ProtocolInfo *fileList = NULL;
@@ -62,8 +61,8 @@ static int locPrevFrame = -1;
 static int locFadeRate = -1;
 static bool useMetaballs = false;
 
-void DrawGridAndCells(GameConfig *config, int screenWidth, int screenHeight, bool drawGridLines) {
-    if (!gui_world) return;
+void DrawGridAndCells(const GameConfig *config, const World *gui_world, int screenWidth, int screenHeight, bool drawGridLines) {
+    if (gui_world == NULL) return;
 
     // Layout Constants
     const int headerHeight = 60;
@@ -289,29 +288,16 @@ bool IsActionTriggered(int key) {
 }
 
 // Global state
-static int screenWidth = 800;
-static int screenHeight = 600;
-static AppState state = STATE_PUZZLE;
-static GameConfig config = {
-    .rows = 50, 
-    .cols = 50, 
-    .delay_ms = 100, 
-    .max_population = 100, 
-    .max_rounds = 1000,
-    .current_red_pop = 0,
-    .current_blue_pop = 0,
-    .current_round = 0,
-    .history_red_pop = NULL,
-    .history_blue_pop = NULL,
-    .history_count = 0
-};
+
+
+
 static char statusMsg[64] = "";
 static float statusTimer = 0.0f;
 static double ignitionStartTime = 0.0;
 
-void init_gui_app(void) {
+void init_renderer(int window_width, int window_height, const char* title) {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-    InitWindow(screenWidth, screenHeight, "Biotope - Game of Life");
+    InitWindow(window_width, window_height, title);
 
     // KI-Agent unterstützt: Ensure results directory exists
 #ifdef _WIN32
@@ -348,9 +334,9 @@ void init_gui_app(void) {
 #endif
 }
 
-void close_gui_app(void) {
-    if (gui_world) free_world(gui_world);
-    if (swap_world) free_world(swap_world);
+void close_renderer(void) {
+    
+    
     
     // Shader & Texture Cleanup
     if (biotopeShader.id > 0) UnloadShader(biotopeShader);
@@ -366,7 +352,11 @@ void close_gui_app(void) {
     CloseWindow();
 }
 
-void UpdateDrawFrame(void) {
+AppState process_ui_events(AppState state, GameConfig* config, World** p_current_world, World** p_swap_world) {
+    World* gui_world = *p_current_world;
+    World* swap_world = *p_swap_world;
+    int screenWidth = GetScreenWidth();
+    int screenHeight = GetScreenHeight();
         screenWidth = GetScreenWidth(); // Raylib Fenstersteuerung: Gibt Fensterbreite zurück 
         screenHeight = GetScreenHeight(); // Raylib Fenstersteuerung: Gibt Fensterhöhe zurück
         
@@ -385,11 +375,7 @@ void UpdateDrawFrame(void) {
         }
 
         // KI-Agent unterstützt: Web Editor Link (Phase 4.1)
-        Rectangle editorBtnRec = { (float)screenWidth - 220, 15, 200, 30 };
-        bool hoverEditor = (state != STATE_PUZZLE) && CheckCollisionPointRec(GetMousePosition(), editorBtnRec);
-        if (hoverEditor && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            OpenURL("editor.html");
-        }
+        
         
         // --- Logic per State ---
         switch (state) {                 // Zustandsmaschine - Wert von State gibt Code-Block-Ausführung vor 
@@ -400,78 +386,78 @@ void UpdateDrawFrame(void) {
                 break;
             case STATE_CONFIG:           // Spieleinstellungen mit Tasten im Fenster Biotope Configuration
                 // Interaction: Change Grid Size
-                if (IsActionTriggered(KEY_RIGHT) && config.cols < MAX_GRID_SIZE) config.cols += 10;
-                if (IsActionTriggered(KEY_LEFT) && config.cols > 10) config.cols -= 10;
-                if (IsActionTriggered(KEY_UP) && config.rows < MAX_GRID_SIZE) config.rows += 10;
-                if (IsActionTriggered(KEY_DOWN) && config.rows > 10) config.rows -= 10;
+                if (IsActionTriggered(KEY_RIGHT) && config->cols < MAX_GRID_SIZE) config->cols += 10;
+                if (IsActionTriggered(KEY_LEFT) && config->cols > 10) config->cols -= 10;
+                if (IsActionTriggered(KEY_UP) && config->rows < MAX_GRID_SIZE) config->rows += 10;
+                if (IsActionTriggered(KEY_DOWN) && config->rows > 10) config->rows -= 10;
                 
                 // Extra Clamp for Presets or other logic
-                if (config.cols > MAX_GRID_SIZE) config.cols = MAX_GRID_SIZE;
-                if (config.rows > MAX_GRID_SIZE) config.rows = MAX_GRID_SIZE;
+                if (config->cols > MAX_GRID_SIZE) config->cols = MAX_GRID_SIZE;
+                if (config->rows > MAX_GRID_SIZE) config->rows = MAX_GRID_SIZE;
                 
                 // Interaction: Change Delay (incl. German Layout)
                 if (IsActionTriggered(KEY_KP_ADD) || IsActionTriggered(KEY_EQUAL) || IsActionTriggered(KEY_RIGHT_BRACKET)) 
-                    config.delay_ms += 50;
-                if ((IsActionTriggered(KEY_KP_SUBTRACT) || IsActionTriggered(KEY_MINUS) || IsActionTriggered(KEY_SLASH)) && config.delay_ms > 0) 
-                    config.delay_ms -= 50;
+                    config->delay_ms += 50;
+                if ((IsActionTriggered(KEY_KP_SUBTRACT) || IsActionTriggered(KEY_MINUS) || IsActionTriggered(KEY_SLASH)) && config->delay_ms > 0) 
+                    config->delay_ms -= 50;
 
                 // Interaction: Change Max Rounds
-                if (IsActionTriggered(KEY_PAGE_UP)) config.max_rounds += 100;
-                if (IsActionTriggered(KEY_PAGE_DOWN) && config.max_rounds > 100) config.max_rounds -= 100;
+                if (IsActionTriggered(KEY_PAGE_UP)) config->max_rounds += 100;
+                if (IsActionTriggered(KEY_PAGE_DOWN) && config->max_rounds > 100) config->max_rounds -= 100;
 
                 // Interaction: Change Max Population
-                int max_squad_cells = (config.rows * config.cols) / 2;
+                int max_squad_cells = (config->rows * config->cols) / 2;
                 // Clamp if grid size reduced below current max_pop
-                if (config.max_population > max_squad_cells) config.max_population = max_squad_cells;
+                if (config->max_population > max_squad_cells) config->max_population = max_squad_cells;
 
-                if (IsActionTriggered(KEY_INSERT) && config.max_population < max_squad_cells) {
-                    config.max_population += 10;
-                    if (config.max_population > max_squad_cells) config.max_population = max_squad_cells;
+                if (IsActionTriggered(KEY_INSERT) && config->max_population < max_squad_cells) {
+                    config->max_population += 10;
+                    if (config->max_population > max_squad_cells) config->max_population = max_squad_cells;
                 }
-                if (IsActionTriggered(KEY_DELETE) && config.max_population > 10) config.max_population -= 10;
+                if (IsActionTriggered(KEY_DELETE) && config->max_population > 10) config->max_population -= 10;
 
                 // Presets 
                 if (IsActionTriggered(KEY_ONE)) { // CONWAY'S CHESS
-                    config.cols = 16;
-                    config.rows = 8;
-                    config.delay_ms = 500;
-                    config.max_rounds = 50;
-                    config.max_population = 30;
+                    config->cols = 16;
+                    config->rows = 8;
+                    config->delay_ms = 500;
+                    config->max_rounds = 50;
+                    config->max_population = 30;
                 }
                 if (IsActionTriggered(KEY_TWO)) { // Outer Space Battle
-                    config.cols = 400;
-                    config.rows = 200;
-                    config.delay_ms = 100;
-                    config.max_rounds = 300;
-                    config.max_population = 1000;
+                    config->cols = 400;
+                    config->rows = 200;
+                    config->delay_ms = 100;
+                    config->max_rounds = 300;
+                    config->max_population = 1000;
                 }
                 if (IsActionTriggered(KEY_THREE)) { // TURING SANDBOX
-                    config.cols = 1000;
-                    config.rows = 500;
-                    config.delay_ms = 0;
-                    config.max_rounds = 1000;
-                    config.max_population = 5000;
+                    config->cols = 1000;
+                    config->rows = 500;
+                    config->delay_ms = 0;
+                    config->max_rounds = 1000;
+                    config->max_population = 5000;
                 }
 
                     // Transition: Start Setup
                 if (IsKeyPressed(KEY_ENTER)) {
-                    if (gui_world) free_world(gui_world);
-                    gui_world = create_world(config.rows, config.cols);
-                    if (swap_world) free_world(swap_world);
-                    swap_world = create_world(config.rows, config.cols);
+                    
+                    gui_world = create_world(config->rows, config->cols);
+                    
+                    swap_world = create_world(config->rows, config->cols);
                     // Initialize empty (Corrected for ghost borders)
-                    int stride = config.cols + 2;
-                    for(int r=0; r < config.rows + 2; r++) {
-                        for(int c=0; c < config.cols + 2; c++) {
+                    int stride = config->cols + 2;
+                    for(int r=0; r < config->rows + 2; r++) {
+                        for(int c=0; c < config->cols + 2; c++) {
                             gui_world->grid[r * stride + c] = DEAD;
                         }
                     }
                     
-                    config.current_blue_pop = 0;
-                    config.current_red_pop = 0;
-                    config.current_round = 0;
-                    config.red_catalyst_used = false;
-                    config.blue_catalyst_used = false;
+                    config->current_blue_pop = 0;
+                    config->current_red_pop = 0;
+                    config->current_round = 0;
+                    config->red_catalyst_used = false;
+                    config->blue_catalyst_used = false;
                     
                     state = STATE_EDIT_RED;
                 }                break;
@@ -487,9 +473,9 @@ void UpdateDrawFrame(void) {
                     int drawHeight = screenHeight - headerHeight - footerHeight - margin;
                     int startX = margin;
                     int startY = headerHeight;
-                    float cellW = (float)drawWidth / config.cols;
-                    float cellH = (float)drawHeight / config.rows;
-                    int midCol = config.cols / 2;
+                    float cellW = (float)drawWidth / config->cols;
+                    float cellH = (float)drawHeight / config->rows;
+                    int midCol = config->cols / 2;
                     
                     static int editAction = 0; // 0:Idle, 1:Place, 2:Remove
                     if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) editAction = 0;
@@ -499,7 +485,7 @@ void UpdateDrawFrame(void) {
                         
                         int col = (int)((mousePos.x - startX) / cellW);
                         int row = (int)((mousePos.y - startY) / cellH);
-                        int stride = config.cols + 2;
+                        int stride = config->cols + 2;
                         int index = (row + 1) * stride + (col + 1);
                         
                         bool isCorrectSide = (state == STATE_EDIT_RED) ? (col >= midCol) : (col < midCol);
@@ -513,35 +499,35 @@ void UpdateDrawFrame(void) {
                             if (state == STATE_EDIT_RED) {
                                 if (editAction == 2 && gui_world->grid[index] == TEAM_RED) {
                                     gui_world->grid[index] = DEAD;
-                                    config.current_red_pop--;
+                                    config->current_red_pop--;
                                     activate_chunk_at(gui_world, row, col);
-                                } else if (editAction == 1 && gui_world->grid[index] == DEAD && config.current_red_pop < config.max_population) {
+                                } else if (editAction == 1 && gui_world->grid[index] == DEAD && config->current_red_pop < config->max_population) {
                                     gui_world->grid[index] = TEAM_RED;
-                                    config.current_red_pop++;
+                                    config->current_red_pop++;
                                     activate_chunk_at(gui_world, row, col);
                                 }
                             } else {
                                 if (editAction == 2 && gui_world->grid[index] == TEAM_BLUE) {
                                     gui_world->grid[index] = DEAD;
-                                    config.current_blue_pop--;
+                                    config->current_blue_pop--;
                                     activate_chunk_at(gui_world, row, col);
-                                } else if (editAction == 1 && gui_world->grid[index] == DEAD && config.current_blue_pop < config.max_population) {
+                                } else if (editAction == 1 && gui_world->grid[index] == DEAD && config->current_blue_pop < config->max_population) {
                                     gui_world->grid[index] = TEAM_BLUE;
-                                    config.current_blue_pop++;
+                                    config->current_blue_pop++;
                                     activate_chunk_at(gui_world, row, col);
                                 }
                             }
                         }
                         
                         if (isCorrectSide) {
-                            if (IsKeyPressed(KEY_G)) PlacePattern(gui_world, &config, row, col, 1);
-                            if (IsKeyPressed(KEY_T)) PlacePattern(gui_world, &config, row, col, 2);
-                            if (IsKeyPressed(KEY_B)) PlacePattern(gui_world, &config, row, col, 3);
+                            if (IsKeyPressed(KEY_G)) PlacePattern(gui_world, config, row, col, 1);
+                            if (IsKeyPressed(KEY_T)) PlacePattern(gui_world, config, row, col, 2);
+                            if (IsKeyPressed(KEY_B)) PlacePattern(gui_world, config, row, col, 3);
                         }
                     }
                 }
                 
-                if (IsKeyPressed(KEY_S)) save_grid("setup.json", gui_world, &config);
+                if (IsKeyPressed(KEY_S)) save_grid("setup.json", gui_world, config);
                 
                 if (IsKeyPressed(KEY_L)) {
                     fileCount = list_protocol_files("biotope_results", &fileList);
@@ -551,19 +537,19 @@ void UpdateDrawFrame(void) {
                 
                 if (IsKeyPressed(KEY_R)) {
                     // Randomize only current player's side
-                    int stride = config.cols + 2;
-                    int midCol = config.cols / 2;
+                    int stride = config->cols + 2;
+                    int midCol = config->cols / 2;
                     srand(time(NULL));
 
                     // 1. Clear side
-                    for(int r=0; r<config.rows; r++) {
-                        for(int c=0; c<config.cols; c++) {
+                    for(int r=0; r<config->rows; r++) {
+                        for(int c=0; c<config->cols; c++) {
                             bool isCorrectSide = (state == STATE_EDIT_RED) ? (c >= midCol) : (c < midCol);
                             if (isCorrectSide) {
                                 int idx = (r + 1) * stride + (c + 1);
                                 if (gui_world->grid[idx] != DEAD) {
-                                    if (gui_world->grid[idx] == TEAM_RED) config.current_red_pop--;
-                                    else config.current_blue_pop--;
+                                    if (gui_world->grid[idx] == TEAM_RED) config->current_red_pop--;
+                                    else config->current_blue_pop--;
                                     gui_world->grid[idx] = DEAD;
                                     activate_chunk_at(gui_world, r, c);
                                 }
@@ -572,23 +558,23 @@ void UpdateDrawFrame(void) {
                     }
 
                     // 2. Sprinkle cells: Exactly 37.5% of the total grid area
-                    int totalCells = config.rows * config.cols;
+                    int totalCells = config->rows * config->cols;
                     int targetPop = (int)(totalCells * 0.375f);
                     if (targetPop < 1) targetPop = 1;
 
                     // Sync config max_population to this 3% for the UI counter
-                    config.max_population = targetPop;
+                    config->max_population = targetPop;
 
-                    int *currentPop = (state == STATE_EDIT_RED) ? &config.current_red_pop : &config.current_blue_pop;
+                    int *currentPop = (state == STATE_EDIT_RED) ? &config->current_red_pop : &config->current_blue_pop;
                     int team = (state == STATE_EDIT_RED) ? TEAM_RED : TEAM_BLUE;
-                    int sideWidth = (state == STATE_EDIT_RED) ? (config.cols - midCol) : midCol;
+                    int sideWidth = (state == STATE_EDIT_RED) ? (config->cols - midCol) : midCol;
                     int startCol = (state == STATE_EDIT_RED) ? midCol : 0;
 
                     // Safety: limit attempts
                     int attempts = 0;
                     int maxAttempts = targetPop * 10; 
                     while (*currentPop < targetPop && attempts < maxAttempts) {
-                        int r = rand() % config.rows;
+                        int r = rand() % config->rows;
                         int c = startCol + (rand() % sideWidth);
                         int idx = (r + 1) * stride + (c + 1);
                         if (gui_world->grid[idx] == DEAD) {
@@ -609,27 +595,14 @@ void UpdateDrawFrame(void) {
                         time_t now = time(NULL);
                         strftime(autoFilename, sizeof(autoFilename), "biotope_results/run_%Y%m%d_%H%M%S.json", localtime(&now));
                         strcpy(currentProtocolFilename, autoFilename);
-                        save_grid(autoFilename, gui_world, &config);
+                        save_grid(autoFilename, gui_world, config);
                         state = STATE_IGNITION;   
                     }
                 }
                 break;
 
             case STATE_IGNITION:
-                {
-                    if (ignitionStartTime == 0.0) {
-                        ignitionStartTime = GetTime();
-                        // Step 4.1: Allocate telemetry arrays
-                        config.history_red_pop = (int*)malloc(config.max_rounds * sizeof(int));
-                        config.history_blue_pop = (int*)malloc(config.max_rounds * sizeof(int));
-                        config.history_count = 0;
-                    }
-                    
-                    if (GetTime() - ignitionStartTime >= 3.0) {
-                        ignitionStartTime = 0.0;
-                        state = STATE_RUNNING;
-                    }
-                }
+                if (ignitionStartTime == 0.0) ignitionStartTime = GetTime();
                 break;
 
             case STATE_LOAD:   // Alte Spielkonfigurationen laden
@@ -637,17 +610,17 @@ void UpdateDrawFrame(void) {
                 if (IsKeyPressed(KEY_DOWN) && selectedFileIndex < fileCount - 1) selectedFileIndex++;
                 
                 if (IsKeyPressed(KEY_ENTER) && fileCount > 0) {
-                    if (load_grid(fileList[selectedFileIndex].filepath, gui_world, &config)) {
+                    if (load_grid(fileList[selectedFileIndex].filepath, gui_world, config)) {
                         strcpy(statusMsg, "Protocol Loaded!");
                         statusTimer = 2.0f;
                         
                         // FIX: Ensure swap_world matches the new dimensions!
                         // Otherwise -> Heap Corruption / Buffer Overflow in update_generation
-                        if (swap_world) free_world(swap_world);
-                        swap_world = create_world(config.rows, config.cols);
+                        
+                        swap_world = create_world(config->rows, config->cols);
                         // Initialize swap_world to valid empty state (including borders)
-                        int stride = config.cols + 2;
-                        for(int i=0; i < (config.rows + 2) * stride; i++) swap_world->grid[i] = DEAD;
+                        int stride = config->cols + 2;
+                        for(int i=0; i < (config->rows + 2) * stride; i++) swap_world->grid[i] = DEAD;
                     }
                     if (fileList) free(fileList);
                     fileList = NULL;
@@ -663,8 +636,8 @@ void UpdateDrawFrame(void) {
             
             case STATE_RUNNING:  // Hier zurücklehnen und zuschauen
                 if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_Q)) {
-                    if (gui_world) free_world(gui_world);
-                    if (swap_world) free_world(swap_world);
+                    
+                    
                     gui_world = NULL;
                     swap_world = NULL;
                     state = STATE_CONFIG;
@@ -696,55 +669,26 @@ void UpdateDrawFrame(void) {
                     if (mousePos.x >= startX && mousePos.x < startX + drawWidth &&
                         mousePos.y >= startY && mousePos.y < startY + drawHeight) {
                         
-                        float cellW = (float)drawWidth / config.cols;
-                        float cellH = (float)drawHeight / config.rows;
+                        float cellW = (float)drawWidth / config->cols;
+                        float cellH = (float)drawHeight / config->rows;
                         int col = (int)((mousePos.x - startX) / cellW);
                         int row = (int)((mousePos.y - startY) / cellH);
-                        int midCol = config.cols / 2;
+                        int midCol = config->cols / 2;
 
-                        if (col >= midCol && !config.red_catalyst_used) {
+                        if (col >= midCol && !config->red_catalyst_used) {
                             apply_catalyst(gui_world, row + 1, col + 1);
-                            config.red_catalyst_used = true;
+                            config->red_catalyst_used = true;
                             strcpy(statusMsg, "RED CATALYST ACTIVATED!");
                             statusTimer = 2.0f;
-                        } else if (col < midCol && !config.blue_catalyst_used) {
+                        } else if (col < midCol && !config->blue_catalyst_used) {
                             apply_catalyst(gui_world, row + 1, col + 1);
-                            config.blue_catalyst_used = true;
+                            config->blue_catalyst_used = true;
                             strcpy(statusMsg, "BLUE CATALYST ACTIVATED!");
                             statusTimer = 2.0f;
                         }
                     }
                 }
 
-                // --- Simulation Logic ---
-                static float timeAccumulator = 0.0f;
-                timeAccumulator += GetFrameTime(); // Raylib Zeitsteuerung: Benötigte Zeit in Sek. für Berechnung u. Zeichnen  d. letzten Frames   
-                // "Sammelt" die pro Frame verbrauchte Zeit, bis die in delay_ms vorgegebene Wartezeit angesammelt wurde, dann weiter.  
-                if (timeAccumulator >= config.delay_ms / 1000.0f) {
-                    timeAccumulator = 0.0f;
-                    
-                    update_generation(gui_world, swap_world, config.rows, config.cols, &config.current_red_pop, &config.current_blue_pop);
-                    
-                    // Step 4.2: Record Telemetry
-                    if (config.history_count < config.max_rounds) {
-                        config.history_red_pop[config.history_count] = config.current_red_pop;
-                        config.history_blue_pop[config.history_count] = config.current_blue_pop;
-                        config.history_count++;
-                    }
-
-                    // Pointer Swap (Double Buffering)
-                    World *temp = gui_world;
-                    gui_world = swap_world;
-                    swap_world = temp;
-
-                    config.current_round++;
-                    
-                    if (config.current_round >= config.max_rounds || // Fertig, wenn max_rounds erreicht
-                        config.current_red_pop == 0 ||               // Fertig, wenn keine roten Zellen mehr 
-                        config.current_blue_pop == 0) {              // Fertig, wenn keine blauen Zellen mehr
-                        state = STATE_FINISHED;
-                    }
-                }
                 break;
 
             case STATE_OBSERVER:
@@ -775,68 +719,52 @@ void UpdateDrawFrame(void) {
                     if (observer_camera.zoom < 0.125f) observer_camera.zoom = 0.125f;
                 }
 
-                // --- Simulation Logic (Shared with RUNNING) ---
-                static float obsTimeAccumulator = 0.0f;
-                obsTimeAccumulator += GetFrameTime();
-                if (obsTimeAccumulator >= config.delay_ms / 1000.0f) {
-                    obsTimeAccumulator = 0.0f;
-                    
-                    update_generation(gui_world, swap_world, config.rows, config.cols, &config.current_red_pop, &config.current_blue_pop);
-                    
-                    if (config.history_count < config.max_rounds) {
-                        config.history_red_pop[config.history_count] = config.current_red_pop;
-                        config.history_blue_pop[config.history_count] = config.current_blue_pop;
-                        config.history_count++;
-                    }
-
-                    World *temp = gui_world;
-                    gui_world = swap_world;
-                    swap_world = temp;
-
-                    config.current_round++;
-                    
-                    if (config.current_round >= config.max_rounds || 
-                        config.current_red_pop == 0 ||               
-                        config.current_blue_pop == 0) {              
-                        state = STATE_FINISHED;
-                    }
-                }
                 break;
                 
             case STATE_FINISHED:
                 if (IsKeyPressed(KEY_ENTER)) {
                      state = STATE_GAME_OVER;
                      int winner = 0;
-                     if (config.current_red_pop > config.current_blue_pop) winner = TEAM_RED;
-                     else if (config.current_blue_pop > config.current_red_pop) winner = TEAM_BLUE;
+                     if (config->current_red_pop > config->current_blue_pop) winner = TEAM_RED;
+                     else if (config->current_blue_pop > config->current_red_pop) winner = TEAM_BLUE;
                      
                      // Append to Protocol
                      if (strlen(currentProtocolFilename) > 0) {
-                        append_protocol_result(currentProtocolFilename, &config, winner);
+                        append_protocol_result(currentProtocolFilename, config, winner);
                      }                }
                 if (IsKeyPressed(KEY_Q)) {
-                    if (gui_world) free_world(gui_world);
+                    
                     gui_world = NULL;
                     // Step 4.1 Cleanup
-                    if (config.history_red_pop) { free(config.history_red_pop); config.history_red_pop = NULL; }
-                    if (config.history_blue_pop) { free(config.history_blue_pop); config.history_blue_pop = NULL; }
+                    if (config->history_red_pop) { free(config->history_red_pop); config->history_red_pop = NULL; }
+                    if (config->history_blue_pop) { free(config->history_blue_pop); config->history_blue_pop = NULL; }
                     state = STATE_CONFIG;
                 }
                 break;
 
             case STATE_GAME_OVER:
                 if (IsKeyPressed(KEY_ONE)) {
-                     if (gui_world) free_world(gui_world);
+                     
                      gui_world = NULL;
                      // Step 4.1 Cleanup
-                     if (config.history_red_pop) { free(config.history_red_pop); config.history_red_pop = NULL; }
-                     if (config.history_blue_pop) { free(config.history_blue_pop); config.history_blue_pop = NULL; }
+                     if (config->history_red_pop) { free(config->history_red_pop); config->history_red_pop = NULL; }
+                     if (config->history_blue_pop) { free(config->history_blue_pop); config->history_blue_pop = NULL; }
                      state = STATE_CONFIG;
                 }
                 break;
         }
 
-        // --- Drawing ---
+            *p_current_world = gui_world;
+    *p_swap_world = swap_world;
+    return state;
+}
+
+void draw_current_state(AppState state, const GameConfig* config, const World* gui_world) {
+    int screenWidth = GetScreenWidth();
+    int screenHeight = GetScreenHeight();
+    Rectangle editorBtnRec = { (float)screenWidth - 220, 15, 200, 30 };
+    bool hoverEditor = (state != STATE_PUZZLE) && CheckCollisionPointRec(GetMousePosition(), editorBtnRec);
+    // --- Drawing ---
         BeginDrawing(); // Raylib Anzeigesteuerung: Beginn einer neuen "Zeichenrunde"
         ClearBackground(THEME_BG); // Raylib Anzeigesteuerung: Gesamtes Fenster wird mit THEME_BG gefüllt
 
@@ -866,19 +794,19 @@ void UpdateDrawFrame(void) {
                 DrawText("BIOTOPE CONFIGURATION", 20, 15, 30, THEME_TEXT);
                 
                 char buf[64];
-                sprintf(buf, "GRID SIZE:  %03d x %03d", config.rows, config.cols);
+                sprintf(buf, "GRID SIZE:  %03d x %03d", config->rows, config->cols);
                 DrawText(buf, 40, 100, 20, THEME_BLUE);
                 DrawText("(Arrows)", 300, 100, 18, THEME_HINT);
                 
-                sprintf(buf, "DELAY:      %04d ms", config.delay_ms);
+                sprintf(buf, "DELAY:      %04d ms", config->delay_ms);
                 DrawText(buf, 40, 140, 20, THEME_RED);
                 DrawText("(+/-)", 300, 140, 18, THEME_HINT);
                 
-                sprintf(buf, "MAX ROUNDS: %04d", config.max_rounds);
+                sprintf(buf, "MAX ROUNDS: %04d", config->max_rounds);
                 DrawText(buf, 40, 180, 20, THEME_BLUE);
                 DrawText("(PageUp/PageDown)", 300, 180, 18, THEME_HINT);
                 
-                sprintf(buf, "MAX INIT POP:    %04d", config.max_population);
+                sprintf(buf, "MAX INIT POP:    %04d", config->max_population);
                 DrawText(buf, 40, 220, 20, THEME_RED);
                 DrawText("(Insert/Delete)", 300, 220, 18, THEME_HINT);
 
@@ -908,8 +836,8 @@ void UpdateDrawFrame(void) {
                 
                 // Centered Scoreboard
                 char bluePopBuf[64], redPopBuf[64];
-                sprintf(bluePopBuf, "BLUE: %03d/%03d", config.current_blue_pop, config.max_population);
-                sprintf(redPopBuf, "RED: %03d/%03d", config.current_red_pop, config.max_population);
+                sprintf(bluePopBuf, "BLUE: %03d/%03d", config->current_blue_pop, config->max_population);
+                sprintf(redPopBuf, "RED: %03d/%03d", config->current_red_pop, config->max_population);
                 int blueW = MeasureText(bluePopBuf, 20);
                 DrawText(bluePopBuf, screenWidth/2 - blueW - 20, 20, 20, THEME_BLUE);
                 DrawText(redPopBuf, screenWidth/2 + 20, 20, 20, THEME_RED);
@@ -929,15 +857,15 @@ void UpdateDrawFrame(void) {
                     int drawHeight = screenHeight - headerHeight - footerHeight - margin;
                     int startX = margin;
                     int startY = headerHeight;
-                    float cellW = (float)drawWidth / config.cols;
-                    float cellH = (float)drawHeight / config.rows;
+                    float cellW = (float)drawWidth / config->cols;
+                    float cellH = (float)drawHeight / config->rows;
                     
                     if (mousePos.x >= startX && mousePos.x < startX + drawWidth &&
                         mousePos.y >= startY && mousePos.y < startY + drawHeight) {
                         int col = (int)((mousePos.x - startX) / cellW);
                         int row = (int)((mousePos.y - startY) / cellH);
                         // Draw Ghost only if on correct side
-                        bool isCorrectSide = (state == STATE_EDIT_RED) ? (col >= config.cols/2) : (col < config.cols/2);
+                        bool isCorrectSide = (state == STATE_EDIT_RED) ? (col >= config->cols/2) : (col < config->cols/2);
                         if (isCorrectSide) {
                             Color ghostColor = (state == STATE_EDIT_BLUE) ? Fade(THEME_BLUE, 0.2f) : Fade(THEME_RED, 0.2f);
                             DrawRectangle(startX + col * cellW, startY + row * cellH, cellW, cellH, ghostColor);
@@ -945,8 +873,8 @@ void UpdateDrawFrame(void) {
                     }
                 }
                 
-                bool showLines = (config.rows <= 150 && config.cols <= 150);
-                DrawGridAndCells(&config, screenWidth, screenHeight, showLines); 
+                bool showLines = (config->rows <= 150 && config->cols <= 150);
+                DrawGridAndCells(config, gui_world, screenWidth, screenHeight, showLines); 
 
                 DrawText("[ENTER] NEXT/DONE | [S] SAVE | [L] LOAD | [R] RANDOM | [G] GLIDER | [T] TRAVELER | [B] BLASTER", 
                          20, screenHeight - 28, 20, THEME_TEXT);
@@ -954,7 +882,7 @@ void UpdateDrawFrame(void) {
 
             case STATE_IGNITION:
                 DrawText("SYSTEM IGNITION", 20, 18, 24, THEME_RED);
-                DrawGridAndCells(&config, screenWidth, screenHeight, false);
+                DrawGridAndCells(config, gui_world, screenWidth, screenHeight, false);
                 {
                     double elapsed = GetTime() - ignitionStartTime;
                     int countdown = 3 - (int)elapsed;
@@ -1049,25 +977,25 @@ void UpdateDrawFrame(void) {
 
                 // Centered Scoreboard (Vital for competitive feedback)
                 char bluePopRun[32], redPopRun[32];
-                sprintf(bluePopRun, "BLUE: %d", config.current_blue_pop);
-                sprintf(redPopRun, "RED: %d", config.current_red_pop);
+                sprintf(bluePopRun, "BLUE: %d", config->current_blue_pop);
+                sprintf(redPopRun, "RED: %d", config->current_red_pop);
                 int blueWRun = MeasureText(bluePopRun, 20);
                 DrawText(bluePopRun, screenWidth/2 - blueWRun - 20, 20, 20, THEME_BLUE);
                 DrawText(redPopRun, screenWidth/2 + 20, 20, 20, THEME_RED);
 
                 // Right-aligned Round Counter (Compact)
                 char roundBuf[32];
-                sprintf(roundBuf, "CYCLE: %04d/%04d", config.current_round, config.max_rounds);
+                sprintf(roundBuf, "CYCLE: %04d/%04d", config->current_round, config->max_rounds);
                 int roundW = MeasureText(roundBuf, 20);
                 DrawText(roundBuf, screenWidth - roundW - 20, 20, 20, THEME_TEXT);
                 
                 
-                DrawGridAndCells(&config, screenWidth, screenHeight, false); // false = No Grid Lines (Performance!)
+                DrawGridAndCells(config, gui_world, screenWidth, screenHeight, false); // false = No Grid Lines (Performance!)
                 
                 // Catalyst Indicators
                 DrawText("CATALYST:", 20, screenHeight - 65, 18, THEME_HINT);
-                DrawText("BLUE", 120, screenHeight - 65, 18, config.blue_catalyst_used ? THEME_HINT : THEME_BLUE);
-                DrawText("RED", 180, screenHeight - 65, 18, config.red_catalyst_used ? THEME_HINT : THEME_RED);
+                DrawText("BLUE", 120, screenHeight - 65, 18, config->blue_catalyst_used ? THEME_HINT : THEME_BLUE);
+                DrawText("RED", 180, screenHeight - 65, 18, config->red_catalyst_used ? THEME_HINT : THEME_RED);
 
                 if (state == STATE_RUNNING) {
                     DrawText("[Q] ABORT  |  [O] OBSERVER MODE", 20, screenHeight - 30, 20, THEME_HINT);
@@ -1079,7 +1007,7 @@ void UpdateDrawFrame(void) {
             case STATE_FINISHED:
                 DrawText("SIMULATION COMPLETED", 20, 18, 24, THEME_BLUE);
                 
-                DrawGridAndCells(&config, screenWidth, screenHeight, false);
+                DrawGridAndCells(config, gui_world, screenWidth, screenHeight, false);
                 
                 DrawText("[ENTER] VIEW RESULTS  |  [Q] MENU", 20, screenHeight - 30, 20, THEME_ACCENT);
                 break;
@@ -1089,10 +1017,10 @@ void UpdateDrawFrame(void) {
                 
                 char resultBuf[128];
                 Color winnerColor = THEME_TEXT;
-                if (config.current_red_pop > config.current_blue_pop) {
+                if (config->current_red_pop > config->current_blue_pop) {
                     sprintf(resultBuf, "WINNER: RED TEAM");
                     winnerColor = THEME_RED;
-                } else if (config.current_blue_pop > config.current_red_pop) {
+                } else if (config->current_blue_pop > config->current_red_pop) {
                     sprintf(resultBuf, "WINNER: BLUE TEAM");
                     winnerColor = THEME_BLUE;
                 } else {
@@ -1101,7 +1029,7 @@ void UpdateDrawFrame(void) {
                 
                 DrawText(resultBuf, screenWidth/2 - MeasureText(resultBuf, 40)/2, 200, 40, winnerColor);
                 
-                sprintf(buf, "RED: %d  vs  BLUE: %d", config.current_red_pop, config.current_blue_pop);
+                sprintf(buf, "RED: %d  vs  BLUE: %d", config->current_red_pop, config->current_blue_pop);
                 DrawText(buf, screenWidth/2 - MeasureText(buf, 20)/2, 260, 20, GRAY);
                 
                 // --- Step 4.3: Telemetry Graph ---
@@ -1112,27 +1040,27 @@ void UpdateDrawFrame(void) {
                 DrawRectangle(graphX, graphY, graphW, graphH, THEME_HUD);
                 DrawRectangleLines(graphX, graphY, graphW, graphH, THEME_HINT);
 
-                if (config.history_count > 1) {
+                if (config->history_count > 1) {
                     // Find Peak Population for Dynamic Scaling
                     int peakPop = 0;
-                    for (int i = 0; i < config.history_count; i++) {
-                        if (config.history_red_pop[i] > peakPop) peakPop = config.history_red_pop[i];
-                        if (config.history_blue_pop[i] > peakPop) peakPop = config.history_blue_pop[i];
+                    for (int i = 0; i < config->history_count; i++) {
+                        if (config->history_red_pop[i] > peakPop) peakPop = config->history_red_pop[i];
+                        if (config->history_blue_pop[i] > peakPop) peakPop = config->history_blue_pop[i];
                     }
                     
                     // Safety: Avoid division by zero and add 10% margin
-                    float yMax = (peakPop > 0) ? (float)peakPop * 1.1f : (float)(config.rows * config.cols);
+                    float yMax = (peakPop > 0) ? (float)peakPop * 1.1f : (float)(config->rows * config->cols);
 
-                    for (int i = 0; i < config.history_count - 1; i++) {
-                        float x1 = graphX + ((float)i / config.max_rounds) * graphW;
-                        float x2 = graphX + ((float)(i + 1) / config.max_rounds) * graphW;
+                    for (int i = 0; i < config->history_count - 1; i++) {
+                        float x1 = graphX + ((float)i / config->max_rounds) * graphW;
+                        float x2 = graphX + ((float)(i + 1) / config->max_rounds) * graphW;
                         
                         // Scale Y using the dynamic peak
-                        float y1_red = graphY + graphH - ((float)config.history_red_pop[i] / yMax) * graphH;
-                        float y2_red = graphY + graphH - ((float)config.history_red_pop[i+1] / yMax) * graphH;
+                        float y1_red = graphY + graphH - ((float)config->history_red_pop[i] / yMax) * graphH;
+                        float y2_red = graphY + graphH - ((float)config->history_red_pop[i+1] / yMax) * graphH;
                         
-                        float y1_blue = graphY + graphH - ((float)config.history_blue_pop[i] / yMax) * graphH;
-                        float y2_blue = graphY + graphH - ((float)config.history_blue_pop[i+1] / yMax) * graphH;
+                        float y1_blue = graphY + graphH - ((float)config->history_blue_pop[i] / yMax) * graphH;
+                        float y2_blue = graphY + graphH - ((float)config->history_blue_pop[i+1] / yMax) * graphH;
                         
                         DrawLine(x1, y1_red, x2, y2_red, THEME_RED);
                         DrawLine(x1, y1_blue, x2, y2_blue, THEME_BLUE);

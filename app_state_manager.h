@@ -1,0 +1,9 @@
+#ifndef APP_STATE_MANAGER_H
+#define APP_STATE_MANAGER_H
+
+#include "core_types.h"
+
+// KI-Agent unterstützt: App state manager decoupled from rendering
+AppState update_app_state(AppState current_state, GameConfig* config, World** current_world, World** next_world, float delta_time, double current_time);
+
+#endif // APP_STATE_MANAGER_H

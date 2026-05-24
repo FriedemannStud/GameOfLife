@@ -1,605 +1,605 @@
 {
 	"total_matches_played":	9900,
-	"execution_time_cpu_s":	24.368761,
+	"execution_time_cpu_s":	27.274449,
 	"rankings":	[{
-			"player_id":	"p_75",
-			"total_score":	158,
-			"matches_played":	198,
-			"win_rate":	0.797979797979798,
-			"avg_stable_generation":	483.39393939393938
-		}, {
-			"player_id":	"p_96",
+			"player_id":	"p_3",
 			"total_score":	153,
 			"matches_played":	198,
 			"win_rate":	0.77272727272727271,
-			"avg_stable_generation":	390.20202020202021
-		}, {
-			"player_id":	"p_2",
-			"total_score":	150,
-			"matches_played":	198,
-			"win_rate":	0.75757575757575757,
-			"avg_stable_generation":	450.21212121212119
-		}, {
-			"player_id":	"p_68",
-			"total_score":	148,
-			"matches_played":	198,
-			"win_rate":	0.74747474747474751,
-			"avg_stable_generation":	275.580808080808
-		}, {
-			"player_id":	"p_59",
-			"total_score":	147,
-			"matches_played":	198,
-			"win_rate":	0.74242424242424243,
-			"avg_stable_generation":	626.14646464646466
-		}, {
-			"player_id":	"p_70",
-			"total_score":	147,
-			"matches_played":	198,
-			"win_rate":	0.74242424242424243,
-			"avg_stable_generation":	324.72727272727275
-		}, {
-			"player_id":	"p_43",
-			"total_score":	146,
-			"matches_played":	198,
-			"win_rate":	0.73737373737373735,
-			"avg_stable_generation":	606.72727272727275
+			"avg_stable_generation":	248.50505050505049
 		}, {
 			"player_id":	"p_51",
-			"total_score":	146,
+			"total_score":	153,
 			"matches_played":	198,
-			"win_rate":	0.73737373737373735,
-			"avg_stable_generation":	361.19191919191917
+			"win_rate":	0.77272727272727271,
+			"avg_stable_generation":	788.82323232323233
 		}, {
-			"player_id":	"p_32",
-			"total_score":	144,
+			"player_id":	"p_16",
+			"total_score":	145,
 			"matches_played":	198,
-			"win_rate":	0.72727272727272729,
-			"avg_stable_generation":	555.79292929292933
+			"win_rate":	0.73232323232323238,
+			"avg_stable_generation":	345.590909090909
 		}, {
-			"player_id":	"p_57",
-			"total_score":	144,
+			"player_id":	"p_74",
+			"total_score":	143,
 			"matches_played":	198,
-			"win_rate":	0.72727272727272729,
-			"avg_stable_generation":	516.02525252525254
+			"win_rate":	0.72222222222222221,
+			"avg_stable_generation":	521.030303030303
 		}, {
-			"player_id":	"p_98",
+			"player_id":	"p_49",
 			"total_score":	142,
 			"matches_played":	198,
 			"win_rate":	0.717171717171717,
-			"avg_stable_generation":	298.26262626262627
+			"avg_stable_generation":	307.16161616161617
 		}, {
-			"player_id":	"p_99",
-			"total_score":	142,
+			"player_id":	"p_27",
+			"total_score":	141,
 			"matches_played":	198,
-			"win_rate":	0.717171717171717,
-			"avg_stable_generation":	281.71212121212119
+			"win_rate":	0.712121212121212,
+			"avg_stable_generation":	663.21717171717171
 		}, {
-			"player_id":	"p_3",
+			"player_id":	"p_12",
 			"total_score":	140,
 			"matches_played":	198,
 			"win_rate":	0.707070707070707,
-			"avg_stable_generation":	296.15151515151513
+			"avg_stable_generation":	457.92424242424244
 		}, {
-			"player_id":	"p_38",
-			"total_score":	140,
+			"player_id":	"p_4",
+			"total_score":	139,
 			"matches_played":	198,
-			"win_rate":	0.707070707070707,
-			"avg_stable_generation":	426.63636363636363
+			"win_rate":	0.702020202020202,
+			"avg_stable_generation":	310.489898989899
 		}, {
-			"player_id":	"p_39",
-			"total_score":	140,
+			"player_id":	"p_96",
+			"total_score":	137,
 			"matches_played":	198,
-			"win_rate":	0.707070707070707,
-			"avg_stable_generation":	783.82828282828279
+			"win_rate":	0.691919191919192,
+			"avg_stable_generation":	745.76767676767679
 		}, {
-			"player_id":	"p_11",
+			"player_id":	"p_95",
 			"total_score":	136,
 			"matches_played":	198,
 			"win_rate":	0.686868686868687,
-			"avg_stable_generation":	431.18181818181819
+			"avg_stable_generation":	533.39898989899
 		}, {
-			"player_id":	"p_34",
-			"total_score":	136,
-			"matches_played":	198,
-			"win_rate":	0.686868686868687,
-			"avg_stable_generation":	616.70707070707067
-		}, {
-			"player_id":	"p_50",
-			"total_score":	136,
-			"matches_played":	198,
-			"win_rate":	0.686868686868687,
-			"avg_stable_generation":	353.29292929292927
-		}, {
-			"player_id":	"p_60",
+			"player_id":	"p_13",
 			"total_score":	135,
 			"matches_played":	198,
 			"win_rate":	0.68181818181818177,
-			"avg_stable_generation":	478.78282828282829
+			"avg_stable_generation":	441.979797979798
 		}, {
-			"player_id":	"p_21",
+			"player_id":	"p_53",
+			"total_score":	135,
+			"matches_played":	198,
+			"win_rate":	0.68181818181818177,
+			"avg_stable_generation":	666.75252525252529
+		}, {
+			"player_id":	"p_64",
+			"total_score":	135,
+			"matches_played":	198,
+			"win_rate":	0.68181818181818177,
+			"avg_stable_generation":	358.88888888888891
+		}, {
+			"player_id":	"p_37",
 			"total_score":	134,
 			"matches_played":	198,
 			"win_rate":	0.6767676767676768,
-			"avg_stable_generation":	457.989898989899
+			"avg_stable_generation":	390.25757575757575
 		}, {
-			"player_id":	"p_16",
+			"player_id":	"p_55",
 			"total_score":	133,
 			"matches_played":	198,
 			"win_rate":	0.67171717171717171,
-			"avg_stable_generation":	641.66666666666663
+			"avg_stable_generation":	600.18686868686871
+		}, {
+			"player_id":	"p_43",
+			"total_score":	130,
+			"matches_played":	198,
+			"win_rate":	0.65656565656565657,
+			"avg_stable_generation":	602.44444444444446
+		}, {
+			"player_id":	"p_30",
+			"total_score":	129,
+			"matches_played":	198,
+			"win_rate":	0.65151515151515149,
+			"avg_stable_generation":	747.39898989899
+		}, {
+			"player_id":	"p_35",
+			"total_score":	129,
+			"matches_played":	198,
+			"win_rate":	0.65151515151515149,
+			"avg_stable_generation":	598.73737373737379
 		}, {
 			"player_id":	"p_54",
-			"total_score":	133,
+			"total_score":	128,
 			"matches_played":	198,
-			"win_rate":	0.67171717171717171,
-			"avg_stable_generation":	415.969696969697
+			"win_rate":	0.64646464646464652,
+			"avg_stable_generation":	536.8434343434343
 		}, {
-			"player_id":	"p_94",
-			"total_score":	133,
-			"matches_played":	198,
-			"win_rate":	0.67171717171717171,
-			"avg_stable_generation":	358.429292929293
-		}, {
-			"player_id":	"p_25",
+			"player_id":	"p_17",
 			"total_score":	127,
 			"matches_played":	198,
 			"win_rate":	0.64141414141414144,
-			"avg_stable_generation":	368.38383838383839
+			"avg_stable_generation":	487.94444444444446
 		}, {
-			"player_id":	"p_28",
-			"total_score":	127,
-			"matches_played":	198,
-			"win_rate":	0.64141414141414144,
-			"avg_stable_generation":	444.449494949495
-		}, {
-			"player_id":	"p_19",
+			"player_id":	"p_73",
 			"total_score":	126,
 			"matches_played":	198,
 			"win_rate":	0.63636363636363635,
-			"avg_stable_generation":	680.60606060606062
+			"avg_stable_generation":	572.439393939394
 		}, {
-			"player_id":	"p_48",
+			"player_id":	"p_75",
+			"total_score":	126,
+			"matches_played":	198,
+			"win_rate":	0.63636363636363635,
+			"avg_stable_generation":	273.11111111111109
+		}, {
+			"player_id":	"p_18",
+			"total_score":	125,
+			"matches_played":	198,
+			"win_rate":	0.63131313131313127,
+			"avg_stable_generation":	509.409090909091
+		}, {
+			"player_id":	"p_46",
 			"total_score":	124,
 			"matches_played":	198,
 			"win_rate":	0.6262626262626263,
-			"avg_stable_generation":	480.44444444444446
+			"avg_stable_generation":	595.9545454545455
 		}, {
-			"player_id":	"p_85",
+			"player_id":	"p_63",
 			"total_score":	124,
 			"matches_played":	198,
 			"win_rate":	0.6262626262626263,
-			"avg_stable_generation":	539.31313131313129
+			"avg_stable_generation":	424.28282828282829
 		}, {
-			"player_id":	"p_31",
+			"player_id":	"p_42",
+			"total_score":	123,
+			"matches_played":	198,
+			"win_rate":	0.62121212121212122,
+			"avg_stable_generation":	503.070707070707
+		}, {
+			"player_id":	"p_67",
+			"total_score":	123,
+			"matches_played":	198,
+			"win_rate":	0.62121212121212122,
+			"avg_stable_generation":	711.78787878787875
+		}, {
+			"player_id":	"p_68",
+			"total_score":	122,
+			"matches_played":	198,
+			"win_rate":	0.616161616161616,
+			"avg_stable_generation":	355.12626262626264
+		}, {
+			"player_id":	"p_72",
+			"total_score":	122,
+			"matches_played":	198,
+			"win_rate":	0.616161616161616,
+			"avg_stable_generation":	464.23737373737373
+		}, {
+			"player_id":	"p_6",
 			"total_score":	121,
 			"matches_played":	198,
 			"win_rate":	0.611111111111111,
-			"avg_stable_generation":	417.12121212121212
+			"avg_stable_generation":	503.19696969696969
 		}, {
-			"player_id":	"p_9",
-			"total_score":	120,
+			"player_id":	"p_11",
+			"total_score":	121,
 			"matches_played":	198,
-			"win_rate":	0.606060606060606,
-			"avg_stable_generation":	601.111111111111
+			"win_rate":	0.611111111111111,
+			"avg_stable_generation":	629.1565656565657
 		}, {
-			"player_id":	"p_44",
-			"total_score":	120,
-			"matches_played":	198,
-			"win_rate":	0.606060606060606,
-			"avg_stable_generation":	780.030303030303
-		}, {
-			"player_id":	"p_47",
-			"total_score":	120,
-			"matches_played":	198,
-			"win_rate":	0.606060606060606,
-			"avg_stable_generation":	574.79797979797979
-		}, {
-			"player_id":	"p_93",
-			"total_score":	120,
-			"matches_played":	198,
-			"win_rate":	0.606060606060606,
-			"avg_stable_generation":	751.868686868687
-		}, {
-			"player_id":	"p_1",
+			"player_id":	"p_45",
 			"total_score":	119,
 			"matches_played":	198,
 			"win_rate":	0.601010101010101,
-			"avg_stable_generation":	480.50505050505052
+			"avg_stable_generation":	370.1010101010101
 		}, {
-			"player_id":	"p_24",
-			"total_score":	119,
-			"matches_played":	198,
-			"win_rate":	0.601010101010101,
-			"avg_stable_generation":	606.37373737373741
-		}, {
-			"player_id":	"p_72",
+			"player_id":	"p_38",
 			"total_score":	118,
 			"matches_played":	198,
 			"win_rate":	0.595959595959596,
-			"avg_stable_generation":	464.50505050505052
+			"avg_stable_generation":	569.79292929292933
 		}, {
-			"player_id":	"p_92",
+			"player_id":	"p_61",
 			"total_score":	117,
 			"matches_played":	198,
 			"win_rate":	0.590909090909091,
-			"avg_stable_generation":	710.161616161616
+			"avg_stable_generation":	676.808080808081
 		}, {
-			"player_id":	"p_4",
-			"total_score":	114,
+			"player_id":	"p_90",
+			"total_score":	117,
 			"matches_played":	198,
-			"win_rate":	0.5757575757575758,
-			"avg_stable_generation":	516.06565656565658
+			"win_rate":	0.590909090909091,
+			"avg_stable_generation":	482.04545454545456
 		}, {
-			"player_id":	"p_18",
-			"total_score":	114,
+			"player_id":	"p_33",
+			"total_score":	115,
 			"matches_played":	198,
-			"win_rate":	0.5757575757575758,
-			"avg_stable_generation":	626.661616161616
+			"win_rate":	0.58080808080808077,
+			"avg_stable_generation":	498.75757575757575
 		}, {
-			"player_id":	"p_63",
-			"total_score":	114,
-			"matches_played":	198,
-			"win_rate":	0.5757575757575758,
-			"avg_stable_generation":	294.02525252525254
-		}, {
-			"player_id":	"p_5",
+			"player_id":	"p_9",
 			"total_score":	113,
 			"matches_played":	198,
 			"win_rate":	0.57070707070707072,
-			"avg_stable_generation":	670.878787878788
+			"avg_stable_generation":	428.510101010101
 		}, {
-			"player_id":	"p_84",
+			"player_id":	"p_29",
 			"total_score":	113,
 			"matches_played":	198,
 			"win_rate":	0.57070707070707072,
-			"avg_stable_generation":	396.39393939393938
+			"avg_stable_generation":	686.99494949494954
 		}, {
-			"player_id":	"p_0",
-			"total_score":	112,
+			"player_id":	"p_48",
+			"total_score":	110,
 			"matches_played":	198,
-			"win_rate":	0.56565656565656564,
-			"avg_stable_generation":	857.88383838383834
+			"win_rate":	0.55555555555555558,
+			"avg_stable_generation":	477.18181818181819
 		}, {
-			"player_id":	"p_13",
-			"total_score":	109,
+			"player_id":	"p_10",
+			"total_score":	107,
 			"matches_played":	198,
-			"win_rate":	0.5505050505050505,
-			"avg_stable_generation":	532.70202020202021
+			"win_rate":	0.54040404040404044,
+			"avg_stable_generation":	526.79797979797979
 		}, {
-			"player_id":	"p_35",
-			"total_score":	109,
-			"matches_played":	198,
-			"win_rate":	0.5505050505050505,
-			"avg_stable_generation":	434.26262626262627
-		}, {
-			"player_id":	"p_78",
+			"player_id":	"p_81",
 			"total_score":	106,
 			"matches_played":	198,
 			"win_rate":	0.53535353535353536,
-			"avg_stable_generation":	691.3434343434343
+			"avg_stable_generation":	528.90404040404042
 		}, {
-			"player_id":	"p_14",
+			"player_id":	"p_70",
 			"total_score":	105,
 			"matches_played":	198,
 			"win_rate":	0.53030303030303028,
-			"avg_stable_generation":	352.32323232323233
+			"avg_stable_generation":	409.69191919191917
 		}, {
-			"player_id":	"p_67",
+			"player_id":	"p_77",
+			"total_score":	105,
+			"matches_played":	198,
+			"win_rate":	0.53030303030303028,
+			"avg_stable_generation":	917.38383838383834
+		}, {
+			"player_id":	"p_8",
 			"total_score":	104,
 			"matches_played":	198,
 			"win_rate":	0.5252525252525253,
-			"avg_stable_generation":	406.080808080808
+			"avg_stable_generation":	425.12626262626264
 		}, {
-			"player_id":	"p_23",
+			"player_id":	"p_15",
+			"total_score":	104,
+			"matches_played":	198,
+			"win_rate":	0.5252525252525253,
+			"avg_stable_generation":	554.28282828282829
+		}, {
+			"player_id":	"p_36",
+			"total_score":	104,
+			"matches_played":	198,
+			"win_rate":	0.5252525252525253,
+			"avg_stable_generation":	559.959595959596
+		}, {
+			"player_id":	"p_82",
+			"total_score":	104,
+			"matches_played":	198,
+			"win_rate":	0.5252525252525253,
+			"avg_stable_generation":	504.09595959595958
+		}, {
+			"player_id":	"p_19",
 			"total_score":	103,
 			"matches_played":	198,
 			"win_rate":	0.52020202020202022,
-			"avg_stable_generation":	738.318181818182
+			"avg_stable_generation":	532.57575757575762
 		}, {
-			"player_id":	"p_33",
-			"total_score":	103,
+			"player_id":	"p_2",
+			"total_score":	102,
 			"matches_played":	198,
-			"win_rate":	0.52020202020202022,
-			"avg_stable_generation":	485.75252525252523
+			"win_rate":	0.515151515151515,
+			"avg_stable_generation":	427.28282828282829
 		}, {
-			"player_id":	"p_7",
-			"total_score":	101,
-			"matches_played":	198,
-			"win_rate":	0.51010101010101,
-			"avg_stable_generation":	325.590909090909
-		}, {
-			"player_id":	"p_41",
-			"total_score":	101,
-			"matches_played":	198,
-			"win_rate":	0.51010101010101,
-			"avg_stable_generation":	473.77777777777777
-		}, {
-			"player_id":	"p_76",
+			"player_id":	"p_44",
 			"total_score":	100,
 			"matches_played":	198,
 			"win_rate":	0.505050505050505,
-			"avg_stable_generation":	468.24242424242425
-		}, {
-			"player_id":	"p_81",
-			"total_score":	100,
-			"matches_played":	198,
-			"win_rate":	0.505050505050505,
-			"avg_stable_generation":	540.26262626262621
-		}, {
-			"player_id":	"p_37",
-			"total_score":	98,
-			"matches_played":	198,
-			"win_rate":	0.494949494949495,
-			"avg_stable_generation":	678.68686868686871
-		}, {
-			"player_id":	"p_88",
-			"total_score":	98,
-			"matches_played":	198,
-			"win_rate":	0.494949494949495,
-			"avg_stable_generation":	600.62626262626259
+			"avg_stable_generation":	399.78282828282829
 		}, {
 			"player_id":	"p_79",
+			"total_score":	100,
+			"matches_played":	198,
+			"win_rate":	0.505050505050505,
+			"avg_stable_generation":	493.84343434343435
+		}, {
+			"player_id":	"p_24",
+			"total_score":	99,
+			"matches_played":	198,
+			"win_rate":	0.5,
+			"avg_stable_generation":	542.75252525252529
+		}, {
+			"player_id":	"p_5",
+			"total_score":	98,
+			"matches_played":	198,
+			"win_rate":	0.494949494949495,
+			"avg_stable_generation":	621.959595959596
+		}, {
+			"player_id":	"p_28",
 			"total_score":	97,
 			"matches_played":	198,
 			"win_rate":	0.48989898989898989,
-			"avg_stable_generation":	607.9545454545455
+			"avg_stable_generation":	311.26767676767679
 		}, {
-			"player_id":	"p_49",
-			"total_score":	95,
+			"player_id":	"p_69",
+			"total_score":	97,
 			"matches_played":	198,
-			"win_rate":	0.47979797979797978,
-			"avg_stable_generation":	573.4848484848485
+			"win_rate":	0.48989898989898989,
+			"avg_stable_generation":	570.49494949494954
 		}, {
-			"player_id":	"p_61",
-			"total_score":	95,
+			"player_id":	"p_62",
+			"total_score":	96,
 			"matches_played":	198,
-			"win_rate":	0.47979797979797978,
-			"avg_stable_generation":	382.19696969696969
+			"win_rate":	0.48484848484848486,
+			"avg_stable_generation":	656.28787878787875
 		}, {
-			"player_id":	"p_65",
-			"total_score":	95,
-			"matches_played":	198,
-			"win_rate":	0.47979797979797978,
-			"avg_stable_generation":	453.79292929292927
-		}, {
-			"player_id":	"p_86",
-			"total_score":	95,
-			"matches_played":	198,
-			"win_rate":	0.47979797979797978,
-			"avg_stable_generation":	492.959595959596
-		}, {
-			"player_id":	"p_56",
+			"player_id":	"p_22",
 			"total_score":	94,
 			"matches_played":	198,
 			"win_rate":	0.47474747474747475,
-			"avg_stable_generation":	651.151515151515
+			"avg_stable_generation":	558.27777777777783
 		}, {
-			"player_id":	"p_42",
+			"player_id":	"p_71",
+			"total_score":	94,
+			"matches_played":	198,
+			"win_rate":	0.47474747474747475,
+			"avg_stable_generation":	435.52525252525254
+		}, {
+			"player_id":	"p_93",
+			"total_score":	94,
+			"matches_played":	198,
+			"win_rate":	0.47474747474747475,
+			"avg_stable_generation":	553.469696969697
+		}, {
+			"player_id":	"p_20",
+			"total_score":	93,
+			"matches_played":	198,
+			"win_rate":	0.46969696969696972,
+			"avg_stable_generation":	620.550505050505
+		}, {
+			"player_id":	"p_31",
+			"total_score":	93,
+			"matches_played":	198,
+			"win_rate":	0.46969696969696972,
+			"avg_stable_generation":	561.878787878788
+		}, {
+			"player_id":	"p_85",
+			"total_score":	93,
+			"matches_played":	198,
+			"win_rate":	0.46969696969696972,
+			"avg_stable_generation":	512.62626262626259
+		}, {
+			"player_id":	"p_88",
+			"total_score":	93,
+			"matches_played":	198,
+			"win_rate":	0.46969696969696972,
+			"avg_stable_generation":	569.75757575757575
+		}, {
+			"player_id":	"p_58",
+			"total_score":	91,
+			"matches_played":	198,
+			"win_rate":	0.45959595959595961,
+			"avg_stable_generation":	628.31313131313129
+		}, {
+			"player_id":	"p_40",
 			"total_score":	90,
 			"matches_played":	198,
 			"win_rate":	0.45454545454545453,
-			"avg_stable_generation":	541.73737373737379
+			"avg_stable_generation":	473.57575757575756
 		}, {
-			"player_id":	"p_30",
+			"player_id":	"p_50",
+			"total_score":	90,
+			"matches_played":	198,
+			"win_rate":	0.45454545454545453,
+			"avg_stable_generation":	545.20202020202021
+		}, {
+			"player_id":	"p_66",
+			"total_score":	90,
+			"matches_played":	198,
+			"win_rate":	0.45454545454545453,
+			"avg_stable_generation":	519.14646464646466
+		}, {
+			"player_id":	"p_41",
+			"total_score":	89,
+			"matches_played":	198,
+			"win_rate":	0.4494949494949495,
+			"avg_stable_generation":	545.909090909091
+		}, {
+			"player_id":	"p_21",
+			"total_score":	88,
+			"matches_played":	198,
+			"win_rate":	0.44444444444444442,
+			"avg_stable_generation":	656.030303030303
+		}, {
+			"player_id":	"p_89",
+			"total_score":	86,
+			"matches_played":	198,
+			"win_rate":	0.43434343434343436,
+			"avg_stable_generation":	544.131313131313
+		}, {
+			"player_id":	"p_14",
 			"total_score":	85,
 			"matches_played":	198,
 			"win_rate":	0.42929292929292928,
-			"avg_stable_generation":	535.60606060606062
+			"avg_stable_generation":	554.78282828282829
 		}, {
-			"player_id":	"p_66",
+			"player_id":	"p_26",
+			"total_score":	85,
+			"matches_played":	198,
+			"win_rate":	0.42929292929292928,
+			"avg_stable_generation":	636.32828282828279
+		}, {
+			"player_id":	"p_80",
+			"total_score":	85,
+			"matches_played":	198,
+			"win_rate":	0.42929292929292928,
+			"avg_stable_generation":	545.50505050505046
+		}, {
+			"player_id":	"p_32",
 			"total_score":	83,
 			"matches_played":	198,
 			"win_rate":	0.41919191919191917,
-			"avg_stable_generation":	603.77272727272725
+			"avg_stable_generation":	614.5
 		}, {
-			"player_id":	"p_89",
+			"player_id":	"p_87",
 			"total_score":	81,
 			"matches_played":	198,
 			"win_rate":	0.40909090909090912,
-			"avg_stable_generation":	498.59595959595958
+			"avg_stable_generation":	548.338383838384
 		}, {
-			"player_id":	"p_20",
+			"player_id":	"p_59",
 			"total_score":	80,
 			"matches_played":	198,
 			"win_rate":	0.404040404040404,
-			"avg_stable_generation":	643.26262626262621
+			"avg_stable_generation":	561.0454545454545
 		}, {
-			"player_id":	"p_10",
-			"total_score":	78,
-			"matches_played":	198,
-			"win_rate":	0.393939393939394,
-			"avg_stable_generation":	571.59595959595958
-		}, {
-			"player_id":	"p_6",
+			"player_id":	"p_83",
 			"total_score":	75,
 			"matches_played":	198,
 			"win_rate":	0.37878787878787878,
-			"avg_stable_generation":	549.308080808081
+			"avg_stable_generation":	515.878787878788
 		}, {
-			"player_id":	"p_58",
-			"total_score":	75,
+			"player_id":	"p_65",
+			"total_score":	74,
 			"matches_played":	198,
-			"win_rate":	0.37878787878787878,
-			"avg_stable_generation":	457.84343434343435
+			"win_rate":	0.37373737373737376,
+			"avg_stable_generation":	624.71212121212125
 		}, {
-			"player_id":	"p_95",
-			"total_score":	75,
+			"player_id":	"p_76",
+			"total_score":	74,
 			"matches_played":	198,
-			"win_rate":	0.37878787878787878,
-			"avg_stable_generation":	546.191919191919
+			"win_rate":	0.37373737373737376,
+			"avg_stable_generation":	539.060606060606
 		}, {
-			"player_id":	"p_22",
-			"total_score":	73,
+			"player_id":	"p_94",
+			"total_score":	74,
 			"matches_played":	198,
-			"win_rate":	0.36868686868686867,
-			"avg_stable_generation":	471.81313131313129
+			"win_rate":	0.37373737373737376,
+			"avg_stable_generation":	633.72727272727275
 		}, {
-			"player_id":	"p_52",
-			"total_score":	73,
-			"matches_played":	198,
-			"win_rate":	0.36868686868686867,
-			"avg_stable_generation":	509.89393939393938
-		}, {
-			"player_id":	"p_91",
-			"total_score":	73,
-			"matches_played":	198,
-			"win_rate":	0.36868686868686867,
-			"avg_stable_generation":	647.21212121212125
-		}, {
-			"player_id":	"p_80",
+			"player_id":	"p_78",
 			"total_score":	70,
 			"matches_played":	198,
 			"win_rate":	0.35353535353535354,
-			"avg_stable_generation":	584.090909090909
+			"avg_stable_generation":	573.71212121212125
 		}, {
-			"player_id":	"p_82",
-			"total_score":	69,
-			"matches_played":	198,
-			"win_rate":	0.34848484848484851,
-			"avg_stable_generation":	564.13636363636363
-		}, {
-			"player_id":	"p_77",
-			"total_score":	67,
-			"matches_played":	198,
-			"win_rate":	0.3383838383838384,
-			"avg_stable_generation":	554.16666666666663
-		}, {
-			"player_id":	"p_27",
-			"total_score":	64,
-			"matches_played":	198,
-			"win_rate":	0.32323232323232326,
-			"avg_stable_generation":	529.070707070707
-		}, {
-			"player_id":	"p_73",
-			"total_score":	63,
-			"matches_played":	198,
-			"win_rate":	0.31818181818181818,
-			"avg_stable_generation":	525.22222222222217
-		}, {
-			"player_id":	"p_12",
-			"total_score":	62,
-			"matches_played":	198,
-			"win_rate":	0.31313131313131315,
-			"avg_stable_generation":	644.560606060606
-		}, {
-			"player_id":	"p_26",
+			"player_id":	"p_47",
 			"total_score":	61,
 			"matches_played":	198,
 			"win_rate":	0.308080808080808,
-			"avg_stable_generation":	588.18686868686871
+			"avg_stable_generation":	548.60606060606062
 		}, {
-			"player_id":	"p_45",
+			"player_id":	"p_84",
 			"total_score":	61,
 			"matches_played":	198,
 			"win_rate":	0.308080808080808,
-			"avg_stable_generation":	606.358585858586
+			"avg_stable_generation":	494.05555555555554
 		}, {
-			"player_id":	"p_53",
+			"player_id":	"p_34",
 			"total_score":	60,
 			"matches_played":	198,
 			"win_rate":	0.303030303030303,
-			"avg_stable_generation":	563.38383838383834
+			"avg_stable_generation":	616.79292929292933
 		}, {
-			"player_id":	"p_74",
+			"player_id":	"p_98",
 			"total_score":	60,
 			"matches_played":	198,
 			"win_rate":	0.303030303030303,
-			"avg_stable_generation":	591.32323232323233
+			"avg_stable_generation":	517.83333333333337
 		}, {
-			"player_id":	"p_90",
-			"total_score":	60,
+			"player_id":	"p_25",
+			"total_score":	59,
 			"matches_played":	198,
-			"win_rate":	0.303030303030303,
-			"avg_stable_generation":	576.05555555555554
+			"win_rate":	0.297979797979798,
+			"avg_stable_generation":	584.26262626262621
 		}, {
-			"player_id":	"p_40",
+			"player_id":	"p_92",
+			"total_score":	59,
+			"matches_played":	198,
+			"win_rate":	0.297979797979798,
+			"avg_stable_generation":	643.88383838383834
+		}, {
+			"player_id":	"p_91",
+			"total_score":	57,
+			"matches_played":	198,
+			"win_rate":	0.2878787878787879,
+			"avg_stable_generation":	577.61616161616166
+		}, {
+			"player_id":	"p_52",
 			"total_score":	56,
 			"matches_played":	198,
 			"win_rate":	0.28282828282828282,
-			"avg_stable_generation":	537.82323232323233
+			"avg_stable_generation":	657.338383838384
 		}, {
-			"player_id":	"p_87",
+			"player_id":	"p_57",
 			"total_score":	56,
 			"matches_played":	198,
 			"win_rate":	0.28282828282828282,
-			"avg_stable_generation":	494.61111111111109
+			"avg_stable_generation":	533.40404040404042
 		}, {
-			"player_id":	"p_46",
+			"player_id":	"p_23",
 			"total_score":	54,
 			"matches_played":	198,
 			"win_rate":	0.27272727272727271,
-			"avg_stable_generation":	462.64646464646466
+			"avg_stable_generation":	593.510101010101
 		}, {
-			"player_id":	"p_55",
-			"total_score":	51,
+			"player_id":	"p_1",
+			"total_score":	53,
 			"matches_played":	198,
-			"win_rate":	0.25757575757575757,
-			"avg_stable_generation":	575.29292929292933
+			"win_rate":	0.26767676767676768,
+			"avg_stable_generation":	602.53535353535358
 		}, {
-			"player_id":	"p_8",
-			"total_score":	50,
+			"player_id":	"p_86",
+			"total_score":	52,
 			"matches_played":	198,
-			"win_rate":	0.25252525252525254,
-			"avg_stable_generation":	615.59595959595958
-		}, {
-			"player_id":	"p_83",
-			"total_score":	50,
-			"matches_played":	198,
-			"win_rate":	0.25252525252525254,
-			"avg_stable_generation":	548.50505050505046
-		}, {
-			"player_id":	"p_17",
-			"total_score":	48,
-			"matches_played":	198,
-			"win_rate":	0.24242424242424243,
-			"avg_stable_generation":	562.53535353535358
-		}, {
-			"player_id":	"p_69",
-			"total_score":	48,
-			"matches_played":	198,
-			"win_rate":	0.24242424242424243,
-			"avg_stable_generation":	535.439393939394
-		}, {
-			"player_id":	"p_71",
-			"total_score":	45,
-			"matches_played":	198,
-			"win_rate":	0.22727272727272727,
-			"avg_stable_generation":	585.080808080808
+			"win_rate":	0.26262626262626265,
+			"avg_stable_generation":	560.46464646464642
 		}, {
 			"player_id":	"p_97",
-			"total_score":	45,
+			"total_score":	50,
 			"matches_played":	198,
-			"win_rate":	0.22727272727272727,
-			"avg_stable_generation":	624.50505050505046
+			"win_rate":	0.25252525252525254,
+			"avg_stable_generation":	674.60101010101
 		}, {
-			"player_id":	"p_15",
-			"total_score":	43,
+			"player_id":	"p_99",
+			"total_score":	49,
 			"matches_played":	198,
-			"win_rate":	0.21717171717171718,
-			"avg_stable_generation":	631.19696969696975
+			"win_rate":	0.24747474747474749,
+			"avg_stable_generation":	622.611111111111
 		}, {
-			"player_id":	"p_29",
-			"total_score":	42,
+			"player_id":	"p_60",
+			"total_score":	48,
 			"matches_played":	198,
-			"win_rate":	0.21212121212121213,
-			"avg_stable_generation":	633.40404040404042
+			"win_rate":	0.24242424242424243,
+			"avg_stable_generation":	554.530303030303
 		}, {
-			"player_id":	"p_36",
-			"total_score":	42,
+			"player_id":	"p_0",
+			"total_score":	44,
 			"matches_played":	198,
-			"win_rate":	0.21212121212121213,
-			"avg_stable_generation":	561.96464646464642
+			"win_rate":	0.22222222222222221,
+			"avg_stable_generation":	641.580808080808
 		}, {
-			"player_id":	"p_64",
+			"player_id":	"p_7",
+			"total_score":	44,
+			"matches_played":	198,
+			"win_rate":	0.22222222222222221,
+			"avg_stable_generation":	683.79797979797979
+		}, {
+			"player_id":	"p_56",
 			"total_score":	40,
 			"matches_played":	198,
 			"win_rate":	0.202020202020202,
-			"avg_stable_generation":	573.02525252525254
+			"avg_stable_generation":	641.641414141414
 		}, {
-			"player_id":	"p_62",
+			"player_id":	"p_39",
 			"total_score":	39,
 			"matches_played":	198,
 			"win_rate":	0.196969696969697,
-			"avg_stable_generation":	483.23232323232321
+			"avg_stable_generation":	571.4545454545455
 		}]
 }

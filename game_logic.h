@@ -1,33 +1,9 @@
 #ifndef GAME_LOGIC_H
 #define GAME_LOGIC_H
 
-// KI-Agent unterstützt
-#define DEAD 0
-#define TEAM_RED 1
-#define TEAM_BLUE 2
-#define MAX_ROUNDS 1000
+#include "core_types.h"
 
 #define CHUNK_SIZE 64
-
-// KI-Agent unterstützt
-typedef struct {
-    int *grid; // Pointer to flat array: row-major order
-    int rows;
-    int cols;
-
-    // Spatial Partitioning (NEW for Epic Scale)
-    unsigned char *chunk_map; // 1D array: 1 = active, 0 = dead
-    int chunk_rows;
-    int chunk_cols;
-} World;
-
-// KI-Agent unterstützt: Results of a single match
-typedef struct {
-    int winner; // 1 = Red, 2 = Blue, 0 = Draw
-    int red_final_pop;
-    int blue_final_pop;
-    int stable_at_generation; // 0 if never reached stable state
-} MatchResult;
 
 // KI-Agent unterstützt
 World* create_world(int rows, int cols);
@@ -39,6 +15,6 @@ void apply_catalyst(World *w, int center_r, int center_c);
 void activate_chunk_at(World *w, int r, int c);
 
 // KI-Agent unterstützt: Thread-safe match execution
-MatchResult run_isolated_match(int left_cells[8][8], int right_cells[8][8], int max_gen);
+MatchResult run_isolated_match(int left_cells[LOCAL_GRID_SIZE][LOCAL_GRID_SIZE], int right_cells[LOCAL_GRID_SIZE][LOCAL_GRID_SIZE], int max_gen);
 
 #endif // GAME_LOGIC_H

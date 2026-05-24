@@ -217,10 +217,10 @@ void activate_chunk_at(World *w, int r, int c) {
 }
 
 // KI-Agent unterstützt: Thread-safe match execution with early termination detection
-MatchResult run_isolated_match(int left_cells[8][8], int right_cells[8][8], int max_gen) {
+MatchResult run_isolated_match(int left_cells[LOCAL_GRID_SIZE][LOCAL_GRID_SIZE], int right_cells[LOCAL_GRID_SIZE][LOCAL_GRID_SIZE], int max_gen) {
     MatchResult result = { 0, 0, 0, 0 };
-    int rows = 8;
-    int cols = 16;
+    int rows = LOCAL_GRID_SIZE;
+    int cols = LOCAL_GRID_SIZE * 2;
     int r_pop = 0, b_pop = 0;
 
     World *current = create_world(rows, cols);
@@ -228,8 +228,8 @@ MatchResult run_isolated_match(int left_cells[8][8], int right_cells[8][8], int 
 
     // Initialize grid with the two 8x8 patterns
     // Team Red (Left): columns 1-8
-    for (int r = 0; r < 8; r++) {
-        for (int c = 0; c < 8; c++) {
+    for (int r = 0; r < LOCAL_GRID_SIZE; r++) {
+        for (int c = 0; c < LOCAL_GRID_SIZE; c++) {
             if (left_cells[r][c]) {
                 current->grid[(r + 1) * (cols + 2) + (c + 1)] = TEAM_RED;
                 activate_chunk_at(current, r, c);
@@ -237,11 +237,11 @@ MatchResult run_isolated_match(int left_cells[8][8], int right_cells[8][8], int 
         }
     }
     // Team Blue (Right): columns 9-16
-    for (int r = 0; r < 8; r++) {
-        for (int c = 0; c < 8; c++) {
+    for (int r = 0; r < LOCAL_GRID_SIZE; r++) {
+        for (int c = 0; c < LOCAL_GRID_SIZE; c++) {
             if (right_cells[r][c]) {
-                current->grid[(r + 1) * (cols + 2) + (c + 8 + 1)] = TEAM_BLUE;
-                activate_chunk_at(current, r, c + 8);
+                current->grid[(r + 1) * (cols + 2) + (c + LOCAL_GRID_SIZE + 1)] = TEAM_BLUE;
+                activate_chunk_at(current, r, c + LOCAL_GRID_SIZE);
             }
         }
     }

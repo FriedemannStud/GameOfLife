@@ -18,8 +18,8 @@ CC = gcc
 CFLAGS = -Wall -Wextra -std=c99 -O3 -fopenmp
 
 # 3. Dateilisten
-SOURCES = main.c game_logic.c gui.c file_io.c cJSON.c
-HEADERS = game_logic.h gui.h file_io.h cJSON.h
+SOURCES = main.c game_logic.c renderer.c app_state_manager.c file_io.c cJSON.c
+HEADERS = game_logic.h renderer.h app_state_manager.h core_types.h config.h file_io.h cJSON.h
 HEADLESS_SOURCES = main_headless.c game_logic.c file_io.c cJSON.c
 HYPER_SOURCES = main_hyper.c game_logic.c file_io.c cJSON.c
 

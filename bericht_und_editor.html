@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projekt Biotop: Wenn Zellkulturen den Kampf aufnehmen</title>
+    <!-- KI-Agent unterstützt: Integrated Report & 8x8 Editor with Simulation -->
+    <style>
+        :root {
+            --wiai-blue: #004a99;
+            --wiai-yellow: #ffcc00;
+            --bg-light: #f4f4f9;
+            --text-dark: #333;
+            --grid-bg: #222;
+            --cell-dead: #333;
+            --cell-alive: #00f2ff;
+            --accent: #e67e22;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background-color: var(--bg-light);
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+
+        h1, h2, h3 {
+            color: var(--wiai-blue);
+        }
+
+        .author {
+            font-style: italic;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        hr {
+            border: 0;
+            border-top: 1px solid #eee;
+            margin: 40px 0;
+        }
+
+        /* Editor Styles */
+        .editor-section {
+            background: #f9f9f9;
+            border: 2px solid var(--wiai-blue);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 40px 0;
+            text-align: center;
+        }
+
+        .editor-title {
+            margin-top: 0;
+            font-size: 1.2rem;
+            color: var(--wiai-blue);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .grid-wrapper {
+            display: inline-block;
+            background: var(--grid-bg);
+            padding: 8px;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(8, 35px);
+            grid-template-rows: repeat(8, 35px);
+            gap: 3px;
+        }
+
+        @media (max-width: 450px) {
+            .grid {
+                grid-template-columns: repeat(8, 8vw);
+                grid-template-rows: repeat(8, 8vw);
+            }
+        }
+
+        .cell {
+            width: 100%;
+            height: 100%;
+            background: var(--cell-dead);
+            border-radius: 2px;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+
+        .cell.alive {
+            background: var(--cell-alive);
+            box-shadow: 0 0 8px var(--cell-alive);
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+
+        button:active { transform: scale(0.95); }
+
+        .btn-play { background: #2ecc71; color: white; }
+        .btn-stop { background: #e74c3c; color: white; }
+        .btn-clear { background: #95a5a6; color: white; }
+        .btn-submit { background: var(--wiai-blue); color: white; flex-grow: 1; max-width: 200px; }
+
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .stats-bar {
+            display: flex;
+            justify-content: space-between;
+            max-width: 320px;
+            margin: 0 auto 15px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .input-group {
+            max-width: 320px;
+            margin: 0 auto 20px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .counter-info {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 15px;
+        }
+
+        .status-msg {
+            height: 20px;
+            font-size: 0.8rem;
+            margin-top: 10px;
+        }
+        .error { color: #e74c3c; }
+        .success { color: #2ecc71; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Projekt Biotop: Wenn Zellkulturen den Kampf aufnehmen</h1>
+    <p class="author">von Friedemann Decker</p>
+
+    <p>Die Vorlesung ist längst vorbei, aber die Frage bleibt im Kopf hängen. „Conway’s Game of Life“ – dieses faszinierende, simple Universum aus toten und lebenden Zellen, das allein durch vier Regeln komplexe Muster hervorbringt. Was aber, wenn diese Zellen nicht nur vor sich hin simulieren, sondern aufeinandertreffen? Wenn aus einem algorithmischen Gedankenspiel ein <strong>wettbewerbsorientiertes Ökosystem</strong> wird?</p>
+
+    <p>Unser Projekt <strong>„Biotop: Competitive Game of Life“</strong> ist die Antwort auf diese Frage. Es ist mehr als nur eine Spielvariante; es ist ein Experimentierfeld für verteilte Systeme, performantes Rendering und emergenten Wettbewerb. Für das WIAI25-Jubiläum verwandeln wir es in ein <strong>lebendiges, interaktives Ausstellungsstück</strong>, bei dem Ihr – die Besucher – mit Euren Smartphones die Akteure seid.</p>
+
+    <div class="editor-section">
+        <h3 class="editor-title">Erschaffe deine Spezies (8x8)</h3>
+        
+        <div class="stats-bar">
+            <span id="biomass-count">Zellen: 0/24</span>
+            <span id="gen-count">Gen: 0</span>
+        </div>
+
+        <div class="grid-wrapper">
+            <div id="grid" class="grid"></div>
+        </div>
+
+        <div class="controls">
+            <button id="btn-toggle" class="btn-play">Simulieren</button>
+            <button id="btn-reset" class="btn-clear">Reset</button>
+            <button id="btn-clear" class="btn-clear">Clear</button>
+        </div>
+
+        <div class="input-group">
+            <input type="text" id="nickname" placeholder="Name deiner Spezies" maxlength="20">
+        </div>
+
+        <div class="controls">
+            <button id="btn-submit" class="btn-submit" disabled>Ab in die Arena</button>
+        </div>
+
+        <div id="status" class="status-msg"></div>
+
+        <p class="counter-info">
+            Bereits <strong id="global-counter">...</strong> Konfigurationen im Biotop eingereicht.
+        </p>
+    </div>
+
+    <h3>Die Vision: Vom Zellautomaten zum digitalen Darwinismus</h3>
+    <p>Die Idee ist bestechend einfach, die Umsetzung eine akademische Tiefenbohrung: Zwei Farben, Rot und Blau, kämpfen auf einem gemeinsamen Gitter um Vorherrschaft. Ihr platziert initiale Zellmuster – Eure „Spezies“ – und überlasst sie dann den unerbittlichen Regeln des Game of Life. Welche Population überlebt? Welche Strategie setzt sich durch? Für die Jubiläumsfeier skalieren wir dieses 1-vs-1-Prinzip hoch: Ein globales Turnier, bei dem Ihr über Eure Browser Eure eigenen Kreationen in die Arena schickt. Ein lebendiges, sich ständig wandelndes Kunstwerk, generiert von der Community.</p>
+
+    <h3>Die Reise: Vom Prototyp zur ausstellungsreifen Architektur</h3>
+    
+    <ul>
+        <li><strong>Dezember 2025 – Das Fundament:</strong> Alles begann in C, pur und effizient. Die größte Herausforderung? Nicht die Logik des Spiels, sondern die Schaffung einer <strong>reproduzierbaren Build-Umgebung</strong> mit Docker und Makefiles. Eine Lektion in Professionalität von Tag eins an.</li>
+        <li><strong>Januar 2026 – Der Performance-Schock:</strong> Der Sprung zur Grafik (mit Raylib) wurde zum Lehrstück in optimierter Computergrafik. Tausende einzelne Quadrate zeichnen? Das bringt selbst robuste Systeme ins Stottern. Die Lösung lag in <strong>Textur-Buffern</strong> und Batch-Rendering – eine essentielle Lektion für jeden, der jemals etwas Visualisieren möchte.</li>
+        <li><strong>Mai 2026 – Der „Hard Cut“:</strong> Die Entscheidung, komplett auf ein modernisiertes JSON-Ökosystem umzustellen, war befreiend. Sie ebnete den Weg zum Web-Backend (FastAPI/MongoDB) für globale Rankings.</li>
+        <li><strong>Aktuell – Die Säulen der Stabilität:</strong> Modularität ist unser neues Mantra. Der Code ruht jetzt auf vier klar getrennten Säulen: <strong>Simulation, Rendering, State-Management und File-IO</strong>. Ob die Anwendung nativ auf dem Ausstellungs-PC oder im Browser läuft – das Kern-Biotop bleibt stabil und konsistent.</li>
+    </ul>
+
+    <h3>Die größte Lektion: State is King</h3>
+    <p>„Funktionierender Code ist nicht wartbarer Code.“ Diese Erkenntnis traf uns beim State-Management mit voller Wucht. Den sauberen Übergang zwischen Editor-Modus und Simulation zu orchestrieren war unser bislang größtes Software-Design-Abenteuer.</p>
+
+    <h3>Die Zielgerade: Auf dem Weg zum Biotop-Champion</h3>
+    <p>Bis zum 26. Juni liegt unser Fokus auf dem <strong>Mobile Editor</strong>, um Euch das
+   Erschaffen Eurer Spezies so intuitiv wie möglich zu machen. Unser Traum für die
+   Jubiläumsfeier: Hunderte von Mustern, die über den großen Screen flimmern, ein
+   ständiges Kommen und Gehen digitaler Lebensformen, und am Ende die Krönung eines
+   <strong>Community-getriebenen „Biotop-Champions“</strong>. Seid dabei, wenn ein lebendiges, atmendes Community-Projekt entsteht. Wir sehen uns am <strong>26. Juni!</strong></p>
+
+
+    <hr>
+    
+</div>
+
+<script>
+    const GRID_SIZE = 8;
+    const MAX_BIOMASS = 24;
+    let grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(0));
+    let initialGrid = null;
+    let isRunning = false;
+    let timer = null;
+    let generation = 0;
+    let playerId = localStorage.getItem('biotope_player_id') || crypto.randomUUID();
+    localStorage.setItem('biotope_player_id', playerId);
+
+    const gridEl = document.getElementById('grid');
+    const biomassEl = document.getElementById('biomass-count');
+    const genEl = document.getElementById('gen-count');
+    const statusEl = document.getElementById('status');
+    const submitBtn = document.getElementById('btn-submit');
+    const toggleBtn = document.getElementById('btn-toggle');
+    const nicknameInput = document.getElementById('nickname');
+
+    // Init Grid UI
+    function createGrid() {
+        gridEl.innerHTML = '';
+        for(let y=0; y<GRID_SIZE; y++) {
+            for(let x=0; x<GRID_SIZE; x++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.x = x;
+                cell.dataset.y = y;
+                cell.onclick = () => handleCellClick(x, y);
+                gridEl.appendChild(cell);
+            }
+        }
+    }
+
+    function handleCellClick(x, y) {
+        if(isRunning) return;
+        const currentBiomass = grid.flat().filter(c => c).length;
+        if(!grid[y][x] && currentBiomass >= MAX_BIOMASS) {
+            showStatus("Limit von 24 Zellen erreicht!", "error");
+            return;
+        }
+        grid[y][x] = grid[y][x] ? 0 : 1;
+        updateUI();
+    }
+
+    function updateUI() {
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach(c => {
+            const x = c.dataset.x;
+            const y = c.dataset.y;
+            c.className = grid[y][x] ? 'cell alive' : 'cell';
+        });
+        const count = grid.flat().filter(c => c).length;
+        biomassEl.innerText = `Zellen: ${count}/${MAX_BIOMASS}`;
+        genEl.innerText = `Gen: ${generation}`;
+        submitBtn.disabled = count === 0 || nicknameInput.value.trim().length < 2 || isRunning;
+    }
+
+    // GOL Logic (Toroidal)
+    function nextGen() {
+        let next = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(0));
+        for(let y=0; y<GRID_SIZE; y++) {
+            for(let x=0; x<GRID_SIZE; x++) {
+                let neighbors = 0;
+                for(let i=-1; i<=1; i++) {
+                    for(let j=-1; j<=1; j++) {
+                        if(i===0 && j===0) continue;
+                        let ny = (y + i + GRID_SIZE) % GRID_SIZE;
+                        let nx = (x + j + GRID_SIZE) % GRID_SIZE;
+                        neighbors += grid[ny][nx];
+                    }
+                }
+                if(grid[y][x] === 1 && (neighbors === 2 || neighbors === 3)) next[y][x] = 1;
+                else if(grid[y][x] === 0 && neighbors === 3) next[y][x] = 1;
+            }
+        }
+        grid = next;
+        generation++;
+        updateUI();
+    }
+
+    toggleBtn.onclick = () => {
+        if(!isRunning) {
+            initialGrid = JSON.parse(JSON.stringify(grid));
+            isRunning = true;
+            toggleBtn.innerText = "Stopp";
+            toggleBtn.className = "btn-stop";
+            timer = setInterval(nextGen, 200);
+        } else {
+            clearInterval(timer);
+            isRunning = false;
+            toggleBtn.innerText = "Simulieren";
+            toggleBtn.className = "btn-play";
+        }
+        updateUI();
+    };
+
+    document.getElementById('btn-reset').onclick = () => {
+        if(initialGrid) {
+            grid = JSON.parse(JSON.stringify(initialGrid));
+            generation = 0;
+            updateUI();
+        }
+    };
+
+    document.getElementById('btn-clear').onclick = () => {
+        grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(0));
+        generation = 0;
+        initialGrid = null;
+        if(isRunning) toggleBtn.onclick();
+        updateUI();
+    };
+
+    nicknameInput.oninput = updateUI;
+
+    function showStatus(txt, cls) {
+        statusEl.innerText = txt;
+        statusEl.className = "status-msg " + cls;
+        setTimeout(() => { statusEl.innerText = ""; }, 3000);
+    }
+
+    // Backend Integration targeting the PHP Bridge
+    submitBtn.onclick = async () => {
+        const cells = [];
+        const snap = initialGrid || grid;
+        for(let y=0; y<GRID_SIZE; y++) {
+            for(let x=0; x<GRID_SIZE; x++) {
+                if(snap[y][x]) cells.push([x, y]);
+            }
+        }
+
+        const payload = {
+            metadata: {
+                player_id: playerId,
+                nickname: nicknameInput.value.trim(),
+                league: "einsteiger"
+            },
+            config: {
+                bounding_box_x: 8,
+                bounding_box_y: 8,
+                cells: cells
+            }
+        };
+
+        submitBtn.disabled = true;
+        showStatus("Übertrage Spezies...", "");
+
+        try {
+            const res = await fetch('submit.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            if(res.ok) {
+                showStatus("Erfolgreich eingereicht!", "success");
+                fetchGlobalCount();
+            } else {
+                const errData = await res.json();
+                showStatus("Fehler: " + (errData.error || "Serverfehler"), "error");
+                submitBtn.disabled = false;
+            }
+        } catch(e) {
+            showStatus("Brücke (submit.php) nicht erreichbar.", "error");
+            submitBtn.disabled = false;
+        }
+    };
+
+    async function fetchGlobalCount() {
+        try {
+            // We'll use a separate small PHP script for counting or the same bridge with an action parameter
+            const res = await fetch('count.php');
+            if(res.ok) {
+                const data = await res.json();
+                document.getElementById('global-counter').innerText = data.count || "0";
+            }
+        } catch(e) {
+            console.error("Could not fetch global count", e);
+        }
+    }
+
+    createGrid();
+    updateUI();
+    fetchGlobalCount();
+
+</script>
+
+</body>
+</html>

@@ -65,3 +65,13 @@ async def submit_config(submission: Submission):
     except Exception:
         # In a real app, log the error 'e'
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.get("/api/v1/stats/count")
+async def get_submission_count():
+    try:
+        db = get_db()
+        count = await db.submissions.count_documents({})
+        return {"count": count}
+    except Exception:
+        raise HTTPException(status_code=500, detail="Could not fetch count")

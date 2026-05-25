@@ -175,20 +175,34 @@
     <h1>Projekt Biotop: Wenn Zellkulturen den Kampf aufnehmen</h1>
     <p class="author">von Friedemann Decker</p>
 
-    <p>Die Vorlesung ist längst vorbei, aber die Frage bleibt im Kopf hängen. „Conway’s Game of Life“ – dieses faszinierende, simple Universum aus toten und lebenden Zellen, das allein durch vier Regeln komplexe Muster hervorbringt. Was aber, wenn diese Zellen nicht nur vor sich hin simulieren, sondern aufeinandertreffen? Wenn aus einem algorithmischen Gedankenspiel ein <strong>wettbewerbsorientiertes Ökosystem</strong> wird?</p>
+    <p>Die Vorlesung ist längst vorbei, aber die Frage bleibt im Kopf hängen.
+         „Conway’s Game of Life“ – dieses faszinierende, simple Universum aus
+          toten und lebenden Zellen, das allein durch vier Regeln komplexe Muster
+           hervorbringt. Was aber, wenn diese Zellen nicht nur vor sich hin 
+           simulieren, sondern aufeinandertreffen? Wenn aus einem algorithmischen 
+           Gedankenspiel ein <strong>wettbewerbsorientiertes Ökosystem</strong> 
+           wird?</p>
 
     <div class="rules-wrapper">
         <h4>Die 4 Regeln des Lebens:</h4>
-        <p>Diese Regeln werden in jedem Schritt gleichzeitig auf alle Zellen angewendet, um den Zustand der <strong>nächsten Generation</strong> zu berechnen:</p>
         <ul class="rules-list">
             <li><strong>Einsamkeit:</strong> Jede lebende Zelle mit weniger als 2 Nachbarn stirbt.</li>
             <li><strong>Stabilität:</strong> Jede lebende Zelle mit 2 oder 3 Nachbarn lebt weiter.</li>
             <li><strong>Überbevölkerung:</strong> Jede lebende Zelle mit mehr als 3 Nachbarn stirbt.</li>
             <li><strong>Schöpfung:</strong> Jede tote Zelle mit exakt 3 Nachbarn wird neu geboren.</li>
         </ul>
+        <p style="margin-bottom: 0; margin-top: 10px;">Diese Regeln werden in jedem Schritt gleichzeitig
+             auf alle Zellen angewendet, um den Zustand der <strong>nächsten Generation</strong> zu berechnen.</p>
     </div>
 
-    <p>Unser Projekt <strong>„Biotop: Competitive Game of Life“</strong> ist die Antwort auf diese Frage. Es ist mehr als nur eine Spielvariante; es ist ein Experimentierfeld für verteilte Systeme, performantes Rendering und emergenten Wettbewerb. Für das WIAI25-Jubiläum verwandeln wir es in ein <strong>lebendiges, interaktives Ausstellungsstück</strong>, bei dem Ihr – die Besucher – mit Euren Smartphones die Akteure seid.</p>
+    <p>Unser Projekt <strong>„Biotop: Competitive Game of Life“</strong> ist die 
+        Antwort auf diese Frage. Es ist mehr als nur eine Spielvariante; 
+        es ist ein Experimentierfeld für verteilte Systeme, performantes Rendering 
+        und emergenten Wettbewerb.</p>
+    <p>Für das WIAI25-Jubiläum verwandeln wir es in ein 
+        <strong>lebendiges, interaktives Ausstellungsstück</strong>, bei dem 
+        <strong>IHR</strong> – die Besucher – 
+        <strong>mit euren Smartphones</strong> die Akteure seid.</p>
 
     <div class="editor-section">
         <h3 class="editor-title">Spezies-Simulator (8x8)</h3>
@@ -213,24 +227,69 @@
     </div>
 
     <h3>Die Vision: Vom Zellautomaten zum digitalen Biotop</h3>
-    <p>Die Idee ist bestechend einfach, die Umsetzung eine akademische Tiefenbohrung: Zwei Farben, Rot und Blau, kämpfen auf einem gemeinsamen Gitter um dominierende Populationen. Ihr platziert initiale Zellmuster – Eure „Spezies“ – und überlasst sie dann den unerbittlichen Regeln des Game of Life. Welches Biotop überlebt? Welche Strategie setzt sich durch?</p>
-    <p>Für die Jubiläumsfeier skalieren wir dieses 1-vs-1-Prinzip hoch: Ein globales Turnier, bei dem Ihr über Eure Handys Eure eigenen Kreationen in die Arena schickt. Ein lebendiges, sich ständig wandelndes Kunstwerk, generiert von der Community.</p>
+    <p>Die Idee ist bestechend einfach, die Umsetzung eine akademische Tiefenbohrung: 
+        Zwei Farben, Rot und Blau, kämpfen auf einem gemeinsamen Gitter um 
+        dominierende Populationen. Ihr platziert initiale Zellmuster – Eure „Spezies“ – 
+        und überlasst sie dann den unerbittlichen Regeln des Game of Life. 
+        Welches Biotop überlebt? Welche Strategie setzt sich durch?</p>
+
+    <p>Für die Jubiläumsfeier skalieren wir dieses 1-vs-1-Prinzip hoch: 
+        Ein globales Turnier, bei dem ihr über eure Handys eure eigenen Kreationen 
+        in die Arena schickt. Ein lebendiges, sich ständig wandelndes Kunstwerk, 
+        generiert von der Community.</p>
+
+    <!-- Video-Integration -->
+    <div class="video-wrapper" style="text-align: center; margin: 40px 0;">
+        <h3 style="margin-bottom: 15px;">Live-Demonstration: Blau vs. Rot</h3>
+        <video width="100%" max-width="800" controls autoplay loop muted playsinline
+      style="border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 2px solid
+      var(--wiai-blue);">
+            <source src="GoLf_optimiert.mp4" type="video/mp4">
+            Dein Browser unterstützt das Video-Tag nicht.
+            <!-- Fallback-Text für sehr alte Browser -->
+        </video>
+        <p style="font-size: 0.8rem; color: #666; margin-top: 10px;">Ein typisches
+      Aufeinandertreffen zweier Spezies im Biotop.</p>
+    </div>
+
+
+
+
+
 
     <h3>Die Reise: Vom Prototyp zur ausstellungsreifen Architektur</h3>
     
     <ul>
-        <li><strong>Dezember 2025 – Das Fundament:</strong> Alles begann in C, pur und effizient. Die größte Herausforderung? Nicht die Logik des Spiels, sondern die Schaffung einer <strong>reproduzierbaren Build-Umgebung</strong> mit Docker und Makefiles. Eine Lektion in Professionalität von Tag eins an.</li>
-        <li><strong>Januar 2026 – Der Performance-Schock:</strong> Der Sprung zur Grafik (mit Raylib) wurde zum Lehrstück in optimierter Computergrafik. Tausende einzelne Quadrate zeichnen? Das bringt selbst robuste Systeme ins Stottern. Die Lösung lag in <strong>Textur-Buffern</strong> und Batch-Rendering – eine essentielle Lektion für jeden, der jemals etwas Visualisieren möchte.</li>
-        <li><strong>Mai 2026 – Der „Hard Cut“:</strong> Die Entscheidung, komplett auf ein modernisiertes JSON-Ökosystem umzustellen, war befreiend. Sie ebnete den Weg zum Web-Backend (FastAPI/MongoDB) für globale Rankings.</li>
-        <li><strong>Aktuell – Die Säulen der Stabilität:</strong> Modularität ist unser neues Mantra. Der Code ruht jetzt auf vier klar getrennten Säulen: <strong>Simulation, Rendering, State-Management und File-IO</strong>. Ob die Anwendung nativ auf dem Ausstellungs-PC oder im Browser läuft – der Kern bleibt stabil und konsistent.</li>
+        <li><strong>Dezember 2025 – Das Fundament:</strong> 
+            Alles begann in C, pur und effizient. Die größte Herausforderung? 
+            Nicht die Logik des Spiels, sondern die Schaffung einer 
+            <strong>reproduzierbaren Build-Umgebung</strong> mit Docker und 
+            Makefiles. Eine Lektion in Professionalität von Tag eins an.</li>
+        <li><strong>Januar 2026 – Der Performance-Schock:</strong> 
+            Der Sprung zur Grafik (mit Raylib) wurde zum Lehrstück in optimierter 
+            Computergrafik. Tausende einzelne Quadrate zeichnen? Das bringt selbst 
+            robuste Systeme ins Stottern. Die Lösung lag in 
+            <strong>Textur-Buffern</strong> und Batch-Rendering – eine essentielle 
+            Lektion für jeden, der jemals etwas Visualisieren möchte.</li>
+        <li><strong>Mai 2026 – Der „Hard Cut“:</strong> 
+            Die Entscheidung, komplett auf ein modernisiertes JSON-Ökosystem umzustellen, 
+            war befreiend. Sie ebnete den Weg zum Web-Backend (FastAPI/MongoDB) für 
+            globale Rankings.</li>
+        <li><strong>Aktuell – Die Säulen der Stabilität:</strong> 
+            Modularität ist unser neues Mantra. Der Code ruht jetzt auf vier klar getrennten Säulen: 
+            <strong>Simulation, Rendering, State-Management und File-IO</strong>. 
+            Ob die Anwendung nativ auf dem Ausstellungs-PC oder im Browser 
+            läuft – der Kern bleibt stabil und konsistent.</li>
     </ul>
 
     <h3>Die Zielgerade: Auf dem Weg zum Biotop-Champion</h3>
-    <p>Bis zum 26. Juni liegt unser Fokus auf dem <strong>Mobile Editor</strong>, um Euch das
-   Erschaffen Eurer Spezies so intuitiv wie möglich zu machen. Unser Traum für die
-   Jubiläumsfeier: Hunderte von Mustern, die über den großen Screen flimmern, ein
-   ständiges Kommen und Gehen digitaler Lebensformen, und am Ende die Krönung eines
-   <strong>Community-getriebenen „Biotop-Champions“</strong>. Seid dabei, wenn ein lebendiges, atmendes Community-Projekt entsteht. Wir sehen uns am <strong>26. Juni!</strong></p>
+    <p>Bis zum 26. Juni liegt unser Fokus auf dem <strong>Mobile Editor</strong>, 
+        um Euch das Erschaffen Eurer Spezies so intuitiv wie möglich zu machen. 
+        Unser Traum für die Jubiläumsfeier: Hunderte von Mustern, die über den 
+        großen Screen flimmern, ein ständiges Kommen und Gehen digitaler Lebensformen,
+        und am Ende die Krönung eines <strong>Community-getriebenen „Biotop-Champions“</strong>. 
+        Seid dabei, wenn ein lebendiges, atmendes Community-Projekt entsteht. 
+        Wir sehen uns am <strong>26. Juni!</strong></p>
 
 
     <hr>

@@ -315,7 +315,7 @@ void init_renderer(int window_width, int window_height, const char* title) {
 
 #ifndef PLATFORM_WEB
     SetTargetFPS(120);
-    biotopeShader = LoadShader(0, "resources/shaders/biotope_base.fs");
+    biotopeShader = LoadShader(0, "assets/shaders/biotope_base.fs");
 #else
     // KI-Agent unterstützt: WASM Persistent Storage Setup
     EM_ASM({
@@ -331,7 +331,7 @@ void init_renderer(int window_width, int window_height, const char* title) {
         });
     });
 
-    biotopeShader = LoadShader(0, "resources/shaders/biotope_base_web.fs");
+    biotopeShader = LoadShader(0, "assets/shaders/biotope_base_web.fs");
 #endif
 }
 

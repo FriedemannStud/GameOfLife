@@ -1,23 +1,39 @@
-# Makefile.wasm
-# KI-Agent unterstützt: Auto-detect emcc path for Docker
+# Makefile.wasm (Clean Architecture)
+# KI-Agent unterstützt
+
+CC = emcc
+# Fallback for Docker environment
 EMCC_CHECK := $(shell which emcc 2> /dev/null)
-ifdef EMCC_CHECK
-    CC = emcc
-else
-    # Fallback for Docker environment where PATH might not be sourced in make
+ifndef EMCC_CHECK
     CC = /opt/emsdk/upstream/emscripten/emcc
 endif
 
-CFLAGS = -Os -Wall -I. -I/opt/raylib_web/include -s USE_GLFW=3 -s ASYNCIFY -s TOTAL_MEMORY=67108864 -s ALLOW_MEMORY_GROWTH=1 -DPLATFORM_WEB
-LDFLAGS = -L/opt/raylib_web/lib -lraylib --preload-file resources -lidbfs.js -s FORCE_FILESYSTEM=1
+# Directory Structure
+SRC_DIR = src
+CORE_DIR = $(SRC_DIR)/core
+GUI_DIR = $(SRC_DIR)/gui
+IO_DIR = $(SRC_DIR)/io
+APPS_DIR = $(SRC_DIR)/apps
+VENDOR_DIR = $(SRC_DIR)/vendor
 
-SOURCES = main.c game_logic.c renderer.c app_state_manager.c file_io.c cJSON.c
-HEADERS = game_logic.h renderer.h app_state_manager.h core_types.h config.h file_io.h cJSON.h
+# Compiler Flags
+INCLUDES = -I$(CORE_DIR) -I$(GUI_DIR) -I$(IO_DIR) -I$(VENDOR_DIR)/cJSON -I$(SRC_DIR) -I/opt/raylib_web/include
+CFLAGS = -Os -Wall $(INCLUDES) -s USE_GLFW=3 -s ASYNCIFY -s TOTAL_MEMORY=67108864 -s ALLOW_MEMORY_GROWTH=1 -DPLATFORM_WEB
+LDFLAGS = -L/opt/raylib_web/lib -lraylib --preload-file assets -lidbfs.js -s FORCE_FILESYSTEM=1
+
+# Sources
+SOURCES = $(APPS_DIR)/gui/main.c \
+          $(CORE_DIR)/game_logic.c \
+          $(GUI_DIR)/renderer.c \
+          $(GUI_DIR)/app_state_manager.c \
+          $(IO_DIR)/file_io.c \
+          $(VENDOR_DIR)/cJSON/cJSON.c
+
 TARGET = biotope.html
 
 all: $(TARGET)
 
-$(TARGET): $(SOURCES) $(HEADERS)
+$(TARGET): $(SOURCES)
 	$(CC) $(SOURCES) $(CFLAGS) $(LDFLAGS) -o $(TARGET)
 
 clean:

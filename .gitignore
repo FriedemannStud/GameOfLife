@@ -84,3 +84,4 @@ biotope.html
 # --- Logs ---
 *.log
 docker-compose.override.yml
+build/

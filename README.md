@@ -94,6 +94,19 @@ Im ersten Schritt wird ein sog. **Architecture Decision Record (ADR)** erstellt,
 Die zur Verfügung gestellten Templates und die von dem KI-Agenten erstellten Dokumente werden in einem separaten Verzeichnis docs/ innerhalb der Codebase abgelegt.
 
 
+### Projektstruktur (Clean Architecture)
+Das Projekt folgt einer modularen "Clean Architecture" Struktur, um eine klare Trennung zwischen Spiellogik, Darstellung und Infrastruktur zu gewährleisten:
+
+*   **`src/core/`**: Kern-Spiellogik (`game_logic.c`), Datentypen (`core_types.h`) und Konfiguration (`config.h`).
+*   **`src/gui/`**: Raylib-basiertes Rendering (`renderer.c`) und UI-Statusmanagement (`app_state_manager.c`).
+*   **`src/io/`**: Datenpersistenz und JSON-Verarbeitung (`file_io.c`).
+*   **`src/apps/`**: Einstiegspunkte für die verschiedenen Programmvarianten (GUI, Headless, Hyper-Worker).
+*   **`src/vendor/`**: Drittanbieter-Bibliotheken (z.B. `cJSON`).
+*   **`web/`**: Web-Assets wie der HTML-Editor.
+*   **`assets/`**: Statische Ressourcen wie Shader und Bilder.
+*   **`scripts/`**: Hilfsskripte für Tests und Szenario-Generierung.
+*   **`build/`**: (Git-ignored) Ausgabeordner für alle Kompilier-Artefakte.
+
 Für die Umsetzung wird der KI-Agent von Google Gemini-CLI verwendet. Ausschlaggebend für die Wahl dieses Anbieters war ausschließlich das große kostenfreie Token-Volumen für Studierende.
 
 

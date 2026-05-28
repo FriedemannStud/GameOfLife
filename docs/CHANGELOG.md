@@ -73,3 +73,10 @@ feat ADR-0018: Multicam Render Context Architecture
 - Implemented `BeginScissorMode` clipping to prevent quadrant rendering bleed.
 - Added a 2x2 Splitscreen "Wusel-Multicam" PoC (Kiosk Mode) triggered via the `[K]` key.
 - Verified memory safety (0 definitely lost leaks from our new logic) and successful texture management.
+
+feat ADR-0019: Kiosk Mode State Machine and UI
+- Implementierung der `STATE_KIOSK_MODE` State Machine für autonomen Ablauf der App.
+- Hinzufügen von Leaderboard Rendering und 2x2 Multicam Splitscreen Rendering inklusive nahtlosem Wechsel alle 15/30 Sekunden.
+- Click-to-Replay Funktion eingebaut: Bei Klick auf einen Multicam-Quadranten startet ein Replay der Simulation im Vollbild (inklusive Ignition Countdown).
+- Global Failsafe Inactivity Timer: Rückkehr zum Kiosk Mode nach 60 Sekunden Inaktivität aus jeglichen Menüs oder Replays heraus.
+- Speichersicherheit beim Beenden von Simulationen und Kiosk-Übergängen (Fixing von Segfaults und Memory Leaks bei World-Allokationen).

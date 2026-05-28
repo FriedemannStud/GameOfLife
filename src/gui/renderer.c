@@ -3,6 +3,8 @@
 #include "config.h"
 #include "file_io.h" // KI-Agent unterstützt
 #include "network_io.h"
+#include "app_state_manager.h"
+#include "game_logic.h"
 #include <stdio.h>
 #include <stdlib.h> // For abs
 #include <time.h>   // For time()
@@ -528,6 +530,7 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
                 }
                 if (IsKeyPressed(KEY_K)) {
                     state = STATE_KIOSK_MODE;
+                    reset_kiosk_timers();
                 }
                 break;
 
@@ -707,8 +710,9 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
                     if (config->history_red_pop) { free(config->history_red_pop); config->history_red_pop = NULL; }
                     if (config->history_blue_pop) { free(config->history_blue_pop); config->history_blue_pop = NULL; }
                     
-                    gui_world = NULL;
-                    swap_world = NULL;
+                    if (gui_world) { free_world(gui_world); gui_world = NULL; }
+                    if (swap_world) { free_world(swap_world); swap_world = NULL; }
+                    
                     state = STATE_CONFIG;
                     ignitionStartTime = 0.0;
                     config->is_paused = false; // Reset pause on exit
@@ -1160,6 +1164,63 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                 DrawText("PRESS [1] TO RESTART SYSTEM", screenWidth/2 - MeasureText("PRESS [1] TO RESTART SYSTEM", 20)/2, 500, 20, THEME_ACCENT);
                 break;
             case STATE_KIOSK_MODE:
+                if (kiosk_ctrl.current_sub_state == KIOSK_SUB_LEADERBOARD) {
+                    DrawText("GLOBAL LEADERBOARD", screenWidth/2 - MeasureText("GLOBAL LEADERBOARD", 30)/2, 80, 30, THEME_BLUE);
+                    
+                    int startY = 160;
+                    int rowHeight = 30;
+                    
+                    // Header
+                    DrawText("RANK", screenWidth/2 - 200, startY, 20, THEME_HINT);
+                    DrawText("PLAYER", screenWidth/2 - 100, startY, 20, THEME_HINT);
+                    DrawText("ELO", screenWidth/2 + 100, startY, 20, THEME_HINT);
+                    DrawText("WIN RATE", screenWidth/2 + 200, startY, 20, THEME_HINT);
+                    
+                    DrawLine(screenWidth/2 - 210, startY + 25, screenWidth/2 + 300, startY + 25, THEME_GRID);
+                    
+                    if (kiosk_ctrl.cached_lb.count > 0) {
+                        for (int i = 0; i < kiosk_ctrl.cached_lb.count && i < MAX_LEADERBOARD_ENTRIES; i++) {
+                            int y = startY + 40 + i * rowHeight;
+                            char rankBuf[8];
+                            char eloBuf[16];
+                            char winBuf[16];
+                            
+                            sprintf(rankBuf, "#%d", i + 1);
+                            sprintf(eloBuf, "%d", kiosk_ctrl.cached_lb.entries[i].elo);
+                            sprintf(winBuf, "%.1f%%", kiosk_ctrl.cached_lb.entries[i].win_rate * 100.0f);
+                            
+                            Color rankCol = THEME_TEXT;
+                            if (i == 0) rankCol = THEME_RED;
+                            else if (i == 1) rankCol = THEME_BLUE;
+                            else if (i == 2) rankCol = THEME_ACCENT;
+                            
+                            DrawText(rankBuf, screenWidth/2 - 200, y, 20, rankCol);
+                            DrawText(kiosk_ctrl.cached_lb.entries[i].name, screenWidth/2 - 100, y, 20, THEME_TEXT);
+                            DrawText(eloBuf, screenWidth/2 + 100, y, 20, THEME_ACCENT);
+                            DrawText(winBuf, screenWidth/2 + 200, y, 20, THEME_TEXT);
+                        }
+                    } else {
+                        DrawText("LOADING DATA...", screenWidth/2 - MeasureText("LOADING DATA...", 20)/2, startY + 60, 20, THEME_HINT);
+                    }
+                    
+                    char timerBuf[64];
+                    sprintf(timerBuf, "SWITCHING IN %.0f SECONDS", 15.0f - kiosk_ctrl.state_timer);
+                    DrawText(timerBuf, screenWidth/2 - MeasureText(timerBuf, 16)/2, screenHeight - 60, 16, THEME_HINT);
+                    
+                } else if (kiosk_ctrl.current_sub_state == KIOSK_SUB_MULTICAM) {
+                    for (int i = 0; i < 4; i++) {
+                        DrawGridAndCellsCtx(&kiosk_ctrl.renders[i], config, kiosk_ctrl.sims[i].current_world, false);
+                    }
+                    
+                    // Draw HUD for Kiosk
+                    DrawRectangle(0, 0, GetScreenWidth(), 40, THEME_HUD);
+                    DrawText("WUSEL-MULTICAM KIOSK MODE", 20, 10, 20, THEME_BLUE);
+                    DrawText("CLICK ANY MATCH TO VIEW REPLAY", GetScreenWidth() - MeasureText("CLICK ANY MATCH TO VIEW REPLAY", 16) - 20, 12, 16, THEME_RED);
+                    
+                    char timerBuf[64];
+                    sprintf(timerBuf, "SWITCHING IN %.0f SECONDS", 30.0f - kiosk_ctrl.state_timer);
+                    DrawText(timerBuf, screenWidth/2 - MeasureText(timerBuf, 16)/2, screenHeight - 60, 16, THEME_HINT);
+                }
                 break;
         }
 

@@ -20,4 +20,7 @@ void bitboard_to_grid(uint64_t bb, int cells[LOCAL_GRID_SIZE][LOCAL_GRID_SIZE]);
 // KI-Agent unterstützt: Thread-safe match execution
 MatchResult run_isolated_match(int left_cells[LOCAL_GRID_SIZE][LOCAL_GRID_SIZE], int right_cells[LOCAL_GRID_SIZE][LOCAL_GRID_SIZE], int max_gen);
 
+// KI-Agent unterstützt: Run a generation step on SimulationContext
+int update_generation_ctx(SimulationContext *ctx, int *red_pop, int *blue_pop);
+
 #endif // GAME_LOGIC_H

@@ -9,7 +9,7 @@
 static double ignitionStartTime = 0.0;
 static float timeAccumulator = 0.0f;
 
-AppState update_app_state(AppState current_state, GameConfig* config, World** current_world, World** next_world, float delta_time, double current_time) {
+AppState update_app_state(AppState current_state, GameConfig* config, SimulationContext *sim_ctx, float delta_time, double current_time) {
     // KI-Agent unterstützt: Poll for network updates
     LeaderboardData lb;
     if (network_get_leaderboard(&lb)) {
@@ -52,7 +52,7 @@ AppState update_app_state(AppState current_state, GameConfig* config, World** cu
             if (timeAccumulator >= config->delay_ms / 1000.0f) {
                 timeAccumulator = 0.0f;
                 
-                update_generation(*current_world, *next_world, config->rows, config->cols, &config->current_red_pop, &config->current_blue_pop);
+                update_generation_ctx(sim_ctx, &config->current_red_pop, &config->current_blue_pop);
                 
                 // Record Telemetry
                 if (config->history_count < config->max_rounds) {
@@ -60,11 +60,6 @@ AppState update_app_state(AppState current_state, GameConfig* config, World** cu
                     config->history_blue_pop[config->history_count] = config->current_blue_pop;
                     config->history_count++;
                 }
-
-                // Pointer Swap (Double Buffering)
-                World *temp = *current_world;
-                *current_world = *next_world;
-                *next_world = temp;
 
                 config->current_round++;
                 

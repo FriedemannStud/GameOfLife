@@ -46,81 +46,131 @@ const Color THEME_HIGHLIGHT = { 255, 255, 255, 40 }; // Selection Glow
 // KI-Agent unterstützt: Optimized Texture-Based Rendering for VcXsrv performance
 // --- NEW SHADER PIPELINE GLOBALS ---
 static Shader biotopeShader;
-static unsigned char *gpu_data_buffer = NULL;
-static Camera2D observer_camera = { 0 };
 
-// Texture Management (Moved to file scope for cleanup)
-static Texture2D gridTex = { 0 };
-static int texW = 0;
-static int texH = 0;
-static int lastDrawWidth = 0;
-static int lastDrawHeight = 0;
-
-// Ping-Pong Targets
-static RenderTexture2D pingPongTarget[2] = { 0 };
-static int pingPongIndex = 0;
-static int locPrevFrame = -1;
-static int locFadeRate = -1;
-static bool useMetaballs = false;
-
-void DrawGridAndCells(const GameConfig *config, const World *gui_world, int screenWidth, int screenHeight, bool drawGridLines) {
-    if (gui_world == NULL) return;
-
-    // Layout Constants
-    const int headerHeight = 60;
-    const int footerHeight = 40;
-    const int margin = 20;
+// KI-Agent unterstützt: Initialize render context
+void init_render_context(RenderContext *ctx, int cols, int rows, Rectangle bounds) {
+    if (!ctx) return;
+    ctx->viewport_bounds = bounds;
+    ctx->tex_w = cols;
+    ctx->tex_h = rows;
+    ctx->last_draw_w = bounds.width;
+    ctx->last_draw_h = bounds.height;
     
-    int drawWidth = screenWidth - (margin * 2);
-    int drawHeight = screenHeight - headerHeight - footerHeight - (margin * 1); // margin bottom handled by footer
-    int startX = margin;
-    int startY = headerHeight;
+    ctx->pixel_buffer = (unsigned char*)malloc(cols * rows * sizeof(unsigned char));
+    if (ctx->pixel_buffer) {
+        memset(ctx->pixel_buffer, 0, cols * rows * sizeof(unsigned char));
+    }
+    
+    Image img = GenImageColor(cols, rows, BLANK);
+    ImageFormat(&img, PIXELFORMAT_UNCOMPRESSED_GRAYSCALE);
+    ctx->grid_texture = LoadTextureFromImage(img);
+    UnloadImage(img);
+    SetTextureFilter(ctx->grid_texture, TEXTURE_FILTER_POINT);
+    
+    ctx->ping_pong_target[0] = LoadRenderTexture(bounds.width, bounds.height);
+    ctx->ping_pong_target[1] = LoadRenderTexture(bounds.width, bounds.height);
+    ctx->ping_pong_index = 0;
+    
+    // Theme Colors
+    ctx->col_background = (Color){ 20, 24, 32, 255 };
+    ctx->col_team_red = (Color){ 255, 60, 100, 255 };
+    ctx->col_team_blue = (Color){ 0, 220, 255, 255 };
+    
+    BeginTextureMode(ctx->ping_pong_target[0]);
+    ClearBackground(ctx->col_background);
+    EndTextureMode();
+    BeginTextureMode(ctx->ping_pong_target[1]);
+    ClearBackground(ctx->col_background);
+    EndTextureMode();
+    
+    ctx->loc_prev_frame = GetShaderLocation(biotopeShader, "previousFrame");
+    ctx->loc_fade_rate = GetShaderLocation(biotopeShader, "fadeRate");
+    ctx->use_metaballs = false;
+    
+    ctx->camera.zoom = 1.0f;
+    ctx->camera.target = (Vector2){ 0, 0 };
+    ctx->camera.offset = (Vector2){ 0, 0 };
+    ctx->camera.rotation = 0.0f;
+}
+
+// KI-Agent unterstützt: Free render context resources safely
+void free_render_context(RenderContext *ctx) {
+    if (!ctx) return;
+    if (ctx->grid_texture.id > 0) {
+        UnloadTexture(ctx->grid_texture);
+        ctx->grid_texture.id = 0;
+    }
+    if (ctx->pixel_buffer) {
+        free(ctx->pixel_buffer);
+        ctx->pixel_buffer = NULL;
+    }
+    if (ctx->ping_pong_target[0].id > 0) {
+        UnloadRenderTexture(ctx->ping_pong_target[0]);
+        ctx->ping_pong_target[0].id = 0;
+    }
+    if (ctx->ping_pong_target[1].id > 0) {
+        UnloadRenderTexture(ctx->ping_pong_target[1]);
+        ctx->ping_pong_target[1].id = 0;
+    }
+}
+
+static RenderContext default_render_ctx;
+
+// KI-Agent unterstützt: Draw grid and cells using RenderContext
+void DrawGridAndCellsCtx(RenderContext *r_ctx, const GameConfig *config, const World *gui_world, bool drawGridLines) {
+    if (r_ctx == NULL || gui_world == NULL) return;
+
+    int drawWidth = r_ctx->viewport_bounds.width;
+    int drawHeight = r_ctx->viewport_bounds.height;
+    int startX = r_ctx->viewport_bounds.x;
+    int startY = r_ctx->viewport_bounds.y;
     
     float cellW = (float)drawWidth / config->cols;
     float cellH = (float)drawHeight / config->rows;
     
     // --- 1. Resource Management ---
-    
-    // Check if grid size changed or not initialized
-    if (config->cols != texW || config->rows != texH || drawWidth != lastDrawWidth || drawHeight != lastDrawHeight) {
+    if (config->cols != r_ctx->tex_w || config->rows != r_ctx->tex_h || drawWidth != r_ctx->last_draw_w || drawHeight != r_ctx->last_draw_h) {
         // Cleanup old resources
-        if (gridTex.id > 0) UnloadTexture(gridTex);
-        if (gpu_data_buffer) free(gpu_data_buffer);
-        if (pingPongTarget[0].id > 0) UnloadRenderTexture(pingPongTarget[0]);
-        if (pingPongTarget[1].id > 0) UnloadRenderTexture(pingPongTarget[1]);
+        if (r_ctx->grid_texture.id > 0) UnloadTexture(r_ctx->grid_texture);
+        if (r_ctx->pixel_buffer) free(r_ctx->pixel_buffer);
+        if (r_ctx->ping_pong_target[0].id > 0) UnloadRenderTexture(r_ctx->ping_pong_target[0]);
+        if (r_ctx->ping_pong_target[1].id > 0) UnloadRenderTexture(r_ctx->ping_pong_target[1]);
         
         // Update dimensions
-        texW = config->cols;
-        texH = config->rows;
-        lastDrawWidth = drawWidth;
-        lastDrawHeight = drawHeight;
+        r_ctx->tex_w = config->cols;
+        r_ctx->tex_h = config->rows;
+        r_ctx->last_draw_w = drawWidth;
+        r_ctx->last_draw_h = drawHeight;
         
         // Allocate new resources
-        gpu_data_buffer = (unsigned char*)malloc(texW * texH * sizeof(unsigned char));
-        Image img = GenImageColor(texW, texH, BLANK); // Create empty image
-        ImageFormat(&img, PIXELFORMAT_UNCOMPRESSED_GRAYSCALE); // Force 1-byte grayscale
+        r_ctx->pixel_buffer = (unsigned char*)malloc(r_ctx->tex_w * r_ctx->tex_h * sizeof(unsigned char));
+        if (r_ctx->pixel_buffer) {
+            memset(r_ctx->pixel_buffer, 0, r_ctx->tex_w * r_ctx->tex_h * sizeof(unsigned char));
+        }
         
-        gridTex = LoadTextureFromImage(img);
+        Image img = GenImageColor(r_ctx->tex_w, r_ctx->tex_h, BLANK);
+        ImageFormat(&img, PIXELFORMAT_UNCOMPRESSED_GRAYSCALE);
+        
+        r_ctx->grid_texture = LoadTextureFromImage(img);
         UnloadImage(img);
         
-        // IMPORTANT: Point filtering ensures sharp pixels when scaled up
-        SetTextureFilter(gridTex, TEXTURE_FILTER_POINT); 
+        SetTextureFilter(r_ctx->grid_texture, TEXTURE_FILTER_POINT); 
 
         // Init Ping-Pong Targets
-        pingPongTarget[0] = LoadRenderTexture(drawWidth, drawHeight);
-        pingPongTarget[1] = LoadRenderTexture(drawWidth, drawHeight);
+        r_ctx->ping_pong_target[0] = LoadRenderTexture(drawWidth, drawHeight);
+        r_ctx->ping_pong_target[1] = LoadRenderTexture(drawWidth, drawHeight);
 
         // Clear both targets to background color
-        BeginTextureMode(pingPongTarget[0]);
-        ClearBackground(THEME_BG);
+        BeginTextureMode(r_ctx->ping_pong_target[0]);
+        ClearBackground(r_ctx->col_background);
         EndTextureMode();
-        BeginTextureMode(pingPongTarget[1]);
-        ClearBackground(THEME_BG);
+        BeginTextureMode(r_ctx->ping_pong_target[1]);
+        ClearBackground(r_ctx->col_background);
         EndTextureMode();
 
         // Get Shader Locations
-        locPrevFrame = GetShaderLocation(biotopeShader, "previousFrame");
-        locFadeRate = GetShaderLocation(biotopeShader, "fadeRate");
+        r_ctx->loc_prev_frame = GetShaderLocation(biotopeShader, "previousFrame");
+        r_ctx->loc_fade_rate = GetShaderLocation(biotopeShader, "fadeRate");
     }
     
     // --- 2. Update Pixel Data (CPU side) ---
@@ -131,52 +181,53 @@ void DrawGridAndCells(const GameConfig *config, const World *gui_world, int scre
             int pixelIdx = (r - 1) * config->cols + (c - 1);
 
             if (gui_world->grid[gridIdx] == TEAM_BLUE) {
-                gpu_data_buffer[pixelIdx] = 127;
+                r_ctx->pixel_buffer[pixelIdx] = 127;
             } else if (gui_world->grid[gridIdx] == TEAM_RED) {
-                gpu_data_buffer[pixelIdx] = 255;
+                r_ctx->pixel_buffer[pixelIdx] = 255;
             } else {
-                gpu_data_buffer[pixelIdx] = 0; 
+                r_ctx->pixel_buffer[pixelIdx] = 0; 
             }
         }
     }
     
     // --- 3. Upload to GPU & Draw ---
-    UpdateTexture(gridTex, gpu_data_buffer);
+    UpdateTexture(r_ctx->grid_texture, r_ctx->pixel_buffer);
     
-    Rectangle source = { 0.0f, 0.0f, (float)texW, (float)texH };
-    // We draw to the FBO at 0,0 with full width/height
+    Rectangle source = { 0.0f, 0.0f, (float)r_ctx->tex_w, (float)r_ctx->tex_h };
     Rectangle fboDest = { 0.0f, 0.0f, (float)drawWidth, (float)drawHeight };
     Vector2 origin = { 0.0f, 0.0f };
     
-    BeginTextureMode(pingPongTarget[pingPongIndex]);
+    BeginTextureMode(r_ctx->ping_pong_target[r_ctx->ping_pong_index]);
         BeginShaderMode(biotopeShader);
         
         // Bind previous frame
-        SetShaderValueTexture(biotopeShader, locPrevFrame, pingPongTarget[1 - pingPongIndex].texture);
+        SetShaderValueTexture(biotopeShader, r_ctx->loc_prev_frame, r_ctx->ping_pong_target[1 - r_ctx->ping_pong_index].texture);
         
         // Set uniforms
         float fade = 0.95f;
-        SetShaderValue(biotopeShader, locFadeRate, &fade, SHADER_UNIFORM_FLOAT);
+        SetShaderValue(biotopeShader, r_ctx->loc_fade_rate, &fade, SHADER_UNIFORM_FLOAT);
         
-        DrawTexturePro(gridTex, source, fboDest, origin, 0.0f, WHITE);
+        DrawTexturePro(r_ctx->grid_texture, source, fboDest, origin, 0.0f, WHITE);
         
         EndShaderMode();
     EndTextureMode();
 
     // Draw the current FBO to the screen
-    // Note: y-axis is flipped in OpenGL textures when rendered to FBO
     Rectangle screenSource = { 0.0f, 0.0f, (float)drawWidth, -(float)drawHeight };
     Rectangle screenDest = { (float)startX, (float)startY, (float)drawWidth, (float)drawHeight };
     
+    // Wrap rendering in Scissor Mode to prevent quadrant bleeding during pan/zoom
+    BeginScissorMode(startX, startY, drawWidth, drawHeight);
+    
     // Applying Camera2D for Observer Mode
-    BeginMode2D(observer_camera);
-        DrawTexturePro(pingPongTarget[pingPongIndex].texture, screenSource, screenDest, origin, 0.0f, WHITE);
+    BeginMode2D(r_ctx->camera);
+        DrawTexturePro(r_ctx->ping_pong_target[r_ctx->ping_pong_index].texture, screenSource, screenDest, origin, 0.0f, WHITE);
     EndMode2D();
 
     // Swap buffers
-    pingPongIndex = 1 - pingPongIndex;
+    r_ctx->ping_pong_index = 1 - r_ctx->ping_pong_index;
 
-    // --- 4. Draw Grid Lines (Optional - Overhead is low for lines) ---
+    // --- 4. Draw Grid Lines ---
     if (drawGridLines) {
         for (int i = 0; i <= config->cols; i++) DrawLine(startX + i * cellW, startY, startX + i * cellW, startY + drawHeight, THEME_GRID);
         for (int i = 0; i <= config->rows; i++) DrawLine(startX, startY + i * cellH, startX + drawWidth, startY + i * cellH, THEME_GRID);
@@ -185,9 +236,23 @@ void DrawGridAndCells(const GameConfig *config, const World *gui_world, int scre
     // 5. Draw Hemisphere Separator
     int midCol = config->cols / 2;
     int midX = startX + midCol * cellW;
-    BeginMode2D(observer_camera);
+    BeginMode2D(r_ctx->camera);
         DrawLine(midX, startY, midX, startY + drawHeight, Fade(THEME_TEXT, 0.3f));
     EndMode2D();
+    
+    EndScissorMode();
+}
+
+// KI-Agent unterstützt: Wrapper for backward compatibility
+void DrawGridAndCells(const GameConfig *config, const World *gui_world, int screenWidth, int screenHeight, bool drawGridLines) {
+    const int headerHeight = 60;
+    const int footerHeight = 40;
+    const int margin = 20;
+    int drawWidth = screenWidth - (margin * 2);
+    int drawHeight = screenHeight - headerHeight - footerHeight - margin;
+    
+    default_render_ctx.viewport_bounds = (Rectangle){ margin, headerHeight, drawWidth, drawHeight };
+    DrawGridAndCellsCtx(&default_render_ctx, config, gui_world, drawGridLines);
 }
 
 // KI-Agent unterstützt: Pattern Definitions
@@ -308,12 +373,6 @@ void init_renderer(int window_width, int window_height, const char* title) {
     mkdir("biotope_results", 0777);
 #endif
 
-    // Observer Camera Init
-    observer_camera.zoom = 1.0f;
-    observer_camera.target = (Vector2){ 0, 0 };
-    observer_camera.offset = (Vector2){ 0, 0 };
-    observer_camera.rotation = 0.0f;
-
 #ifndef PLATFORM_WEB
     SetTargetFPS(120);
     biotopeShader = LoadShader(0, "assets/shaders/biotope_base.fs");
@@ -334,27 +393,21 @@ void init_renderer(int window_width, int window_height, const char* title) {
 
     biotopeShader = LoadShader(0, "assets/shaders/biotope_base_web.fs");
 #endif
+
+    // Initialize default fallback context
+    init_render_context(&default_render_ctx, 50, 50, (Rectangle){ 20, 60, (float)window_width - 40, (float)window_height - 120 });
 }
 
 void close_renderer(void) {
-    
-    
-    
     // Shader & Texture Cleanup
     if (biotopeShader.id > 0) UnloadShader(biotopeShader);
-    if (gridTex.id > 0) UnloadTexture(gridTex);
-    if (pingPongTarget[0].id > 0) UnloadRenderTexture(pingPongTarget[0]);
-    if (pingPongTarget[1].id > 0) UnloadRenderTexture(pingPongTarget[1]);
     
-    if (gpu_data_buffer) {
-        free(gpu_data_buffer);
-        gpu_data_buffer = NULL;
-    }
+    free_render_context(&default_render_ctx);
     
     CloseWindow();
 }
 
-AppState process_ui_events(AppState state, GameConfig* config, World** p_current_world, World** p_swap_world) {
+AppState process_ui_events(AppState state, GameConfig* config, World** p_current_world, World** p_swap_world, RenderContext *r_ctx) {
     World* gui_world = *p_current_world;
     World* swap_world = *p_swap_world;
     int screenWidth = GetScreenWidth();
@@ -370,8 +423,8 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
 
         // --- Global Interactions ---
         if (IsKeyPressed(KEY_M)) {
-            useMetaballs = !useMetaballs;
-            if (useMetaballs) strcpy(statusMsg, "METABALLS: ON");
+            r_ctx->use_metaballs = !r_ctx->use_metaballs;
+            if (r_ctx->use_metaballs) strcpy(statusMsg, "METABALLS: ON");
             else strcpy(statusMsg, "METABALLS: OFF");
             statusTimer = 2.0f;
         }
@@ -472,7 +525,11 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
                     config->current_round = 0;
                     
                     state = STATE_EDIT_RED;
-                }                break;
+                }
+                if (IsKeyPressed(KEY_K)) {
+                    state = STATE_KIOSK_MODE;
+                }
+                break;
 
             case STATE_EDIT_RED:
             case STATE_EDIT_BLUE:
@@ -657,9 +714,9 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
                     config->is_paused = false; // Reset pause on exit
                     
                     // Reset Camera State
-                    observer_camera.zoom = 1.0f;
-                    observer_camera.target = (Vector2){ 0, 0 };
-                    observer_camera.offset = (Vector2){ 0, 0 };
+                    r_ctx->camera.zoom = 1.0f;
+                    r_ctx->camera.target = (Vector2){ 0, 0 };
+                    r_ctx->camera.offset = (Vector2){ 0, 0 };
                     break;
                 }
 
@@ -671,9 +728,9 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
                 // Toggle Observer Mode (Camera only)
                 if (IsKeyPressed(KEY_O)) {
                     state = STATE_OBSERVER;
-                    observer_camera.zoom = 1.0f;
-                    observer_camera.target = (Vector2){ 0, 0 };
-                    observer_camera.offset = (Vector2){ 0, 0 };
+                    r_ctx->camera.zoom = 1.0f;
+                    r_ctx->camera.target = (Vector2){ 0, 0 };
+                    r_ctx->camera.offset = (Vector2){ 0, 0 };
                     strcpy(statusMsg, "OBSERVER MODE: ON");
                     statusTimer = 2.0f;
                 }
@@ -698,19 +755,19 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
                 // Pan: Right Click + Drag
                 if (IsMouseButtonDown(MOUSE_RIGHT_BUTTON)) {
                     Vector2 delta = GetMouseDelta();
-                    observer_camera.target.x -= delta.x / observer_camera.zoom;
-                    observer_camera.target.y -= delta.y / observer_camera.zoom;
+                    r_ctx->camera.target.x -= delta.x / r_ctx->camera.zoom;
+                    r_ctx->camera.target.y -= delta.y / r_ctx->camera.zoom;
                 }
 
                 // Zoom: Mouse Wheel
                 float wheel = GetMouseWheelMove();
                 if (wheel != 0) {
-                    Vector2 mouseWorldPos = GetScreenToWorld2D(GetMousePosition(), observer_camera);
-                    observer_camera.offset = GetMousePosition();
-                    observer_camera.target = mouseWorldPos;
+                    Vector2 mouseWorldPos = GetScreenToWorld2D(GetMousePosition(), r_ctx->camera);
+                    r_ctx->camera.offset = GetMousePosition();
+                    r_ctx->camera.target = mouseWorldPos;
                     const float zoomIncrement = 0.125f;
-                    observer_camera.zoom += (wheel * zoomIncrement);
-                    if (observer_camera.zoom < 0.125f) observer_camera.zoom = 0.125f;
+                    r_ctx->camera.zoom += (wheel * zoomIncrement);
+                    if (r_ctx->camera.zoom < 0.125f) r_ctx->camera.zoom = 0.125f;
                 }
 
                 break;
@@ -737,9 +794,9 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
                     config->is_paused = false;
                     
                     // Reset Camera State
-                    observer_camera.zoom = 1.0f;
-                    observer_camera.target = (Vector2){ 0, 0 };
-                    observer_camera.offset = (Vector2){ 0, 0 };
+                    r_ctx->camera.zoom = 1.0f;
+                    r_ctx->camera.target = (Vector2){ 0, 0 };
+                    r_ctx->camera.offset = (Vector2){ 0, 0 };
                 }
                 break;
 
@@ -755,10 +812,12 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
                      config->is_paused = false;
                      
                      // Reset Camera State
-                     observer_camera.zoom = 1.0f;
-                     observer_camera.target = (Vector2){ 0, 0 };
-                     observer_camera.offset = (Vector2){ 0, 0 };
+                     r_ctx->camera.zoom = 1.0f;
+                     r_ctx->camera.target = (Vector2){ 0, 0 };
+                     r_ctx->camera.offset = (Vector2){ 0, 0 };
                 }
+                break;
+            case STATE_KIOSK_MODE:
                 break;
         }
 
@@ -767,7 +826,7 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
     return state;
 }
 
-void draw_current_state(AppState state, const GameConfig* config, const World* gui_world) {
+void draw_current_state(AppState state, const GameConfig* config, const World* gui_world, RenderContext *r_ctx) {
     int screenWidth = GetScreenWidth();
     int screenHeight = GetScreenHeight();
     // --- Drawing ---
@@ -840,8 +899,8 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                 DrawText("PRESET", 40, 300, 20, THEME_ACCENT);
                 DrawText("[1] CONWAY'S CHESS", 40, 335, 20, THEME_ACCENT);
                 DrawText("[2] OUTER SPACE BATTLE", 40, 370, 20, THEME_ACCENT);
-                DrawText("[3] TURING SANDBOX", 40, 405, 20, THEME_ACCENT);
-                DrawText("PRESS [ENTER] TO INITIALIZE SYSTEM", 40, 475, 20, THEME_ACCENT);
+                DrawText("PRESS [ENTER] TO INITIALIZE SYSTEM", 40, 460, 20, THEME_ACCENT);
+                DrawText("PRESS [K] TO ENTER 2x2 KIOSK MODE", 40, 495, 20, THEME_BLUE);
                 break;
 
             case STATE_EDIT_RED:
@@ -888,7 +947,8 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                 }
                 
                 bool showLines = (config->rows <= 150 && config->cols <= 150);
-                DrawGridAndCells(config, gui_world, screenWidth, screenHeight, showLines); 
+                r_ctx->viewport_bounds = (Rectangle){ 20, 60, (float)screenWidth - 40, (float)screenHeight - 120 };
+                DrawGridAndCellsCtx(r_ctx, config, gui_world, showLines); 
 
                 // KI-Agent unterstützt: Dynamic Status-First Footer
                 char footerBuf[256];
@@ -902,7 +962,8 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
 
             case STATE_IGNITION:
                 DrawText("SYSTEM IGNITION", 20, 18, 24, THEME_RED);
-                DrawGridAndCells(config, gui_world, screenWidth, screenHeight, false);
+                r_ctx->viewport_bounds = (Rectangle){ 20, 60, (float)screenWidth - 40, (float)screenHeight - 120 };
+                DrawGridAndCellsCtx(r_ctx, config, gui_world, false);
                 {
                     double elapsed = GetTime() - ignitionStartTime;
                     int countdown = 3 - (int)elapsed;
@@ -1010,7 +1071,8 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                 DrawText(roundBuf, screenWidth - roundW - 20, 20, 20, THEME_TEXT);
                 
                 
-                DrawGridAndCells(config, gui_world, screenWidth, screenHeight, false); // false = No Grid Lines (Performance!)
+                r_ctx->viewport_bounds = (Rectangle){ 20, 60, (float)screenWidth - 40, (float)screenHeight - 120 };
+                DrawGridAndCellsCtx(r_ctx, config, gui_world, false); // false = No Grid Lines (Performance!)
                 
                 // KI-Agent unterstützt: Dynamic Status-First Footer for Running/Observer
                 char simFooter[256];
@@ -1033,7 +1095,8 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
             case STATE_FINISHED:
                 DrawText("SIMULATION COMPLETED", 20, 18, 24, THEME_BLUE);
                 
-                DrawGridAndCells(config, gui_world, screenWidth, screenHeight, false);
+                r_ctx->viewport_bounds = (Rectangle){ 20, 60, (float)screenWidth - 40, (float)screenHeight - 120 };
+                DrawGridAndCellsCtx(r_ctx, config, gui_world, false);
                 
                 DrawText("[ENTER] VIEW RESULTS  |  [Q] MENU", 20, screenHeight - 30, 20, THEME_ACCENT);
                 break;
@@ -1095,6 +1158,8 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
 
                 DrawText("Stats exported to file.", screenWidth/2 - MeasureText("Stats exported to file.", 20)/2, 420, 20, THEME_HINT);
                 DrawText("PRESS [1] TO RESTART SYSTEM", screenWidth/2 - MeasureText("PRESS [1] TO RESTART SYSTEM", 20)/2, 500, 20, THEME_ACCENT);
+                break;
+            case STATE_KIOSK_MODE:
                 break;
         }
 

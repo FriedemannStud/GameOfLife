@@ -34,9 +34,6 @@ void free_world(World *w) {
 
 // KI-Agent unterstützt
 void init_world(World *current_gen, int rows, int cols) {
-    // Initialisiere den Zufallszahlengenerator mit der aktuellen Zeit
-    srand(time(NULL));
-    
     int stride = cols + 2;
     
     // Nested loops to skip the ghost borders (start at 1, end at rows/cols)
@@ -265,4 +262,51 @@ void activate_chunk_at(World *w, int r, int c) {
     if (cr >= 0 && cr < w->chunk_rows && cc >= 0 && cc < w->chunk_cols) {
         w->chunk_map[cr * w->chunk_cols + cc] = 1;
     }
+}
+
+// KI-Agent unterstützt: Initialize simulation context
+void init_simulation_context(SimulationContext *ctx, int rows, int cols) {
+    if (!ctx) return;
+    ctx->rows = rows;
+    ctx->cols = cols;
+    ctx->current_generation = 0;
+    ctx->max_generations = MAX_ROUNDS;
+    ctx->world_a = create_world(rows, cols);
+    ctx->world_b = create_world(rows, cols);
+    ctx->current_world = ctx->world_a;
+    ctx->next_world = ctx->world_b;
+    memset(ctx->participant_red, 0, sizeof(ctx->participant_red));
+    memset(ctx->participant_blue, 0, sizeof(ctx->participant_blue));
+    ctx->is_active = false;
+}
+
+// KI-Agent unterstützt: Free simulation context resources safely
+void free_simulation_context(SimulationContext *ctx) {
+    if (!ctx) return;
+    if (ctx->world_a) {
+        free_world(ctx->world_a);
+        ctx->world_a = NULL;
+    }
+    if (ctx->world_b) {
+        free_world(ctx->world_b);
+        ctx->world_b = NULL;
+    }
+    ctx->current_world = NULL;
+    ctx->next_world = NULL;
+    ctx->is_active = false;
+}
+
+// KI-Agent unterstützt: Advance the simulation state on the context
+int update_generation_ctx(SimulationContext *ctx, int *red_pop, int *blue_pop) {
+    if (!ctx || !ctx->current_world || !ctx->next_world) return 0;
+    
+    int activity = update_generation(ctx->current_world, ctx->next_world, ctx->rows, ctx->cols, red_pop, blue_pop);
+    
+    // Swap front and back double buffers
+    World *temp = ctx->current_world;
+    ctx->current_world = ctx->next_world;
+    ctx->next_world = temp;
+    
+    ctx->current_generation++;
+    return activity;
 }

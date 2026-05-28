@@ -2,12 +2,42 @@
 #define RENDERER_H
 
 #include <stdbool.h>
+#include "raylib.h"
 #include "core_types.h"
+
+// KI-Agent unterstützt: RenderContext encapsulating dynamic viewport GPU resources
+typedef struct {
+    Texture2D grid_texture;
+    unsigned char* pixel_buffer; // CPU-side pixel buffer before GPU upload
+    Rectangle viewport_bounds;
+    Camera2D camera;
+    
+    int tex_w;
+    int tex_h;
+    int last_draw_w;
+    int last_draw_h;
+    
+    RenderTexture2D ping_pong_target[2];
+    int ping_pong_index;
+    int loc_prev_frame;
+    int loc_fade_rate;
+    bool use_metaballs;
+    
+    Color col_background;
+    Color col_team_red;
+    Color col_team_blue;
+} RenderContext;
+
+void init_render_context(RenderContext *ctx, int cols, int rows, Rectangle bounds);
+void free_render_context(RenderContext *ctx);
 
 // KI-Agent unterstützt: Renderer API
 void init_renderer(int window_width, int window_height, const char* title);
-AppState process_ui_events(AppState current_state, GameConfig* config, World** current_world, World** swap_world);
-void draw_current_state(AppState state, const GameConfig* config, const World* world);
+AppState process_ui_events(AppState current_state, GameConfig* config, World** p_current_world, World** p_swap_world, RenderContext *r_ctx);
+void draw_current_state(AppState state, const GameConfig* config, const World* gui_world, RenderContext *r_ctx);
 void close_renderer(void);
+
+// Refactored grid rendering using instance context
+void DrawGridAndCellsCtx(RenderContext *r_ctx, const GameConfig *config, const World *gui_world, bool drawGridLines);
 
 #endif // RENDERER_H

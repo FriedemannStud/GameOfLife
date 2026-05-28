@@ -29,7 +29,8 @@ typedef enum {
     STATE_RUNNING,
     STATE_OBSERVER,
     STATE_FINISHED, 
-    STATE_GAME_OVER
+    STATE_GAME_OVER,
+    STATE_KIOSK_MODE
 } AppState;
 
 typedef struct {
@@ -100,5 +101,25 @@ typedef struct {
     int matches_played;
     long long sum_stable_gen;
 } RankingScore;
+
+// KI-Agent unterstützt: SimulationContext encapsulating match instances
+typedef struct {
+    int rows;
+    int cols;
+    int current_generation;
+    int max_generations;
+    World *world_a;
+    World *world_b;
+    World *current_world;
+    World *next_world;
+    
+    char participant_red[64];
+    char participant_blue[64];
+    
+    bool is_active;
+} SimulationContext;
+
+void init_simulation_context(SimulationContext *ctx, int rows, int cols);
+void free_simulation_context(SimulationContext *ctx);
 
 #endif // CORE_TYPES_H

@@ -100,13 +100,14 @@ static bool is_chunk_or_neighbors_active(World *w, int cr, int cc) {
     return false;
 }
 
-// KI-Agent unterstützt: Parallelized update using OpenMP with Active Chunk Heuristic
-void update_generation(World *current_gen, World *next_gen, int rows, int cols, int *red_pop, int *blue_pop) {
+// KI-Agent unterstützt: Parallelized update returns total activity (births + deaths)
+int update_generation(World *current_gen, World *next_gen, int rows, int cols, int *red_pop, int *blue_pop) {
     sync_ghost_borders(current_gen);
 
     int stride = cols + 2;
     int total_red = 0;
     int total_blue = 0;
+    int total_activity = 0;
 
     // 1. Clear the NEXT generation's chunk map
     if (next_gen->chunk_map) {
@@ -117,13 +118,12 @@ void update_generation(World *current_gen, World *next_gen, int rows, int cols, 
 
     // 2. Iterate over CHUNKS
 #ifndef PLATFORM_WEB
-    #pragma omp parallel for reduction(+:total_red, total_blue)
+    #pragma omp parallel for reduction(+:total_red, total_blue, total_activity)
 #endif
     for (int cr = 0; cr < current_gen->chunk_rows; cr++) {
         for (int cc = 0; cc < current_gen->chunk_cols; cc++) {
             int chunk_idx = cr * current_gen->chunk_cols + cc;
 
-            // Heuristic Bypass: If this chunk and neighbors are DEAD, skip!
             if (current_gen->chunk_map && !is_chunk_or_neighbors_active(current_gen, cr, cc)) {
                 continue;
             }
@@ -145,7 +145,6 @@ void update_generation(World *current_gen, World *next_gen, int rows, int cols, 
                     int red_neighbors = 0;
                     int blue_neighbors = 0;
 
-                    // Manual neighbor check
                     int n_indices[8] = {
                         i - stride - 1, i - stride, i - stride + 1,
                         i - 1,                      i + 1,
@@ -170,6 +169,8 @@ void update_generation(World *current_gen, World *next_gen, int rows, int cols, 
                         }
                     }
                     
+                    if (new_state != current_cell) total_activity++;
+
                     next_gen->grid[i] = new_state;
                     
                     if (new_state != DEAD) {
@@ -188,21 +189,29 @@ void update_generation(World *current_gen, World *next_gen, int rows, int cols, 
 
     *red_pop = total_red;
     *blue_pop = total_blue;
+    return total_activity;
 }
 
-// Helper to activate a chunk given a 0-based grid coordinate
-void activate_chunk_at(World *w, int r, int c) {
-    if (!w || !w->chunk_map) return;
-    int cr = r / CHUNK_SIZE;
-    int cc = c / CHUNK_SIZE;
-    if (cr >= 0 && cr < w->chunk_rows && cc >= 0 && cc < w->chunk_cols) {
-        w->chunk_map[cr * w->chunk_cols + cc] = 1;
+// KI-Agent unterstützt: Bitboard helpers
+uint64_t grid_to_bitboard(int cells[LOCAL_GRID_SIZE][LOCAL_GRID_SIZE]) {
+    uint64_t bb = 0;
+    for (int r = 0; r < 8; r++) {
+        for (int c = 0; c < 8; c++) {
+            if (cells[r][c]) bb |= (1ULL << (r * 8 + c));
+        }
+    }
+    return bb;
+}
+
+void bitboard_to_grid(uint64_t bb, int cells[LOCAL_GRID_SIZE][LOCAL_GRID_SIZE]) {
+    for (int i = 0; i < 64; i++) {
+        cells[i / 8][i % 8] = (bb & (1ULL << i)) ? 1 : 0;
     }
 }
 
-// KI-Agent unterstützt: Thread-safe match execution with early termination detection
+// KI-Agent unterstützt: Thread-safe match execution with activity tracking
 MatchResult run_isolated_match(int left_cells[LOCAL_GRID_SIZE][LOCAL_GRID_SIZE], int right_cells[LOCAL_GRID_SIZE][LOCAL_GRID_SIZE], int max_gen) {
-    MatchResult result = { 0, 0, 0, 0 };
+    MatchResult result = { 0, 0, 0, 0, 0, 0 };
     int rows = LOCAL_GRID_SIZE;
     int cols = LOCAL_GRID_SIZE * 2;
     int r_pop = 0, b_pop = 0;
@@ -210,19 +219,12 @@ MatchResult run_isolated_match(int left_cells[LOCAL_GRID_SIZE][LOCAL_GRID_SIZE],
     World *current = create_world(rows, cols);
     World *next = create_world(rows, cols);
 
-    // Initialize grid with the two 8x8 patterns
-    // Team Red (Left): columns 1-8
     for (int r = 0; r < LOCAL_GRID_SIZE; r++) {
         for (int c = 0; c < LOCAL_GRID_SIZE; c++) {
             if (left_cells[r][c]) {
                 current->grid[(r + 1) * (cols + 2) + (c + 1)] = TEAM_RED;
                 activate_chunk_at(current, r, c);
             }
-        }
-    }
-    // Team Blue (Right): columns 9-16
-    for (int r = 0; r < LOCAL_GRID_SIZE; r++) {
-        for (int c = 0; c < LOCAL_GRID_SIZE; c++) {
             if (right_cells[r][c]) {
                 current->grid[(r + 1) * (cols + 2) + (c + LOCAL_GRID_SIZE + 1)] = TEAM_BLUE;
                 activate_chunk_at(current, r, c + LOCAL_GRID_SIZE);
@@ -230,13 +232,10 @@ MatchResult run_isolated_match(int left_cells[LOCAL_GRID_SIZE][LOCAL_GRID_SIZE],
         }
     }
 
-    // Simulation loop
     for (int gen = 1; gen <= max_gen; gen++) {
-        update_generation(current, next, rows, cols, &r_pop, &b_pop);
-        
-        // KI-Agent unterstützt: Early Termination (Still-Life Check)
-        // Check if the world state changed (excluding ghost borders which are updated inside update_generation)
-        // Grid size is (rows+2)*(cols+2). For 8x16, it's 10x18.
+        result.activity_sum += update_generation(current, next, rows, cols, &r_pop, &b_pop);
+        result.total_generations = gen;
+
         if (memcmp(current->grid, next->grid, sizeof(int) * (rows + 2) * (cols + 2)) == 0) {
             result.stable_at_generation = gen;
             break;
@@ -247,14 +246,23 @@ MatchResult run_isolated_match(int left_cells[LOCAL_GRID_SIZE][LOCAL_GRID_SIZE],
         next = temp;
     }
 
-    // Final result calculation
     result.red_final_pop = r_pop;
     result.blue_final_pop = b_pop;
     if (r_pop > b_pop) result.winner = TEAM_RED;
     else if (b_pop > r_pop) result.winner = TEAM_BLUE;
-    else result.winner = 0; // Draw
+    else result.winner = 0;
 
     free_world(current);
     free_world(next);
     return result;
+}
+
+// KI-Agent unterstützt: Helper to activate a chunk given a 0-based grid coordinate
+void activate_chunk_at(World *w, int r, int c) {
+    if (!w || !w->chunk_map) return;
+    int cr = r / CHUNK_SIZE;
+    int cc = c / CHUNK_SIZE;
+    if (cr >= 0 && cr < w->chunk_rows && cc >= 0 && cc < w->chunk_cols) {
+        w->chunk_map[cr * w->chunk_cols + cc] = 1;
+    }
 }

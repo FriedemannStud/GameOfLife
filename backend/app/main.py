@@ -19,6 +19,15 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+async def startup_db_client():
+    from .database import check_connection
+    if await check_connection():
+        print("Successfully connected to MongoDB Atlas!")
+    else:
+        print("CRITICAL: Could not connect to MongoDB Atlas. Check your .env file.")
+
+
 @app.get("/")
 async def root():
     return {"message": "Hello Biotope"}
@@ -75,3 +84,56 @@ async def get_submission_count():
         return {"count": count}
     except Exception:
         raise HTTPException(status_code=500, detail="Could not fetch count")
+
+
+@app.get("/api/leaderboard")
+async def get_leaderboard():
+    try:
+        db = get_db()
+        # Fetch top 20 players by Elo
+        players = (
+            await db.players.find({})
+            .sort("elo_rating", -1)
+            .limit(20)
+            .to_list(length=20)
+        )
+
+        leaderboard = []
+        for p in players:
+            # Calculate win rate if possible, else 0
+            win_rate = (
+                p.get("win_count", 0) / p["matches_played"]
+                if p.get("matches_played", 0) > 0
+                else 0.0
+            )
+            leaderboard.append(
+                {"name": p["nickname"], "elo": p["elo_rating"], "win_rate": win_rate}
+            )
+
+        return {"leaderboard": leaderboard}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Leaderboard error: {str(e)}")
+
+
+@app.get("/api/epoch/highlights")
+async def get_epoch_highlights():
+    try:
+        db = get_db()
+        # Fetch the most recent epoch highlight document
+        highlight_doc = (
+            await db.epoch_highlights.find({}).sort("timestamp", -1).limit(1).to_list(length=1)
+        )
+
+        if not highlight_doc:
+            raise HTTPException(status_code=404, detail="No highlights found")
+
+        doc = highlight_doc[0]
+        return {
+            "epoch_id": doc["epoch_id"],
+            "timestamp": doc["timestamp"].isoformat(),
+            "highlights": doc["highlights"],
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Highlights error: {str(e)}")

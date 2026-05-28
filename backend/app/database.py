@@ -7,15 +7,31 @@ from dotenv import load_dotenv
 load_dotenv()
 
 MONGODB_URI = os.getenv("MONGODB_URI")
-DB_NAME = "biotope_db"
+DB_NAME = os.getenv("MONGODB_DB", "biotope_db")
 
 if not MONGODB_URI:
-    # In a production environment, you might want to handle this more gracefully
-    # but for this challenge, the URI is mandatory.
-    raise RuntimeError("MONGODB_URI environment variable is not set")
+    raise RuntimeError("MONGODB_URI environment variable is not set in .env")
 
 client = AsyncIOMotorClient(MONGODB_URI)
 db = client[DB_NAME]
+
+# Collections
+submissions_col = db["submissions"]
+results_col = db["results"]
+players_col = db["players"]
+epoch_highlights_col = db["epoch_highlights"]
+
+
+async def check_connection():
+    """
+    Pings the MongoDB server to verify credentials and connectivity.
+    """
+    try:
+        await db.command("ping")
+        return True
+    except Exception as e:
+        print(f"MongoDB Connection Error: {e}")
+        return False
 
 
 def get_db():

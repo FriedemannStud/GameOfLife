@@ -1,5 +1,6 @@
 #include "app_state_manager.h"
 #include "game_logic.h"
+#include "network_io.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -9,6 +10,23 @@ static double ignitionStartTime = 0.0;
 static float timeAccumulator = 0.0f;
 
 AppState update_app_state(AppState current_state, GameConfig* config, World** current_world, World** next_world, float delta_time, double current_time) {
+    // KI-Agent unterstützt: Poll for network updates
+    LeaderboardData lb;
+    if (network_get_leaderboard(&lb)) {
+        printf("--- Leaderboard Received ---\n");
+        for (int i = 0; i < lb.count; i++) {
+            printf("%d. %s (%d Elo)\n", i + 1, lb.entries[i].name, lb.entries[i].elo);
+        }
+    }
+
+    HighlightData hd;
+    if (network_get_highlights(&hd)) {
+        printf("--- Highlights Received: %d matches ---\n", hd.count);
+        for (int i = 0; i < hd.count; i++) {
+            printf("Match %d: %s vs %s (%s)\n", i + 1, hd.matches[i].participant_red, hd.matches[i].participant_blue, hd.matches[i].metric_reason);
+        }
+    }
+
     switch (current_state) {
         case STATE_IGNITION:
             if (ignitionStartTime == 0.0) {

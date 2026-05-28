@@ -66,3 +66,19 @@ class MatchResult(BaseModel):
     blue_population: int
     generations: int = 100
     elo_delta: int = Field(..., description="Elo change for this match")
+
+
+class Highlight(BaseModel):
+    metric_type: str = Field(
+        ..., description="Type of metric (duration, volatility)", examples=["duration"]
+    )
+    red_name: str
+    blue_name: str
+    red_seed: List[int] = Field(..., description="8x8 grid as list of 64 integers")
+    blue_seed: List[int] = Field(..., description="8x8 grid as list of 64 integers")
+
+
+class EpochHighlights(BaseModel):
+    epoch_id: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    highlights: List[Highlight]

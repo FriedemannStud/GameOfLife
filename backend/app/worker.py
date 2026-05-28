@@ -52,9 +52,12 @@ async def execute_epoch(db):
 
     try:
         # 3. Run biotope_hyper_worker
-        binary_path = "./biotope_hyper_worker"
-        if not os.path.exists(binary_path):
-            logger.error(f"Binary not found at {binary_path}. Did you run 'make hyper'?")
+        # KI-Agent unterstützt: Check in multiple locations for Docker/Local flexibility
+        possible_paths = ["./build/biotope_hyper_worker", "/app/build/biotope_hyper_worker", "./biotope_hyper_worker"]
+        binary_path = next((p for p in possible_paths if os.path.exists(p)), None)
+        
+        if not binary_path:
+            logger.error(f"Binary not found. Checked: {possible_paths}. Did you run 'make build/biotope_hyper_worker'?")
             return
 
         process = await asyncio.create_subprocess_exec(
@@ -80,6 +83,27 @@ async def execute_epoch(db):
             results = json.load(f_out)
 
         logger.info(f"Epoch finished. Matches played: {results['total_matches_played']}")
+
+        # Store Highlights
+        epoch_id = f"epoch_{int(datetime.utcnow().timestamp())}"
+        highlights_data = []
+        for h in results.get("highlights", []):
+            highlights_data.append({
+                "metric_type": "activity_sum",
+                "red_name": h["red_name"],
+                "blue_name": h["blue_name"],
+                "red_seed": h["red_seed"],
+                "blue_seed": h["blue_seed"],
+                "metric_value": h["metric_value"]
+            })
+        
+        if highlights_data:
+            await db.epoch_highlights.insert_one({
+                "epoch_id": epoch_id,
+                "timestamp": datetime.utcnow(),
+                "highlights": highlights_data
+            })
+            logger.info(f"Stored {len(highlights_data)} highlights for {epoch_id}")
 
         # Batch update logic
         for rank in results["rankings"]:
@@ -126,6 +150,10 @@ async def execute_epoch(db):
 
 async def worker_loop():
     logger.info("Biotope Epoch Worker started.")
+    from app.database import get_db, check_connection
+    if not await check_connection():
+        logger.error("Could not connect to MongoDB. Worker exiting.")
+        return
     db = get_db()
     while True:
         try:

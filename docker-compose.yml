@@ -14,7 +14,7 @@ services:
     volumes:
       - ./backend:/app
       - ./biotope_results:/app/results
-      - ./biotope_headless:/app/biotope_headless
+      - ./build:/app/build
     working_dir: /app
     ports:
       - "8000:8000"
@@ -30,10 +30,10 @@ services:
     volumes:
       - ./backend:/app
       - ./biotope_results:/app/results
-      - ./biotope_headless:/app/biotope_headless
+      - ./build:/app/build
     working_dir: /app
     env_file:
       - .env
-    command: /bin/bash -c "pip install -r requirements.txt && apt-get update && apt-get install -y libgomp1 && python3 app/worker.py"
+    command: /bin/bash -c "pip install -r requirements.txt && apt-get update && apt-get install -y libgomp1 libcurl4 && python3 app/worker.py"
     environment:
       - PYTHONUNBUFFERED=1

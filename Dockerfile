@@ -18,6 +18,9 @@ RUN apt-get update && apt-get install -y \
     libxinerama-dev \
     libwayland-dev \
     libxkbcommon-dev \
+    libcurl4-openssl-dev \
+    pkg-config \
+    valgrind \
     python3 \
     && rm -rf /var/lib/apt/lists/*
 

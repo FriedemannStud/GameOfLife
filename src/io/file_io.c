@@ -513,10 +513,10 @@ int parse_batch_file(const char* filepath, Competitor** competitors, int* count,
     return 1;
 }
 
-// KI-Agent unterstützt: Generate output JSON for batch results
-int save_batch_results(const char* filepath, RankingScore* scores, int count, double cpu_time_used) {
+// KI-Agent unterstützt: Generate output JSON for batch results including highlights
+int save_batch_results(const char* filepath, RankingScore* scores, int count, double cpu_time_used, HighlightEntry* highlights, int highlight_count) {
     cJSON *output_root = cJSON_CreateObject();
-    cJSON_AddNumberToObject(output_root, "total_matches_played", (count * (count - 1)));
+    cJSON_AddNumberToObject(output_root, "total_matches_played", (long long)count * (count - 1));
     cJSON_AddNumberToObject(output_root, "execution_time_cpu_s", cpu_time_used);
     
     cJSON *rankings_array = cJSON_CreateArray();
@@ -530,6 +530,27 @@ int save_batch_results(const char* filepath, RankingScore* scores, int count, do
         cJSON_AddItemToArray(rankings_array, rank_item);
     }
     cJSON_AddItemToObject(output_root, "rankings", rankings_array);
+
+    // Add Highlights
+    cJSON *highlights_array = cJSON_CreateArray();
+    for (int i = 0; i < highlight_count; i++) {
+        cJSON *h_item = cJSON_CreateObject();
+        cJSON_AddStringToObject(h_item, "red_name", highlights[i].player_id_red);
+        cJSON_AddStringToObject(h_item, "blue_name", highlights[i].player_id_blue);
+        cJSON_AddNumberToObject(h_item, "metric_value", highlights[i].score);
+        
+        // Convert Bitboards to Arrays
+        cJSON *red_seed = cJSON_CreateArray();
+        cJSON *blue_seed = cJSON_CreateArray();
+        for (int b = 0; b < 64; b++) {
+            cJSON_AddItemToArray(red_seed, cJSON_CreateNumber((highlights[i].seed_red & (1ULL << b)) ? 1 : 0));
+            cJSON_AddItemToArray(blue_seed, cJSON_CreateNumber((highlights[i].seed_blue & (1ULL << b)) ? 1 : 0));
+        }
+        cJSON_AddItemToObject(h_item, "red_seed", red_seed);
+        cJSON_AddItemToObject(h_item, "blue_seed", blue_seed);
+        cJSON_AddItemToArray(highlights_array, h_item);
+    }
+    cJSON_AddItemToObject(output_root, "highlights", highlights_array);
 
     char *output_str = cJSON_Print(output_root);
     FILE *out_f = fopen(filepath, "w");

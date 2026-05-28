@@ -8,6 +8,7 @@
 #include "renderer.h"
 #include "app_state_manager.h"
 #include "config.h"
+#include "network_io.h"
 
 #if defined(PLATFORM_WEB)
     #include <emscripten/emscripten.h>
@@ -44,6 +45,7 @@ int main(int argc, char *argv[]) {
     
     printf("Starting Biotope GUI...\n"); 
     
+    network_init();
     init_renderer(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, "Biotope - Game of Life"); 
 
 #if defined(PLATFORM_WEB)
@@ -55,6 +57,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     close_renderer();
+    network_cleanup();
     
     if (config.history_red_pop) free(config.history_red_pop);
     if (config.history_blue_pop) free(config.history_blue_pop);

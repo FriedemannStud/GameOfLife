@@ -73,7 +73,18 @@ typedef struct {
     int red_final_pop;
     int blue_final_pop;
     int stable_at_generation; // 0 if never reached stable state
+    long activity_sum;        // Total births and deaths during match
+    int total_generations;    // Actual generations simulated
 } MatchResult;
+
+// KI-Agent unterstützt: For tracking top matches within the worker
+typedef struct {
+    uint64_t seed_red;
+    uint64_t seed_blue;
+    double score; // Metric value (duration or activity)
+    char player_id_red[64];
+    char player_id_blue[64];
+} HighlightEntry;
 
 // KI-Agent unterstützt: Competitor structure for batch processing
 typedef struct {

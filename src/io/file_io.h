@@ -37,7 +37,7 @@ void export_stats_md(const char *filename, GameConfig *c, int winner);
 bool load_config_from_json(const char* filepath, GameConfig* config);
 bool initialize_world_from_file(const char* filepath, World* world, Team team, char* out_player_id, char* out_nickname);
 int parse_batch_file(const char* filepath, Competitor** competitors, int* count, int* max_gen);
-int save_batch_results(const char* filepath, RankingScore* scores, int count, double cpu_time_used);
+int save_batch_results(const char* filepath, RankingScore* scores, int count, double cpu_time_used, HighlightEntry* highlights, int highlight_count);
 void save_headless_results(const char* filepath, const char* winner, int gens, const char* rp_id, const char* rp_nick, int rp_pop, const char* bp_id, const char* bp_nick, int bp_pop);
 
 // Lists .bio files in a directory. Returns count.

@@ -5,11 +5,11 @@
 ifeq ($(OS),Windows_NT)
     PLATFORM = WINDOWS
     TARGET_NAME = biotope.exe
-    LDFLAGS = -lraylib -lopengl32 -lgdi32 -lwinmm -lpthread
+    LDFLAGS = -lraylib -lopengl32 -lgdi32 -lwinmm -lpthread -lcurl
 else
     PLATFORM = LINUX
     TARGET_NAME = biotope
-    LDFLAGS = -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+    LDFLAGS = -lraylib -lGL -lm -lpthread -ldl -lrt -lX11 -lcurl
 endif
 
 # 2. Directory Structure
@@ -35,7 +35,7 @@ BIN_HYPER = $(BUILD_DIR)/biotope_hyper_worker
 # 5. Object Files
 # We identify the objects needed for each target
 OBJ_CORE = $(BUILD_DIR)/core/game_logic.o
-OBJ_IO = $(BUILD_DIR)/io/file_io.o
+OBJ_IO = $(BUILD_DIR)/io/file_io.o $(BUILD_DIR)/io/network_io.o
 OBJ_VENDOR = $(BUILD_DIR)/vendor/cJSON/cJSON.o
 OBJ_GUI_MODULES = $(BUILD_DIR)/gui/renderer.o $(BUILD_DIR)/gui/app_state_manager.o
 
@@ -52,10 +52,10 @@ $(BIN_GUI): $(OBJ_APP_GUI) $(OBJ_CORE) $(OBJ_GUI_MODULES) $(OBJ_IO) $(OBJ_VENDOR
 	$(CC) $(OBJ_APP_GUI) $(OBJ_CORE) $(OBJ_GUI_MODULES) $(OBJ_IO) $(OBJ_VENDOR) $(CFLAGS) $(LDFLAGS) -o $@
 
 $(BIN_HEADLESS): $(OBJ_APP_HEADLESS) $(OBJ_CORE) $(OBJ_IO) $(OBJ_VENDOR)
-	$(CC) $(OBJ_APP_HEADLESS) $(OBJ_CORE) $(OBJ_IO) $(OBJ_VENDOR) $(CFLAGS) -o $@ -lm -lpthread
+	$(CC) $(OBJ_APP_HEADLESS) $(OBJ_CORE) $(OBJ_IO) $(OBJ_VENDOR) $(CFLAGS) -o $@ -lm -lpthread -lcurl
 
 $(BIN_HYPER): $(OBJ_APP_HYPER) $(OBJ_CORE) $(OBJ_IO) $(OBJ_VENDOR)
-	$(CC) $(OBJ_APP_HYPER) $(OBJ_CORE) $(OBJ_IO) $(OBJ_VENDOR) $(CFLAGS) -o $@ -lm -lpthread -fopenmp
+	$(CC) $(OBJ_APP_HYPER) $(OBJ_CORE) $(OBJ_IO) $(OBJ_VENDOR) $(CFLAGS) -o $@ -lm -lpthread -fopenmp -lcurl
 
 # Pattern rule for object files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c

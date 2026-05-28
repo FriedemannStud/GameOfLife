@@ -2,6 +2,7 @@
 #include "renderer.h"
 #include "config.h"
 #include "file_io.h" // KI-Agent unterstützt
+#include "network_io.h"
 #include <stdio.h>
 #include <stdlib.h> // For abs
 #include <time.h>   // For time()
@@ -375,6 +376,18 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
             statusTimer = 2.0f;
         }
 
+        // KI-Agent unterstützt: Network Test Triggers
+        if (IsKeyPressed(KEY_L)) {
+            network_fetch_leaderboard_async();
+            strcpy(statusMsg, "FETCHING LEADERBOARD...");
+            statusTimer = 2.0f;
+        }
+        if (IsKeyPressed(KEY_H)) {
+            network_fetch_highlights_async();
+            strcpy(statusMsg, "FETCHING HIGHLIGHTS...");
+            statusTimer = 2.0f;
+        }
+
         // KI-Agent unterstützt: Web Editor Link (Phase 4.1)
         
         
@@ -633,6 +646,10 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
             
             case STATE_RUNNING:  // Hier zurücklehnen und zuschauen
                 if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_Q)) {
+                    // KI-Agent unterstützt: Clean up telemetry on exit
+                    if (config->history_red_pop) { free(config->history_red_pop); config->history_red_pop = NULL; }
+                    if (config->history_blue_pop) { free(config->history_blue_pop); config->history_blue_pop = NULL; }
+                    
                     gui_world = NULL;
                     swap_world = NULL;
                     state = STATE_CONFIG;

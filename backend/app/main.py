@@ -47,13 +47,16 @@ async def submit_config(submission: Submission):
             player_id=submission.metadata.player_id,
             nickname=submission.metadata.nickname,
         )
+        # KI-Agent unterstützt: Keyed by nickname for test phase; swap to player_id once email auth is added
         await db.players.update_one(
-            {"player_id": player_data.player_id},
+            {"nickname": player_data.nickname},
             {
-                "$set": {"nickname": player_data.nickname},
+                "$set": {"player_id": player_data.player_id},
                 "$setOnInsert": {
+                    "nickname": player_data.nickname,
                     "elo_rating": 1200,
                     "matches_played": 0,
+                    "win_rate": 0.0,
                     "created_at": datetime.utcnow(),
                 },
             },
@@ -100,14 +103,8 @@ async def get_leaderboard():
 
         leaderboard = []
         for p in players:
-            # Calculate win rate if possible, else 0
-            win_rate = (
-                p.get("win_count", 0) / p["matches_played"]
-                if p.get("matches_played", 0) > 0
-                else 0.0
-            )
             leaderboard.append(
-                {"name": p["nickname"], "elo": p["elo_rating"], "win_rate": win_rate}
+                {"name": p["nickname"], "elo": p["elo_rating"], "win_rate": p.get("win_rate", 0.0)}
             )
 
         return {"leaderboard": leaderboard}

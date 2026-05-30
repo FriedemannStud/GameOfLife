@@ -8,7 +8,7 @@
 
 // KI-Agent unterstützt: Thread-safe networking module using libcurl
 
-#define BACKEND_URL "http://backend:8000"
+#define BACKEND_URL "http://localhost:8000"
 
 static LeaderboardData g_leaderboard;
 static HighlightData g_highlights;

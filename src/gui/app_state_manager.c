@@ -127,12 +127,14 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
         case STATE_IGNITION:
             if (ignitionStartTime == 0.0) {
                 ignitionStartTime = current_time;
-                // Step 4.1: Allocate telemetry arrays if not allocated
-                if (!config->history_red_pop) {
-                    config->history_red_pop = (int*)malloc(config->max_rounds * sizeof(int));
-                    config->history_blue_pop = (int*)malloc(config->max_rounds * sizeof(int));
-                    config->history_count = 0;
-                }
+            }
+            // KI-Agent unterstützt: Allocate telemetry separately from timer init (ADR-0020)
+            // Fix: process_ui_events sets ignitionStartTime first, so the == 0.0 check above
+            // would be skipped on the first frame — telemetry must be checked independently.
+            if (!config->history_red_pop) {
+                config->history_red_pop = (int*)malloc(config->max_rounds * sizeof(int));
+                config->history_blue_pop = (int*)malloc(config->max_rounds * sizeof(int));
+                config->history_count = 0;
             }
             if (current_time - ignitionStartTime >= 3.0) {
                 ignitionStartTime = 0.0;
@@ -215,17 +217,13 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
                     Vector2 mousePos = GetMousePosition();
                     for (int i = 0; i < 4; i++) {
                         if (CheckCollisionPointRec(mousePos, kiosk_ctrl.renders[i].viewport_bounds)) {
-                            // Check if world needs allocation (if we returned to menu via Q before)
-                            if (sim_ctx->current_world == NULL) {
-                                sim_ctx->current_world = create_world(config->rows, config->cols);
-                            }
-                            if (sim_ctx->next_world == NULL) {
-                                sim_ctx->next_world = create_world(config->rows, config->cols);
-                            }
-                            
+                            // KI-Agent unterstützt: Use reset_simulation_context to maintain
+                            // world_a/world_b ownership invariant (ADR-0020 fix)
+                            reset_simulation_context(sim_ctx, config->rows, config->cols);
+
                             // Copy seed data into single-player ctx
                             int stride = config->cols + 2;
-                            // Reset single-player world
+                            // Reset single-player world (already done by reset_simulation_context)
                             for (int k = 0; k < (config->rows + 2) * stride; k++) {
                                 sim_ctx->current_world->grid[k] = DEAD;
                             }

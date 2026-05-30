@@ -136,19 +136,25 @@ void clear_render_context_trail(RenderContext *ctx) {
 }
 
 // KI-Agent unterstützt: Draw grid and cells using RenderContext
+// ADR-0020: Uses gui_world->rows/cols instead of config->rows/cols to ensure
+// correct rendering when world dimensions differ from global config (e.g. Kiosk 50x50 vs. interactive 500x1000)
 void DrawGridAndCellsCtx(RenderContext *r_ctx, const GameConfig *config, const World *gui_world, bool drawGridLines) {
     if (r_ctx == NULL || gui_world == NULL) return;
+    (void)config; // KI-Agent unterstützt: config no longer used for dimensions (ADR-0020)
+
+    int world_cols = gui_world->cols;
+    int world_rows = gui_world->rows;
 
     int drawWidth = r_ctx->viewport_bounds.width;
     int drawHeight = r_ctx->viewport_bounds.height;
     int startX = r_ctx->viewport_bounds.x;
     int startY = r_ctx->viewport_bounds.y;
     
-    float cellW = (float)drawWidth / config->cols;
-    float cellH = (float)drawHeight / config->rows;
+    float cellW = (float)drawWidth / world_cols;
+    float cellH = (float)drawHeight / world_rows;
     
     // --- 1. Resource Management ---
-    if (config->cols != r_ctx->tex_w || config->rows != r_ctx->tex_h || drawWidth != r_ctx->last_draw_w || drawHeight != r_ctx->last_draw_h) {
+    if (world_cols != r_ctx->tex_w || world_rows != r_ctx->tex_h || drawWidth != r_ctx->last_draw_w || drawHeight != r_ctx->last_draw_h) {
         // Cleanup old resources
         if (r_ctx->grid_texture.id > 0) UnloadTexture(r_ctx->grid_texture);
         if (r_ctx->pixel_buffer) free(r_ctx->pixel_buffer);
@@ -156,8 +162,8 @@ void DrawGridAndCellsCtx(RenderContext *r_ctx, const GameConfig *config, const W
         if (r_ctx->ping_pong_target[1].id > 0) UnloadRenderTexture(r_ctx->ping_pong_target[1]);
         
         // Update dimensions
-        r_ctx->tex_w = config->cols;
-        r_ctx->tex_h = config->rows;
+        r_ctx->tex_w = world_cols;
+        r_ctx->tex_h = world_rows;
         r_ctx->last_draw_w = drawWidth;
         r_ctx->last_draw_h = drawHeight;
         
@@ -193,11 +199,11 @@ void DrawGridAndCellsCtx(RenderContext *r_ctx, const GameConfig *config, const W
     }
     
     // --- 2. Update Pixel Data (CPU side) ---
-    int stride = config->cols + 2;
-    for (int r = 1; r <= config->rows; r++) {
-        for (int c = 1; c <= config->cols; c++) {
+    int stride = world_cols + 2;
+    for (int r = 1; r <= world_rows; r++) {
+        for (int c = 1; c <= world_cols; c++) {
             int gridIdx = r * stride + c;
-            int pixelIdx = (r - 1) * config->cols + (c - 1);
+            int pixelIdx = (r - 1) * world_cols + (c - 1);
 
             if (gui_world->grid[gridIdx] == TEAM_BLUE) {
                 r_ctx->pixel_buffer[pixelIdx] = 127;
@@ -248,12 +254,12 @@ void DrawGridAndCellsCtx(RenderContext *r_ctx, const GameConfig *config, const W
 
     // --- 4. Draw Grid Lines ---
     if (drawGridLines) {
-        for (int i = 0; i <= config->cols; i++) DrawLine(startX + i * cellW, startY, startX + i * cellW, startY + drawHeight, THEME_GRID);
-        for (int i = 0; i <= config->rows; i++) DrawLine(startX, startY + i * cellH, startX + drawWidth, startY + i * cellH, THEME_GRID);
+        for (int i = 0; i <= world_cols; i++) DrawLine(startX + i * cellW, startY, startX + i * cellW, startY + drawHeight, THEME_GRID);
+        for (int i = 0; i <= world_rows; i++) DrawLine(startX, startY + i * cellH, startX + drawWidth, startY + i * cellH, THEME_GRID);
     }
     
     // 5. Draw Hemisphere Separator
-    int midCol = config->cols / 2;
+    int midCol = world_cols / 2;
     int midX = startX + midCol * cellW;
     BeginMode2D(r_ctx->camera);
         DrawLine(midX, startY, midX, startY + drawHeight, Fade(THEME_TEXT, 0.3f));
@@ -261,6 +267,7 @@ void DrawGridAndCellsCtx(RenderContext *r_ctx, const GameConfig *config, const W
     
     EndScissorMode();
 }
+
 
 // KI-Agent unterstützt: Wrapper for backward compatibility
 void DrawGridAndCells(const GameConfig *config, const World *gui_world, int screenWidth, int screenHeight, bool drawGridLines) {

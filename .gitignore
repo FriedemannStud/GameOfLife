@@ -85,3 +85,5 @@ biotope.html
 *.log
 docker-compose.override.yml
 build/
+build_new/
+build_test/

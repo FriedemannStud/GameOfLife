@@ -87,28 +87,28 @@ classDef external  fill:#fff3cd,stroke:#856404,stroke-width:2px,color:#856404;
 %% ------------------------------------------------
 %% External client (Web Editor)
 %% ------------------------------------------------
-Editor[HTML/JS Editor]:::external
+Editor["HTML/JS Editor"]:::external
 
 %% ------------------------------------------------
 %% Backend components (existing)
 %% ------------------------------------------------
-API[FastAPI Backend]:::core
+API["FastAPI Backend"]:::core
 DB[(MongoDB)]:::core
-Worker[Python Tournament Worker]:::core
-Hyper[C Hyper‑Worker Engine]:::core
+Worker["Python Tournament Worker"]:::core
+Hyper["C Hyper‑Worker Engine"]:::core
 
 %% ------------------------------------------------
 %% New / planned components (Kiosk Mode)
 %% ------------------------------------------------
-Highlights[DB: epoch_highlights]:::planned
-API_New[API: /leaderboard & /epoch/highlights]:::planned
-NetIO[network_io.c – libcurl + pthread]:::planned
-JSON[cJSON Parser]:::planned
-KioskCtrl[KioskController – 15 s / 30 s cycle]:::planned
-Failsafe[Global Inactivity Failsafe (60 s)]:::planned
-SimCtx[SimulationContext ×4]:::planned
-RenCtx[RenderContext ×4]:::planned
-GPU[Raylib GPU – UpdateTexture]:::core
+Highlights["DB: epoch_highlights"]:::planned
+API_New["API: /leaderboard & /epoch/highlights"]:::planned
+NetIO["network_io.c – libcurl + pthread"]:::planned
+JSON["cJSON Parser"]:::planned
+KioskCtrl["KioskController – 15 s / 30 s cycle"]:::planned
+Failsafe["Global Inactivity Failsafe (60 s)"]:::planned
+SimCtx["SimulationContext ×4"]:::planned
+RenCtx["RenderContext ×4"]:::planned
+GPU["Raylib GPU – UpdateTexture"]:::core
 
 %% ------------------------------------------------
 %% Data flows

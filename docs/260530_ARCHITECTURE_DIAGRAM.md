@@ -7,6 +7,7 @@
 ## 1️⃣ Single‑player Architecture (C‑Application)
 
 ```mermaid
+flowchart TD
 %% ------------------------------------------------
 %% Global style definitions
 %% ------------------------------------------------
@@ -75,6 +76,7 @@ FileIO -- "Serialize / Deserialize (cJSON)" --> Storage
 ## 2️⃣ Multiplayer Tournament Architecture (Uni‑Messe Kiosk Mode)
 
 ```mermaid
+flowchart TD
 %% ------------------------------------------------
 %% Global style definitions (reuse core & data)
 %% ------------------------------------------------

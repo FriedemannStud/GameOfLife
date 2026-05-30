@@ -106,6 +106,9 @@ typedef struct {
     char player_id[64];
     double total_score;
     int matches_played;
+    int wins;
+    int draws;
+    int losses;
     long long sum_stable_gen;
 } RankingScore;
 

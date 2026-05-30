@@ -525,6 +525,9 @@ int save_batch_results(const char* filepath, RankingScore* scores, int count, do
         cJSON_AddStringToObject(rank_item, "player_id", scores[i].player_id);
         cJSON_AddNumberToObject(rank_item, "total_score", scores[i].total_score);
         cJSON_AddNumberToObject(rank_item, "matches_played", scores[i].matches_played);
+        cJSON_AddNumberToObject(rank_item, "wins", scores[i].wins);
+        cJSON_AddNumberToObject(rank_item, "draws", scores[i].draws);
+        cJSON_AddNumberToObject(rank_item, "losses", scores[i].losses);
         cJSON_AddNumberToObject(rank_item, "win_rate", scores[i].matches_played > 0 ? scores[i].total_score / scores[i].matches_played : 0);
         cJSON_AddNumberToObject(rank_item, "avg_stable_generation", scores[i].matches_played > 0 ? (double)scores[i].sum_stable_gen / scores[i].matches_played : 0);
         cJSON_AddItemToArray(rankings_array, rank_item);

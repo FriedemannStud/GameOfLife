@@ -94,18 +94,25 @@ async def get_leaderboard():
     try:
         db = get_db()
         # Fetch top 20 players by Elo
+        # KI-Agent unterstützt: Epoch-fresh ranking sorted by win_rate, tiebreak by avg_stable_generation
         players = (
             await db.players.find({})
-            .sort("elo_rating", -1)
+            .sort([("win_rate", -1), ("avg_stable_generation", 1)])
             .limit(20)
             .to_list(length=20)
         )
 
         leaderboard = []
-        for p in players:
-            leaderboard.append(
-                {"name": p["nickname"], "elo": p["elo_rating"], "win_rate": p.get("win_rate", 0.0)}
-            )
+        for position, p in enumerate(players, start=1):
+            leaderboard.append({
+                "rank": position,
+                "name": p["nickname"],
+                "win_rate": round(p.get("win_rate", 0.0) * 100, 1),
+                "wins": p.get("wins", 0),
+                "draws": p.get("draws", 0),
+                "losses": p.get("losses", 0),
+                "avg_stable_generation": round(p.get("avg_stable_generation", 0.0), 1),
+            })
 
         return {"leaderboard": leaderboard}
     except Exception as e:

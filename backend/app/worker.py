@@ -105,54 +105,39 @@ async def execute_epoch(db):
             })
             logger.info(f"Stored {len(highlights_data)} highlights for {epoch_id}")
 
-        # KI-Agent unterstützt: Proper Elo calculation using round-robin total_score
-        ELO_K = 32
-        ELO_MIN = 100
-
-        def elo_expected(r_a, r_b):
-            return 1.0 / (1.0 + 10.0 ** ((r_b - r_a) / 400.0))
-
-        # Build current Elo lookup: submission ObjectId -> elo
-        sub_id_to_elo = {}
-        for s in submissions:
-            player = await db.players.find_one({"nickname": s["metadata"]["nickname"]})
-            sub_id_to_elo[str(s["_id"])] = player["elo_rating"] if player else 1200
-
-        for rank in results["rankings"]:
-            current_elo = sub_id_to_elo.get(rank["player_id"], 1200)
-
-            # Expected score = sum of pairwise expected values vs all opponents
-            expected = sum(
-                elo_expected(current_elo, sub_id_to_elo[r["player_id"]])
-                for r in results["rankings"]
-                if r["player_id"] != rank["player_id"]
-            )
-
-            new_elo = max(ELO_MIN, round(current_elo + ELO_K * (rank["total_score"] - expected)))
-            win_rate = rank["win_rate"]
+        # KI-Agent unterstützt: Epoch-fresh ranking — no historical Elo, full round-robin data resets each epoch
+        for position, rank in enumerate(results["rankings"], start=1):
+            submission = next((s for s in submissions if str(s["_id"]) == rank["player_id"]), None)
 
             await db.submissions.update_one(
                 {"_id": ObjectId(rank["player_id"])},
                 {
                     "$set": {
-                        "elo_rating": new_elo,
-                        "matches_played": rank["matches_played"],
+                        "rank": position,
+                        "win_rate": rank["win_rate"],
+                        "wins": rank["wins"],
+                        "draws": rank["draws"],
+                        "losses": rank["losses"],
                         "total_score": rank["total_score"],
+                        "matches_played": rank["matches_played"],
                         "avg_stable_generation": rank["avg_stable_generation"],
                         "last_epoch_at": datetime.utcnow()
                     }
                 }
             )
 
-            submission = next((s for s in submissions if str(s["_id"]) == rank["player_id"]), None)
             if submission:
                 await db.players.update_one(
                     {"nickname": submission["metadata"]["nickname"]},
                     {
                         "$set": {
-                            "elo_rating": new_elo,
+                            "rank": position,
+                            "win_rate": rank["win_rate"],
+                            "wins": rank["wins"],
+                            "draws": rank["draws"],
+                            "losses": rank["losses"],
+                            "avg_stable_generation": rank["avg_stable_generation"],
                             "matches_played": rank["matches_played"],
-                            "win_rate": win_rate
                         }
                     }
                 )

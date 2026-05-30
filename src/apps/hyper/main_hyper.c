@@ -80,6 +80,12 @@ int main(int argc, char *argv[]) {
                 #pragma omp atomic
                 scores[i].matches_played += 2;
                 #pragma omp atomic
+                scores[i].wins += (res1.winner == TEAM_RED ? 1 : 0) + (res2.winner == TEAM_BLUE ? 1 : 0);
+                #pragma omp atomic
+                scores[i].draws += (res1.winner == 0 ? 1 : 0) + (res2.winner == 0 ? 1 : 0);
+                #pragma omp atomic
+                scores[i].losses += (res1.winner == TEAM_BLUE ? 1 : 0) + (res2.winner == TEAM_RED ? 1 : 0);
+                #pragma omp atomic
                 scores[i].sum_stable_gen += (res1.stable_at_generation ? res1.stable_at_generation : max_generations);
                 #pragma omp atomic
                 scores[i].sum_stable_gen += (res2.stable_at_generation ? res2.stable_at_generation : max_generations);
@@ -90,6 +96,12 @@ int main(int argc, char *argv[]) {
                 scores[j].total_score += (res2.winner == TEAM_RED ? 1.0 : (res2.winner == 0 ? 0.5 : 0.0));
                 #pragma omp atomic
                 scores[j].matches_played += 2;
+                #pragma omp atomic
+                scores[j].wins += (res1.winner == TEAM_BLUE ? 1 : 0) + (res2.winner == TEAM_RED ? 1 : 0);
+                #pragma omp atomic
+                scores[j].draws += (res1.winner == 0 ? 1 : 0) + (res2.winner == 0 ? 1 : 0);
+                #pragma omp atomic
+                scores[j].losses += (res1.winner == TEAM_RED ? 1 : 0) + (res2.winner == TEAM_BLUE ? 1 : 0);
                 #pragma omp atomic
                 scores[j].sum_stable_gen += (res1.stable_at_generation ? res1.stable_at_generation : max_generations);
                 #pragma omp atomic

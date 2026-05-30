@@ -118,6 +118,23 @@ void free_render_context(RenderContext *ctx) {
 
 static RenderContext default_render_ctx;
 
+// KI-Agent unterstützt: Clear accumulated shader trail from ping-pong buffers (ADR-0020)
+// Called when returning to Kiosk mode to avoid stale fossil-trail artifacts
+void clear_render_context_trail(RenderContext *ctx) {
+    if (!ctx) return;
+    if (ctx->ping_pong_target[0].id > 0) {
+        BeginTextureMode(ctx->ping_pong_target[0]);
+        ClearBackground(ctx->col_background);
+        EndTextureMode();
+    }
+    if (ctx->ping_pong_target[1].id > 0) {
+        BeginTextureMode(ctx->ping_pong_target[1]);
+        ClearBackground(ctx->col_background);
+        EndTextureMode();
+    }
+    ctx->ping_pong_index = 0;
+}
+
 // KI-Agent unterstützt: Draw grid and cells using RenderContext
 void DrawGridAndCellsCtx(RenderContext *r_ctx, const GameConfig *config, const World *gui_world, bool drawGridLines) {
     if (r_ctx == NULL || gui_world == NULL) return;
@@ -362,7 +379,7 @@ bool IsActionTriggered(int key) {
 
 static char statusMsg[64] = "";
 static float statusTimer = 0.0f;
-static double ignitionStartTime = 0.0;
+// KI-Agent unterstützt: ignitionStartTime moved to app_state_manager.c (ADR-0020 Phase 1)
 
 void init_renderer(int window_width, int window_height, const char* title) {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
@@ -409,13 +426,13 @@ void close_renderer(void) {
     CloseWindow();
 }
 
-AppState process_ui_events(AppState state, GameConfig* config, World** p_current_world, World** p_swap_world, RenderContext *r_ctx) {
-    World* gui_world = *p_current_world;
-    World* swap_world = *p_swap_world;
+// KI-Agent unterstützt: Refactored to use SimulationContext* (ADR-0020)
+AppState process_ui_events(AppState state, GameConfig* config, SimulationContext *sim_ctx, RenderContext *r_ctx, SessionOrigin *session_origin) {
+    World* gui_world = sim_ctx->current_world;
     int screenWidth = GetScreenWidth();
     int screenHeight = GetScreenHeight();
         screenWidth = GetScreenWidth(); // Raylib Fenstersteuerung: Gibt Fensterbreite zurück 
-        screenHeight = GetScreenHeight(); // Raylib Fenstersteuerung: Gibt Fensterhöhe zurück
+        screenHeight = GetScreenHeight(); // Raylib Fenstersteuerung: Gibt Fensterhöhe zurück 
         
         // Timer for status message
         if (statusTimer > 0) {
@@ -508,19 +525,12 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
                     config->max_population = 5000;
                 }
 
-                    // Transition: Start Setup
+                // Transition: Start Setup (ADR-0020 Phase 3: via SimulationContext)
                 if (IsKeyPressed(KEY_ENTER)) {
-                    
-                    gui_world = create_world(config->rows, config->cols);
-                    
-                    swap_world = create_world(config->rows, config->cols);
-                    // Initialize empty (Corrected for ghost borders)
-                    int stride = config->cols + 2;
-                    for(int r=0; r < config->rows + 2; r++) {
-                        for(int c=0; c < config->cols + 2; c++) {
-                            gui_world->grid[r * stride + c] = DEAD;
-                        }
-                    }
+                    // KI-Agent unterstützt: Allocate worlds via SimulationContext (ADR-0020)
+                    reset_simulation_context(sim_ctx, config->rows, config->cols);
+                    gui_world = sim_ctx->current_world;
+                    if (session_origin) *session_origin = ORIGIN_INTERACTIVE;
                     
                     config->current_blue_pop = 0;
                     config->current_red_pop = 0;
@@ -660,19 +670,21 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
                     if (state == STATE_EDIT_RED) {
                         state = STATE_EDIT_BLUE;
                     } else {
-                        // Auto-Save and Start
+                        // Auto-Save and Start (ADR-0020 Phase 3: use sim_ctx->current_world)
                         char autoFilename[128];
                         time_t now = time(NULL);
                         strftime(autoFilename, sizeof(autoFilename), "biotope_results/run_%Y%m%d_%H%M%S.json", localtime(&now));
                         strcpy(currentProtocolFilename, autoFilename);
-                        save_grid(autoFilename, gui_world, config);
-                        state = STATE_IGNITION;   
+                        // KI-Agent unterstützt: Save via SimulationContext (ADR-0020)
+                        save_grid(autoFilename, sim_ctx->current_world, config);
+                        state = STATE_IGNITION;
                     }
                 }
                 break;
 
             case STATE_IGNITION:
-                if (ignitionStartTime == 0.0) ignitionStartTime = GetTime();
+                // KI-Agent unterstützt: Use accessor (ADR-0020)
+                if (get_ignition_start_time() == 0.0) set_ignition_start_time(GetTime());
                 break;
 
             case STATE_LOAD:   // Alte Spielkonfigurationen laden
@@ -680,17 +692,16 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
                 if (IsKeyPressed(KEY_DOWN) && selectedFileIndex < fileCount - 1) selectedFileIndex++;
                 
                 if (IsKeyPressed(KEY_ENTER) && fileCount > 0) {
-                    if (load_grid(fileList[selectedFileIndex].filepath, gui_world, config)) {
+                    // KI-Agent unterstützt: Load via SimulationContext (ADR-0020 Phase 3.3)
+                    if (load_grid(fileList[selectedFileIndex].filepath, sim_ctx->current_world, config)) {
                         strcpy(statusMsg, "Protocol Loaded!");
                         statusTimer = 2.0f;
                         
-                        // FIX: Ensure swap_world matches the new dimensions!
-                        // Otherwise -> Heap Corruption / Buffer Overflow in update_generation
-                        
-                        swap_world = create_world(config->rows, config->cols);
-                        // Initialize swap_world to valid empty state (including borders)
-                        int stride = config->cols + 2;
-                        for(int i=0; i < (config->rows + 2) * stride; i++) swap_world->grid[i] = DEAD;
+                        // Rebuild swap world via context
+                        if (sim_ctx->world_b) free_world(sim_ctx->world_b);
+                        sim_ctx->world_b = create_world(config->rows, config->cols);
+                        sim_ctx->next_world = sim_ctx->world_b;
+                        gui_world = sim_ctx->current_world;
                     }
                     if (fileList) free(fileList);
                     fileList = NULL;
@@ -706,21 +717,28 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
             
             case STATE_RUNNING:  // Hier zurücklehnen und zuschauen
                 if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_Q)) {
-                    // KI-Agent unterstützt: Clean up telemetry on exit
-                    if (config->history_red_pop) { free(config->history_red_pop); config->history_red_pop = NULL; }
-                    if (config->history_blue_pop) { free(config->history_blue_pop); config->history_blue_pop = NULL; }
-                    
-                    if (gui_world) { free_world(gui_world); gui_world = NULL; }
-                    if (swap_world) { free_world(swap_world); swap_world = NULL; }
-                    
-                    state = STATE_CONFIG;
-                    ignitionStartTime = 0.0;
-                    config->is_paused = false; // Reset pause on exit
-                    
-                    // Reset Camera State
-                    r_ctx->camera.zoom = 1.0f;
-                    r_ctx->camera.target = (Vector2){ 0, 0 };
-                    r_ctx->camera.offset = (Vector2){ 0, 0 };
+                    // KI-Agent unterstützt: Session-origin-aware routing (ADR-0020 Phase 5)
+                    cleanup_interactive_session(sim_ctx, config, r_ctx);
+                    set_ignition_start_time(0.0);
+                    if (session_origin && *session_origin == ORIGIN_KIOSK_REPLAY) {
+                        state = STATE_KIOSK_MODE;
+                        reset_kiosk_timers();
+                    } else {
+                        state = STATE_CONFIG;
+                    }
+                    if (session_origin) *session_origin = ORIGIN_NONE;
+                    gui_world = NULL;
+                    break;
+                }
+
+                // KI-Agent unterstützt: [K] always returns to Kiosk (ADR-0020 Phase 5)
+                if (IsKeyPressed(KEY_K)) {
+                    cleanup_interactive_session(sim_ctx, config, r_ctx);
+                    set_ignition_start_time(0.0);
+                    state = STATE_KIOSK_MODE;
+                    reset_kiosk_timers();
+                    if (session_origin) *session_origin = ORIGIN_NONE;
+                    gui_world = NULL;
                     break;
                 }
 
@@ -774,6 +792,16 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
                     if (r_ctx->camera.zoom < 0.125f) r_ctx->camera.zoom = 0.125f;
                 }
 
+                // KI-Agent unterstützt: [K] always returns to Kiosk from Observer (ADR-0020)
+                if (IsKeyPressed(KEY_K)) {
+                    cleanup_interactive_session(sim_ctx, config, r_ctx);
+                    set_ignition_start_time(0.0);
+                    state = STATE_KIOSK_MODE;
+                    reset_kiosk_timers();
+                    if (session_origin) *session_origin = ORIGIN_NONE;
+                    break;
+                }
+
                 break;
                 
             case STATE_FINISHED:
@@ -788,45 +816,36 @@ AppState process_ui_events(AppState state, GameConfig* config, World** p_current
                         append_protocol_result(currentProtocolFilename, config, winner);
                      }                }
                 if (IsKeyPressed(KEY_Q)) {
-                    
-                    gui_world = NULL;
-                    // Step 4.1 Cleanup
-                    if (config->history_red_pop) { free(config->history_red_pop); config->history_red_pop = NULL; }
-                    if (config->history_blue_pop) { free(config->history_blue_pop); config->history_blue_pop = NULL; }
+                    // KI-Agent unterstützt: Centralized cleanup (ADR-0020 Phase 4)
+                    cleanup_interactive_session(sim_ctx, config, r_ctx);
+                    set_ignition_start_time(0.0);
                     state = STATE_CONFIG;
-                    ignitionStartTime = 0.0;
-                    config->is_paused = false;
-                    
-                    // Reset Camera State
-                    r_ctx->camera.zoom = 1.0f;
-                    r_ctx->camera.target = (Vector2){ 0, 0 };
-                    r_ctx->camera.offset = (Vector2){ 0, 0 };
+                    gui_world = NULL;
                 }
                 break;
 
             case STATE_GAME_OVER:
                 if (IsKeyPressed(KEY_ONE)) {
-                     
-                     gui_world = NULL;
-                     // Step 4.1 Cleanup
-                     if (config->history_red_pop) { free(config->history_red_pop); config->history_red_pop = NULL; }
-                     if (config->history_blue_pop) { free(config->history_blue_pop); config->history_blue_pop = NULL; }
-                     state = STATE_CONFIG;
-                     ignitionStartTime = 0.0;
-                     config->is_paused = false;
-                     
-                     // Reset Camera State
-                     r_ctx->camera.zoom = 1.0f;
-                     r_ctx->camera.target = (Vector2){ 0, 0 };
-                     r_ctx->camera.offset = (Vector2){ 0, 0 };
+                    // KI-Agent unterstützt: Centralized cleanup (ADR-0020 Phase 4)
+                    cleanup_interactive_session(sim_ctx, config, r_ctx);
+                    set_ignition_start_time(0.0);
+                    state = STATE_CONFIG;
+                    gui_world = NULL;
                 }
                 break;
             case STATE_KIOSK_MODE:
+                // KI-Agent unterstützt: [P] shortcut to enter interactive mode (ADR-0020 Phase 6)
+                if (IsKeyPressed(KEY_P)) {
+                    state = STATE_CONFIG;
+                    if (session_origin) *session_origin = ORIGIN_NONE;
+                }
                 break;
         }
 
-            *p_current_world = gui_world;
-    *p_swap_world = swap_world;
+    // KI-Agent unterstützt: Sync gui_world pointer back into context (ADR-0020)
+    if (sim_ctx->current_world != gui_world && gui_world != NULL) {
+        sim_ctx->current_world = gui_world;
+    }
     return state;
 }
 
@@ -969,7 +988,7 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                 r_ctx->viewport_bounds = (Rectangle){ 20, 60, (float)screenWidth - 40, (float)screenHeight - 120 };
                 DrawGridAndCellsCtx(r_ctx, config, gui_world, false);
                 {
-                    double elapsed = GetTime() - ignitionStartTime;
+                    double elapsed = GetTime() - get_ignition_start_time();
                     int countdown = 3 - (int)elapsed;
                     if (countdown < 1) countdown = 1;
                     char countBuf[16];
@@ -1082,15 +1101,16 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                 char simFooter[256];
                 if (config->is_paused) {
                     if (state == STATE_RUNNING) {
-                        sprintf(simFooter, "PAUSED | [SPACE] CONTINUE SIM | [O] OBSERVER | [Q] ABORT");
+                        // KI-Agent unterstützt: [K] KIOSK hint (ADR-0020 Phase 6)
+                        sprintf(simFooter, "PAUSED | [SPACE] CONTINUE SIM | [O] OBSERVER | [Q] ABORT | [K] KIOSK");
                     } else {
-                        sprintf(simFooter, "PAUSED | [SPACE] CONTINUE SIM | [O] EXIT | [MOUSE RIGHT] PAN | [WHEEL] ZOOM");
+                        sprintf(simFooter, "PAUSED | [SPACE] CONTINUE SIM | [O] EXIT | [MOUSE RIGHT] PAN | [WHEEL] ZOOM | [K] KIOSK");
                     }
                 } else {
                     if (state == STATE_RUNNING) {
-                        sprintf(simFooter, "RUNNING | [SPACE] PAUSE SIM | [O] OBSERVER | [Q] ABORT");
+                        sprintf(simFooter, "RUNNING | [SPACE] PAUSE SIM | [O] OBSERVER | [Q] ABORT | [K] KIOSK");
                     } else {
-                        sprintf(simFooter, "RUNNING | [SPACE] PAUSE SIM | [O] EXIT | [MOUSE RIGHT] PAN | [WHEEL] ZOOM");
+                        sprintf(simFooter, "RUNNING | [SPACE] PAUSE SIM | [O] EXIT | [MOUSE RIGHT] PAN | [WHEEL] ZOOM | [K] KIOSK");
                     }
                 }
                 DrawText(simFooter, 20, screenHeight - 28, 20, THEME_TEXT);
@@ -1206,6 +1226,10 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                     char timerBuf[64];
                     sprintf(timerBuf, "SWITCHING IN %.0f SECONDS", 15.0f - kiosk_ctrl.state_timer);
                     DrawText(timerBuf, screenWidth/2 - MeasureText(timerBuf, 16)/2, screenHeight - 60, 16, THEME_HINT);
+                    // KI-Agent unterstützt: [P] play shortcut hint (ADR-0020 Phase 6)
+                    DrawText("PRESS [P] TO PLAY",
+                             screenWidth / 2 - MeasureText("PRESS [P] TO PLAY", 20) / 2,
+                             screenHeight - 100, 20, THEME_ACCENT);
                     
                 } else if (kiosk_ctrl.current_sub_state == KIOSK_SUB_MULTICAM) {
                     for (int i = 0; i < 4; i++) {
@@ -1217,9 +1241,13 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                     DrawText("WUSEL-MULTICAM KIOSK MODE", 20, 10, 20, THEME_BLUE);
                     DrawText("CLICK ANY MATCH TO VIEW REPLAY", GetScreenWidth() - MeasureText("CLICK ANY MATCH TO VIEW REPLAY", 16) - 20, 12, 16, THEME_RED);
                     
-                    char timerBuf[64];
-                    sprintf(timerBuf, "SWITCHING IN %.0f SECONDS", 30.0f - kiosk_ctrl.state_timer);
-                    DrawText(timerBuf, screenWidth/2 - MeasureText(timerBuf, 16)/2, screenHeight - 60, 16, THEME_HINT);
+                    char timerBuf2[64];
+                    sprintf(timerBuf2, "SWITCHING IN %.0f SECONDS", 30.0f - kiosk_ctrl.state_timer);
+                    DrawText(timerBuf2, screenWidth/2 - MeasureText(timerBuf2, 16)/2, screenHeight - 60, 16, THEME_HINT);
+                    // KI-Agent unterstützt: [P] play shortcut hint (ADR-0020 Phase 6)
+                    DrawText("PRESS [P] TO PLAY",
+                             screenWidth / 2 - MeasureText("PRESS [P] TO PLAY", 20) / 2,
+                             screenHeight - 100, 20, THEME_ACCENT);
                 }
                 break;
         }

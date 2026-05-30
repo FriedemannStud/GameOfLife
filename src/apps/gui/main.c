@@ -31,12 +31,13 @@ static GameConfig config = {
 };
 static SimulationContext global_sim;
 static RenderContext global_render;
+static SessionOrigin session_origin = ORIGIN_NONE; // KI-Agent unterstützt: ADR-0020
 
 void MainLoopStep(void) {
-    update_global_input(&state);
+    update_global_input(&state, &global_sim, &config, &global_render);
     
-    state = process_ui_events(state, &config, &global_sim.current_world, &global_sim.next_world, &global_render);
-    state = update_app_state(state, &config, &global_sim, GetFrameTime(), GetTime());
+    state = process_ui_events(state, &config, &global_sim, &global_render, &session_origin);
+    state = update_app_state(state, &config, &global_sim, GetFrameTime(), GetTime(), &session_origin);
     draw_current_state(state, &config, global_sim.current_world, &global_render);
 }
 

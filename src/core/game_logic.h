@@ -9,6 +9,8 @@
 World* create_world(int rows, int cols);
 void free_world(World *w);
 void init_world(World *current_gen, int rows, int cols);
+// KI-Agent unterstützt: Reset context for a new interactive session (fast path if dimensions match)
+void reset_simulation_context(SimulationContext *ctx, int rows, int cols);
 void sync_ghost_borders(World *w);
 int update_generation(World *current_gen, World *next_gen, int rows, int cols, int *red_pop, int *blue_pop);
 void activate_chunk_at(World *w, int r, int c);

@@ -296,6 +296,37 @@ void free_simulation_context(SimulationContext *ctx) {
     ctx->is_active = false;
 }
 
+// KI-Agent unterstützt: Reset simulation context for a new interactive session (ADR-0020)
+void reset_simulation_context(SimulationContext *ctx, int rows, int cols) {
+    if (!ctx) return;
+
+    // If dimensions match, just clear the grids (fast path — avoids malloc/free)
+    if (ctx->world_a && ctx->world_a->rows == rows && ctx->world_a->cols == cols) {
+        int stride = cols + 2;
+        int total = (rows + 2) * stride;
+        memset(ctx->world_a->grid, 0, total * sizeof(int));
+        memset(ctx->world_b->grid, 0, total * sizeof(int));
+        if (ctx->world_a->chunk_map)
+            memset(ctx->world_a->chunk_map, 0, ctx->world_a->chunk_rows * ctx->world_a->chunk_cols);
+        if (ctx->world_b->chunk_map)
+            memset(ctx->world_b->chunk_map, 0, ctx->world_b->chunk_rows * ctx->world_b->chunk_cols);
+    } else {
+        // Dimensions changed: full teardown + rebuild
+        if (ctx->world_a) free_world(ctx->world_a);
+        if (ctx->world_b) free_world(ctx->world_b);
+        ctx->world_a = create_world(rows, cols);
+        ctx->world_b = create_world(rows, cols);
+    }
+
+    ctx->rows = rows;
+    ctx->cols = cols;
+    ctx->current_generation = 0;
+    ctx->max_generations = MAX_ROUNDS;
+    ctx->current_world = ctx->world_a;
+    ctx->next_world = ctx->world_b;
+    ctx->is_active = false;
+}
+
 // KI-Agent unterstützt: Advance the simulation state on the context
 int update_generation_ctx(SimulationContext *ctx, int *red_pop, int *blue_pop) {
     if (!ctx || !ctx->current_world || !ctx->next_world) return 0;

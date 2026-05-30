@@ -33,6 +33,13 @@ typedef enum {
     STATE_KIOSK_MODE
 } AppState;
 
+// KI-Agent unterstützt: Session origin tracking for back-navigation (ADR-0020)
+typedef enum {
+    ORIGIN_NONE,           // No active session (Kiosk or Config idle)
+    ORIGIN_INTERACTIVE,    // User entered via [P] -> Config -> Edit -> Ignition
+    ORIGIN_KIOSK_REPLAY    // User clicked a Multicam quadrant
+} SessionOrigin;
+
 typedef struct {
     int level;
     int target_pop;

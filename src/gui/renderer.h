@@ -33,11 +33,15 @@ void free_render_context(RenderContext *ctx);
 
 // KI-Agent unterstützt: Renderer API
 void init_renderer(int window_width, int window_height, const char* title);
-AppState process_ui_events(AppState current_state, GameConfig* config, World** p_current_world, World** p_swap_world, RenderContext *r_ctx);
+// KI-Agent unterstützt: Refactored to use SimulationContext* instead of raw World** (ADR-0020)
+AppState process_ui_events(AppState current_state, GameConfig* config, SimulationContext *sim_ctx, RenderContext *r_ctx, SessionOrigin *session_origin);
 void draw_current_state(AppState state, const GameConfig* config, const World* gui_world, RenderContext *r_ctx);
 void close_renderer(void);
 
 // Refactored grid rendering using instance context
 void DrawGridAndCellsCtx(RenderContext *r_ctx, const GameConfig *config, const World *gui_world, bool drawGridLines);
+
+// KI-Agent unterstützt: Clear accumulated shader trail from ping-pong buffers (ADR-0020)
+void clear_render_context_trail(RenderContext *ctx);
 
 #endif // RENDERER_H

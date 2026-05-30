@@ -5,9 +5,14 @@
 #include <string.h>
 #include <stdlib.h>
 
-// KI-Agent unterstützt: App state manager
+// KI-Agent unterstützt: App state manager (ADR-0020)
 static double ignitionStartTime = 0.0;
-static float timeAccumulator = 0.0f;
+static float kiosk_time_accumulator = 0.0f;
+static float interactive_time_accumulator = 0.0f;
+
+// KI-Agent unterstützt: Ignition time accessors — single source of truth (ADR-0020)
+double get_ignition_start_time(void) { return ignitionStartTime; }
+void set_ignition_start_time(double t) { ignitionStartTime = t; }
 
 static SimulationContext kiosk_sims[4];
 static RenderContext kiosk_renders[4];
@@ -25,10 +30,46 @@ static double time_since_last_input = 0.0;
 void reset_kiosk_timers(void) {
     kiosk_ctrl.state_timer = 0.0f;
     kiosk_ctrl.current_sub_state = KIOSK_SUB_LEADERBOARD;
+    // KI-Agent unterstützt: Clear stale shader trail buffers to avoid visual artifacts (ADR-0020)
+    if (kiosk_ctrl.initialized) {
+        for (int i = 0; i < 4; i++) {
+            clear_render_context_trail(&kiosk_ctrl.renders[i]);
+        }
+    }
     network_fetch_leaderboard_async();
 }
 
-void update_global_input(AppState* current_app_state) {
+// KI-Agent unterstützt: Centralized cleanup for interactive sessions (ADR-0020)
+void cleanup_interactive_session(SimulationContext *sim, GameConfig *config, RenderContext *r_ctx) {
+    // 1. Free simulation worlds (keep SimulationContext struct alive)
+    if (sim->world_a) { free_world(sim->world_a); sim->world_a = NULL; }
+    if (sim->world_b) { free_world(sim->world_b); sim->world_b = NULL; }
+    sim->current_world = NULL;
+    sim->next_world = NULL;
+    sim->current_generation = 0;
+    sim->is_active = false;
+
+    // 2. Free telemetry arrays
+    if (config->history_red_pop) { free(config->history_red_pop); config->history_red_pop = NULL; }
+    if (config->history_blue_pop) { free(config->history_blue_pop); config->history_blue_pop = NULL; }
+    config->history_count = 0;
+
+    // 3. Reset config counters
+    config->current_red_pop = 0;
+    config->current_blue_pop = 0;
+    config->current_round = 0;
+    config->is_paused = false;
+
+    // 4. Reset camera
+    if (r_ctx) {
+        r_ctx->camera.zoom = 1.0f;
+        r_ctx->camera.target = (Vector2){ 0, 0 };
+        r_ctx->camera.offset = (Vector2){ 0, 0 };
+    }
+}
+
+void update_global_input(AppState* current_app_state, SimulationContext *sim,
+                         GameConfig *config, RenderContext *r_ctx) {
     if (IsKeyPressed(KEY_NULL) || IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || 
         IsMouseButtonPressed(MOUSE_RIGHT_BUTTON) || GetMouseDelta().x != 0 || GetMouseDelta().y != 0) {
         time_since_last_input = 0.0;
@@ -37,12 +78,17 @@ void update_global_input(AppState* current_app_state) {
     }
     
     if (time_since_last_input > 60.0 && *current_app_state != STATE_KIOSK_MODE) {
+        // KI-Agent unterstützt: Clean up interactive session before forced kiosk return (ADR-0020)
+        cleanup_interactive_session(sim, config, r_ctx);
+        set_ignition_start_time(0.0);
+        interactive_time_accumulator = 0.0f;
         *current_app_state = STATE_KIOSK_MODE;
         reset_kiosk_timers();
     }
 }
 
-AppState update_app_state(AppState current_state, GameConfig* config, SimulationContext *sim_ctx, float delta_time, double current_time) {
+AppState update_app_state(AppState current_state, GameConfig* config, SimulationContext *sim_ctx,
+                          float delta_time, double current_time, SessionOrigin *session_origin) {
     // KI-Agent unterstützt: Poll for network updates
     LeaderboardData lb;
     if (network_get_leaderboard(&lb)) {
@@ -98,9 +144,9 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
         case STATE_OBSERVER:
             if (config->is_paused) break; // Skip logic if paused
 
-            timeAccumulator += delta_time;
-            if (timeAccumulator >= config->delay_ms / 1000.0f) {
-                timeAccumulator = 0.0f;
+            interactive_time_accumulator += delta_time;
+            if (interactive_time_accumulator >= config->delay_ms / 1000.0f) {
+                interactive_time_accumulator = 0.0f;
                 
                 update_generation_ctx(sim_ctx, &config->current_red_pop, &config->current_blue_pop);
                 
@@ -150,9 +196,9 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
                     network_fetch_highlights_async();
                 }
             } else if (kiosk_ctrl.current_sub_state == KIOSK_SUB_MULTICAM) {
-                timeAccumulator += delta_time;
-                if (timeAccumulator >= 0.1f) {
-                    timeAccumulator = 0.0f;
+                kiosk_time_accumulator += delta_time;
+                if (kiosk_time_accumulator >= 0.1f) {
+                    kiosk_time_accumulator = 0.0f;
                     int dummy_red, dummy_blue;
                     for (int i = 0; i < 4; i++) {
                         update_generation_ctx(&kiosk_ctrl.sims[i], &dummy_red, &dummy_blue);
@@ -212,6 +258,9 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
                             config->current_round = 0;
                             config->is_paused = false;
                             time_since_last_input = 0.0;
+                            // KI-Agent unterstützt: Mark this session as a Kiosk replay (ADR-0020)
+                            if (session_origin) *session_origin = ORIGIN_KIOSK_REPLAY;
+                            interactive_time_accumulator = 0.0f;
                             return STATE_IGNITION;
                         }
                     }

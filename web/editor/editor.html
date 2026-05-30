@@ -1,305 +1,403 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Biotope Draft Editor</title>
-    <!-- KI-Agent unterstützt: Mobile-First Draft Editor for Biotope -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projekt Biotop: Wenn Zellkulturen den Kampf aufnehmen</title>
+    <!-- 8x8 Editor with Simulation -->
     <style>
         :root {
-            --bg-color: #0a0a0c;
-            --grid-bg: #151518;
-            --cell-dead: #202025;
+            --wiai-blue: #004a99;
+            --wiai-yellow: #ffcc00;
+            --bg-light: #f4f4f9;
+            --text-dark: #333;
+            --grid-bg: #222;
+            --cell-dead: #333;
             --cell-alive: #00f2ff;
-            --accent-color: #00f2ff;
-            --text-color: #e0e0e0;
-            --error-color: #ff4b2b;
-            --success-color: #2ecc71;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            -webkit-tap-highlight-color: transparent;
+            --accent: #e67e22;
         }
 
         body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 20px;
-            overflow: hidden;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background-color: var(--bg-light);
+            margin: 0;
+            padding: 0;
         }
 
-        .header {
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+
+        h1, h2, h3 {
+            color: var(--wiai-blue);
+        }
+
+        .author {
+            font-style: italic;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        hr {
+            border: 0;
+            border-top: 1px solid #eee;
+            margin: 40px 0;
+        }
+
+        /* Editor Styles */
+        .editor-section {
+            background: #f9f9f9;
+            border: 2px solid var(--wiai-blue);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 40px 0;
             text-align: center;
-            margin-bottom: 20px;
         }
 
-        .header h1 {
-            font-size: 1.5rem;
-            color: var(--accent-color);
+        .editor-title {
+            margin-top: 0;
+            font-size: 1.2rem;
+            color: var(--wiai-blue);
             text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 5px;
-            text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+            letter-spacing: 1px;
         }
 
-        .stats {
-            font-size: 0.9rem;
-            margin-bottom: 10px;
-            opacity: 0.8;
-        }
-
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            grid-template-rows: repeat(8, 1fr);
-            gap: 4px;
-            background-color: var(--grid-bg);
-            padding: 6px;
+        .grid-wrapper {
+            display: inline-block;
+            background: var(--grid-bg);
+            padding: 8px;
             border-radius: 8px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-            width: 90vw;
-            max-width: 400px;
-            aspect-ratio: 1 / 1;
-            margin-bottom: 20px;
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(8, 35px);
+            grid-template-rows: repeat(8, 35px);
+            gap: 3px;
+        }
+
+        @media (max-width: 450px) {
+            .grid {
+                grid-template-columns: repeat(8, 8vw);
+                grid-template-rows: repeat(8, 8vw);
+            }
         }
 
         .cell {
-            background-color: var(--cell-dead);
+            width: 100%;
+            height: 100%;
+            background: var(--cell-dead);
             border-radius: 2px;
-            transition: background-color 0.15s ease, box-shadow 0.15s ease;
             cursor: pointer;
+            transition: background 0.1s;
         }
 
         .cell.alive {
-            background-color: var(--cell-alive);
+            background: var(--cell-alive);
             box-shadow: 0 0 8px var(--cell-alive);
         }
 
         .controls {
-            width: 90vw;
-            max-width: 400px;
             display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        input[type="text"] {
-            background-color: var(--grid-bg);
-            border: 1px solid #333;
-            color: white;
-            padding: 12px;
-            border-radius: 6px;
-            outline: none;
-            width: 100%;
-            font-size: 1rem;
-        }
-
-        input[type="text"]:focus {
-            border-color: var(--accent-color);
-        }
-
-        .buttons {
-            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
             gap: 10px;
+            margin-bottom: 20px;
         }
 
         button {
-            flex: 1;
-            padding: 12px;
+            padding: 10px 20px;
             border: none;
-            border-radius: 6px;
+            border-radius: 4px;
             font-weight: bold;
-            text-transform: uppercase;
             cursor: pointer;
-            transition: transform 0.1s active, opacity 0.2s;
+            transition: opacity 0.2s, transform 0.1s;
+            text-transform: uppercase;
+            font-size: 0.8rem;
         }
 
-        button:active {
-            transform: scale(0.98);
+        button:active { transform: scale(0.95); }
+
+        .btn-play { background: #2ecc71; color: white; }
+        .btn-stop { background: #e74c3c; color: white; }
+        .btn-clear { background: #95a5a6; color: white; }
+        .btn-submit { background: var(--wiai-blue); color: white; flex-grow: 1; max-width: 200px; }
+
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .stats-bar {
+            display: flex;
+            justify-content: space-between;
+            max-width: 320px;
+            margin: 0 auto 15px;
+            font-size: 0.85rem;
+            font-weight: bold;
         }
 
-        button:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
+        .input-group {
+            max-width: 320px;
+            margin: 0 auto 20px;
         }
 
-        .btn-submit {
-            background-color: var(--accent-color);
-            color: var(--bg-color);
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: center;
         }
 
-        .btn-clear {
-            background-color: #333;
-            color: white;
+        .counter-info {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 15px;
         }
 
         .status-msg {
-            margin-top: 15px;
-            font-size: 0.85rem;
-            text-align: center;
-            min-height: 1.2em;
+            height: 20px;
+            font-size: 0.8rem;
+            margin-top: 10px;
         }
-
-        .status-msg.error { color: var(--error-color); }
-        .status-msg.success { color: var(--success-color); }
-
-        /* Mobile specific adjustments */
-        @media (max-height: 600px) {
-            .header { margin-bottom: 10px; }
-            .grid-container { margin-bottom: 10px; }
-            .controls { gap: 10px; }
-        }
+        .error { color: #e74c3c; }
+        .success { color: #2ecc71; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h1>Biotope Draft</h1>
-        <div class="stats">
-            <span id="biomass-counter">Cells: 0/24</span>
+<div class="container">
+    <h1>Projekt Biotop: Wenn Zellkulturen den Kampf aufnehmen</h1>
+    <p class="author">von Friedemann Decker</p>
+    
+    <div class="editor-section">
+        <h3 class="editor-title">Erschaffe deine Spezies (8x8)</h3>
+        
+        <div class="stats-bar">
+            <span id="biomass-count">Zellen: 0/24</span>
+            <span id="gen-count">Gen: 0</span>
         </div>
-    </div>
 
-    <div id="grid" class="grid-container">
-        <!-- Cells generated by JS -->
-    </div>
-
-    <div class="controls">
-        <input type="text" id="nickname" placeholder="Enter Nickname" maxlength="32">
-        <div class="buttons">
-            <button id="clear-btn" class="btn-clear">Clear</button>
-            <button id="submit-btn" class="btn-submit" disabled>Submit</button>
+        <div class="grid-wrapper">
+            <div id="grid" class="grid"></div>
         </div>
+
+        <div class="controls">
+            <button id="btn-toggle" class="btn-play">Simulieren</button>
+            <button id="btn-reset" class="btn-clear">Reset</button>
+            <button id="btn-clear" class="btn-clear">Clear</button>
+        </div>
+
+        <div class="input-group">
+            <input type="text" id="nickname" placeholder="Name deiner Spezies" maxlength="20">
+        </div>
+
+        <div class="controls">
+            <button id="btn-submit" class="btn-submit" disabled>Ab in die Arena</button>
+        </div>
+
         <div id="status" class="status-msg"></div>
+
+        <p class="counter-info">
+            Bereits <strong id="global-counter">...</strong> Konfigurationen im Biotop eingereicht.
+        </p>
     </div>
 
-    <script>
-        // KI-Agent unterstützt: Web Editor Logic
-        const MAX_CELLS = 24;
-        const GRID_SIZE = 8;
-        let activeCells = new Set();
-        let playerId = '';
+    <hr>
+    
+</div>
 
-        const gridElement = document.getElementById('grid');
-        const counterElement = document.getElementById('biomass-counter');
-        const nicknameInput = document.getElementById('nickname');
-        const submitBtn = document.getElementById('submit-btn');
-        const clearBtn = document.getElementById('clear-btn');
-        const statusElement = document.getElementById('status');
+<script>
+    const GRID_SIZE = 8;
+    const MAX_BIOMASS = 24;
+    let grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(0));
+    let initialGrid = null;
+    let isRunning = false;
+    let timer = null;
+    let generation = 0;
+    let playerId = localStorage.getItem('biotope_player_id') || crypto.randomUUID();
+    localStorage.setItem('biotope_player_id', playerId);
 
-        // Step 1.1 & 1.2: Generate Grid and Toggle Logic
-        function initGrid() {
-            for (let y = 0; y < GRID_SIZE; y++) {
-                for (let x = 0; x < GRID_SIZE; x++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'cell';
-                    cell.dataset.x = x;
-                    cell.dataset.y = y;
-                    cell.addEventListener('click', () => toggleCell(x, y, cell));
-                    gridElement.appendChild(cell);
-                }
+    const gridEl = document.getElementById('grid');
+    const biomassEl = document.getElementById('biomass-count');
+    const genEl = document.getElementById('gen-count');
+    const statusEl = document.getElementById('status');
+    const submitBtn = document.getElementById('btn-submit');
+    const toggleBtn = document.getElementById('btn-toggle');
+    const nicknameInput = document.getElementById('nickname');
+
+    // Init Grid UI
+    function createGrid() {
+        gridEl.innerHTML = '';
+        for(let y=0; y<GRID_SIZE; y++) {
+            for(let x=0; x<GRID_SIZE; x++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.x = x;
+                cell.dataset.y = y;
+                cell.onclick = () => handleCellClick(x, y);
+                gridEl.appendChild(cell);
             }
         }
+    }
 
-        function toggleCell(x, y, element) {
-            const key = `${x},${y}`;
-            if (activeCells.has(key)) {
-                activeCells.delete(key);
-                element.classList.remove('alive');
-            } else if (activeCells.size < MAX_CELLS) {
-                activeCells.add(key);
-                element.classList.add('alive');
-            } else {
-                showStatus('Biomass limit (24) reached!', 'error');
-                return;
-            }
-            updateUI();
+    function handleCellClick(x, y) {
+        if(isRunning) return;
+        const currentBiomass = grid.flat().filter(c => c).length;
+        if(!grid[y][x] && currentBiomass >= MAX_BIOMASS) {
+            showStatus("Limit von 24 Zellen erreicht!", "error");
+            return;
         }
+        grid[y][x] = grid[y][x] ? 0 : 1;
+        updateUI();
+    }
 
-        function updateUI() {
-            const count = activeCells.size;
-            counterElement.textContent = `Cells: ${count}/${MAX_CELLS}`;
-            counterElement.style.color = count === MAX_CELLS ? 'var(--error-color)' : 'inherit';
-            submitBtn.disabled = count === 0 || nicknameInput.value.trim() === '';
-            showStatus('', '');
-        }
-
-        function showStatus(msg, type) {
-            statusElement.textContent = msg;
-            statusElement.className = 'status-msg ' + type;
-        }
-
-        // Phase 2: Identity & Validation
-        function initIdentity() {
-            playerId = localStorage.getItem('biotope_player_id');
-            if (!playerId) {
-                playerId = crypto.randomUUID();
-                localStorage.setItem('biotope_player_id', playerId);
-            }
-            console.log('Player ID:', playerId);
-        }
-
-        nicknameInput.addEventListener('input', updateUI);
-
-        clearBtn.addEventListener('click', () => {
-            activeCells.clear();
-            document.querySelectorAll('.cell').forEach(c => c.classList.remove('alive'));
-            updateUI();
+    function updateUI() {
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach(c => {
+            const x = c.dataset.x;
+            const y = c.dataset.y;
+            c.className = grid[y][x] ? 'cell alive' : 'cell';
         });
+        const count = grid.flat().filter(c => c).length;
+        biomassEl.innerText = `Zellen: ${count}/${MAX_BIOMASS}`;
+        genEl.innerText = `Gen: ${generation}`;
+        submitBtn.disabled = count === 0 || nicknameInput.value.trim().length < 2 || isRunning;
+    }
 
-        // Step 3.1 & 3.2: Submission
-        submitBtn.addEventListener('click', async () => {
-            const nickname = nicknameInput.value.trim();
-            if (!nickname || activeCells.size === 0) return;
-
-            const payload = {
-                metadata: {
-                    player_id: playerId,
-                    nickname: nickname,
-                    league: "local"
-                },
-                config: {
-                    bounding_box_x: 8,
-                    bounding_box_y: 8,
-                    cells: Array.from(activeCells).map(k => k.split(',').map(Number))
+    // GOL Logic (Toroidal)
+    function nextGen() {
+        let next = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(0));
+        for(let y=0; y<GRID_SIZE; y++) {
+            for(let x=0; x<GRID_SIZE; x++) {
+                let neighbors = 0;
+                for(let i=-1; i<=1; i++) {
+                    for(let j=-1; j<=1; j++) {
+                        if(i===0 && j===0) continue;
+                        let ny = (y + i + GRID_SIZE) % GRID_SIZE;
+                        let nx = (x + j + GRID_SIZE) % GRID_SIZE;
+                        neighbors += grid[ny][nx];
+                    }
                 }
-            };
+                if(grid[y][x] === 1 && (neighbors === 2 || neighbors === 3)) next[y][x] = 1;
+                else if(grid[y][x] === 0 && neighbors === 3) next[y][x] = 1;
+            }
+        }
+        grid = next;
+        generation++;
+        updateUI();
+    }
 
-            submitBtn.disabled = true;
-            showStatus('Submitting pattern...', '');
+    toggleBtn.onclick = () => {
+        if(!isRunning) {
+            initialGrid = JSON.parse(JSON.stringify(grid));
+            isRunning = true;
+            toggleBtn.innerText = "Stopp";
+            toggleBtn.className = "btn-stop";
+            timer = setInterval(nextGen, 200);
+        } else {
+            clearInterval(timer);
+            isRunning = false;
+            toggleBtn.innerText = "Simulieren";
+            toggleBtn.className = "btn-play";
+        }
+        updateUI();
+    };
 
-            try {
-                const response = await fetch('http://localhost:8000/api/v1/submit_config', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+    document.getElementById('btn-reset').onclick = () => {
+        if(initialGrid) {
+            grid = JSON.parse(JSON.stringify(initialGrid));
+            generation = 0;
+            updateUI();
+        }
+    };
 
-                if (response.ok) {
-                    showStatus('Success! Pattern submitted.', 'success');
-                } else {
-                    const error = await response.json();
-                    showStatus('Error: ' + (error.detail || 'Submission failed'), 'error');
-                    submitBtn.disabled = false;
-                }
-            } catch (err) {
-                showStatus('Network error. Is the backend running?', 'error');
+    document.getElementById('btn-clear').onclick = () => {
+        grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(0));
+        generation = 0;
+        initialGrid = null;
+        if(isRunning) toggleBtn.onclick();
+        updateUI();
+    };
+
+    nicknameInput.oninput = updateUI;
+
+    function showStatus(txt, cls) {
+        statusEl.innerText = txt;
+        statusEl.className = "status-msg " + cls;
+        setTimeout(() => { statusEl.innerText = ""; }, 3000);
+    }
+
+    // Backend Integration targeting the PHP Bridge
+    submitBtn.onclick = async () => {
+        const cells = [];
+        const snap = initialGrid || grid;
+        for(let y=0; y<GRID_SIZE; y++) {
+            for(let x=0; x<GRID_SIZE; x++) {
+                if(snap[y][x]) cells.push([x, y]);
+            }
+        }
+
+        const payload = {
+            metadata: {
+                player_id: playerId,
+                nickname: nicknameInput.value.trim(),
+                league: "einsteiger"
+            },
+            config: {
+                bounding_box_x: 8,
+                bounding_box_y: 8,
+                cells: cells
+            }
+        };
+
+        submitBtn.disabled = true;
+        showStatus("Übertrage Spezies...", "");
+
+        try {
+            const res = await fetch('http://127.0.0.1:8000/api/v1/submit_config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            if(res.ok) {
+                showStatus("Erfolgreich eingereicht!", "success");
+                fetchGlobalCount();
+            } else {
+                const errData = await res.json();
+                showStatus("Fehler: " + (errData.error || "Serverfehler"), "error");
                 submitBtn.disabled = false;
             }
-        });
+        } catch(e) {
+            showStatus("Brücke (submit.php) nicht erreichbar.", "error");
+            submitBtn.disabled = false;
+        }
+    };
 
-        // Initialize
-        initGrid();
-        initIdentity();
-    </script>
+    async function fetchGlobalCount() {
+        try {
+            // Fetch directly from the FastAPI backend
+            const res = await fetch('http://127.0.0.1:8000/api/v1/stats/count');
+            if(res.ok) {
+                const data = await res.json();
+                document.getElementById('global-counter').innerText = data.count || "0";
+            }
+        } catch(e) {
+            console.error("Could not fetch global count", e);
+        }
+    }
+
+    createGrid();
+    updateUI();
+    fetchGlobalCount();
+
+</script>
+
 </body>
 </html>

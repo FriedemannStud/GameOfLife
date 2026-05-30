@@ -929,6 +929,7 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                 DrawText("PRESET", 40, 300, 20, THEME_ACCENT);
                 DrawText("[1] CONWAY'S CHESS", 40, 335, 20, THEME_ACCENT);
                 DrawText("[2] OUTER SPACE BATTLE", 40, 370, 20, THEME_ACCENT);
+                DrawText("[3] TURING SANDBOX", 40, 405, 20, THEME_ACCENT);
                 DrawText("PRESS [ENTER] TO INITIALIZE SYSTEM", 40, 460, 20, THEME_ACCENT);
                 DrawText("PRESS [K] TO ENTER 2x2 KIOSK MODE", 40, 495, 20, THEME_BLUE);
                 break;

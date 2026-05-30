@@ -12,8 +12,11 @@
 
 typedef struct {
     char name[MAX_NAME_LENGTH];
-    int elo;
     float win_rate;
+    int wins;
+    int draws;
+    int losses;
+    float avg_stable_generation;
 } LeaderboardEntry;
 
 typedef struct {

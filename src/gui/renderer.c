@@ -1198,34 +1198,42 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                     int startY = 160;
                     int rowHeight = 30;
                     
+                    // KI-Agent unterstützt: Updated leaderboard layout — epoch-fresh ranking, no Elo
                     // Header
-                    DrawText("RANK", screenWidth/2 - 200, startY, 20, THEME_HINT);
-                    DrawText("PLAYER", screenWidth/2 - 100, startY, 20, THEME_HINT);
-                    DrawText("ELO", screenWidth/2 + 100, startY, 20, THEME_HINT);
-                    DrawText("WIN RATE", screenWidth/2 + 200, startY, 20, THEME_HINT);
-                    
-                    DrawLine(screenWidth/2 - 210, startY + 25, screenWidth/2 + 300, startY + 25, THEME_GRID);
-                    
+                    DrawText("RANK",     screenWidth/2 - 230, startY, 20, THEME_HINT);
+                    DrawText("PLAYER",   screenWidth/2 - 120, startY, 20, THEME_HINT);
+                    DrawText("WIN RATE", screenWidth/2 +  40, startY, 20, THEME_HINT);
+                    DrawText("W / D / L",screenWidth/2 + 150, startY, 20, THEME_HINT);
+                    DrawText("STAMINA",  screenWidth/2 + 260, startY, 20, THEME_HINT);
+
+                    DrawLine(screenWidth/2 - 240, startY + 25, screenWidth/2 + 370, startY + 25, THEME_GRID);
+
                     if (kiosk_ctrl.cached_lb.count > 0) {
                         for (int i = 0; i < kiosk_ctrl.cached_lb.count && i < MAX_LEADERBOARD_ENTRIES; i++) {
                             int y = startY + 40 + i * rowHeight;
                             char rankBuf[8];
-                            char eloBuf[16];
                             char winBuf[16];
-                            
+                            char wdlBuf[16];
+                            char asgBuf[16];
+
                             sprintf(rankBuf, "#%d", i + 1);
-                            sprintf(eloBuf, "%d", kiosk_ctrl.cached_lb.entries[i].elo);
-                            sprintf(winBuf, "%.1f%%", kiosk_ctrl.cached_lb.entries[i].win_rate * 100.0f);
-                            
+                            sprintf(winBuf,  "%.1f%%", kiosk_ctrl.cached_lb.entries[i].win_rate);
+                            sprintf(wdlBuf,  "%d / %d / %d",
+                                    kiosk_ctrl.cached_lb.entries[i].wins,
+                                    kiosk_ctrl.cached_lb.entries[i].draws,
+                                    kiosk_ctrl.cached_lb.entries[i].losses);
+                            sprintf(asgBuf,  "%.0f Gen", kiosk_ctrl.cached_lb.entries[i].avg_stable_generation);
+
                             Color rankCol = THEME_TEXT;
                             if (i == 0) rankCol = THEME_RED;
                             else if (i == 1) rankCol = THEME_BLUE;
                             else if (i == 2) rankCol = THEME_ACCENT;
-                            
-                            DrawText(rankBuf, screenWidth/2 - 200, y, 20, rankCol);
-                            DrawText(kiosk_ctrl.cached_lb.entries[i].name, screenWidth/2 - 100, y, 20, THEME_TEXT);
-                            DrawText(eloBuf, screenWidth/2 + 100, y, 20, THEME_ACCENT);
-                            DrawText(winBuf, screenWidth/2 + 200, y, 20, THEME_TEXT);
+
+                            DrawText(rankBuf, screenWidth/2 - 230, y, 20, rankCol);
+                            DrawText(kiosk_ctrl.cached_lb.entries[i].name, screenWidth/2 - 120, y, 20, THEME_TEXT);
+                            DrawText(winBuf,  screenWidth/2 +  40, y, 20, THEME_ACCENT);
+                            DrawText(wdlBuf,  screenWidth/2 + 150, y, 20, THEME_TEXT);
+                            DrawText(asgBuf,  screenWidth/2 + 260, y, 20, THEME_HINT);
                         }
                     } else {
                         DrawText("LOADING DATA...", screenWidth/2 - MeasureText("LOADING DATA...", 20)/2, startY + 60, 20, THEME_HINT);

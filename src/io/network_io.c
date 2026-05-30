@@ -72,14 +72,20 @@ static void* fetch_leaderboard_thread(void* arg) {
                         for (int i = 0; i < size && i < MAX_LEADERBOARD_ENTRIES; i++) {
                             cJSON* item = cJSON_GetArrayItem(lb_array, i);
                             cJSON* name = cJSON_GetObjectItemCaseSensitive(item, "name");
-                            cJSON* elo = cJSON_GetObjectItemCaseSensitive(item, "elo");
-                            cJSON* wr = cJSON_GetObjectItemCaseSensitive(item, "win_rate");
+                            cJSON* wr   = cJSON_GetObjectItemCaseSensitive(item, "win_rate");
+                            cJSON* w    = cJSON_GetObjectItemCaseSensitive(item, "wins");
+                            cJSON* d    = cJSON_GetObjectItemCaseSensitive(item, "draws");
+                            cJSON* l    = cJSON_GetObjectItemCaseSensitive(item, "losses");
+                            cJSON* asg  = cJSON_GetObjectItemCaseSensitive(item, "avg_stable_generation");
 
-                            if (cJSON_IsString(name) && cJSON_IsNumber(elo) && cJSON_IsNumber(wr)) {
+                            if (cJSON_IsString(name) && cJSON_IsNumber(wr)) {
                                 strncpy(g_leaderboard.entries[i].name, name->valuestring, MAX_NAME_LENGTH - 1);
                                 g_leaderboard.entries[i].name[MAX_NAME_LENGTH - 1] = '\0';
-                                g_leaderboard.entries[i].elo = elo->valueint;
                                 g_leaderboard.entries[i].win_rate = (float)wr->valuedouble;
+                                g_leaderboard.entries[i].wins   = cJSON_IsNumber(w) ? w->valueint : 0;
+                                g_leaderboard.entries[i].draws  = cJSON_IsNumber(d) ? d->valueint : 0;
+                                g_leaderboard.entries[i].losses = cJSON_IsNumber(l) ? l->valueint : 0;
+                                g_leaderboard.entries[i].avg_stable_generation = cJSON_IsNumber(asg) ? (float)asg->valuedouble : 0.0f;
                                 g_leaderboard.count++;
                             }
                         }

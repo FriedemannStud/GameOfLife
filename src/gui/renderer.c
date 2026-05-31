@@ -1283,11 +1283,22 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
 
     int startY = 160;
 
-    // B.5: Row height proportional to available area (ADR-0022)
+    // KI-Agent unterstützt: Clip-to-fit — footer panel is always protected (ADR-0022)
+    // rowHeight targets ~10 visible rows; clamp ensures readability.
+    // show_count is capped so all drawn rows + optional "+N more" line fit above footer_y.
     int entries_area_h = footer_y - (startY + 40);
-    int max_visible    = MAX_LEADERBOARD_ENTRIES;
-    int rowHeight      = (max_visible > 0) ? (entries_area_h / max_visible) : 32;
+    int rowHeight      = entries_area_h / 10;
     if (rowHeight < 28) rowHeight = 28;
+
+    int total_entries = ctrl->cached_lb.count;
+    if (total_entries > MAX_LEADERBOARD_ENTRIES) total_entries = MAX_LEADERBOARD_ENTRIES;
+    int max_fit      = entries_area_h / rowHeight;
+    int show_count   = total_entries;
+    int hidden_count = 0;
+    if (total_entries > max_fit) {
+        show_count   = max_fit - 1;  // reserve last slot for "+N more" line
+        hidden_count = total_entries - show_count;
+    }
 
     // B.6: Column header — "STAMINA" renamed to "ENDURANCE" (ADR-0022)
     DrawText("RANK",      screen_w / 2 - 230, startY, 20, THEME_HINT);
@@ -1298,8 +1309,8 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
 
     DrawLine(screen_w / 2 - 240, startY + 25, screen_w / 2 + 370, startY + 25, THEME_GRID);
 
-    if (ctrl->cached_lb.count > 0) {
-        for (int i = 0; i < ctrl->cached_lb.count && i < MAX_LEADERBOARD_ENTRIES; i++) {
+    if (total_entries > 0) {
+        for (int i = 0; i < show_count; i++) {
             int y = startY + 40 + i * rowHeight;
             char rankBuf[8];
             char winBuf[16];
@@ -1332,6 +1343,14 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
             DrawText(winBuf,                           screen_w / 2 +  40, y, 20, THEME_ACCENT);
             DrawText(wdlBuf,                           screen_w / 2 + 150, y, 20, THEME_TEXT);
             DrawText(asgBuf,                           screen_w / 2 + 260, y, 20, THEME_HINT);
+        }
+
+        // "+N more" indicator — only shown when entries were clipped
+        if (hidden_count > 0) {
+            char more_buf[32];
+            sprintf(more_buf, "+ %d more", hidden_count);
+            int more_y = startY + 40 + show_count * rowHeight + 4;
+            DrawText(more_buf, screen_w / 2 - 230, more_y, 16, THEME_HINT);
         }
     } else {
         DrawText("LOADING DATA...",

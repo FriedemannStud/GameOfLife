@@ -81,7 +81,8 @@ KioskLayout compute_kiosk_layout(int screen_w, int screen_h, int match_count) {
     l.header_h = 26 + l.badge_h;  // combined: name row + badge row
 
     // KI-Agent unterstützt: Proportional thumbnail cell — visible from standing distance (ADR-0022 Phase B)
-    l.seed_cell_px = l.quad_h / 30;
+    // Divisor 40 → thumbnails occupy ~20% of quad height (8 cells × quad_h/40 = quad_h/5).
+    l.seed_cell_px = l.quad_h / 40;
     if (l.seed_cell_px < 7) l.seed_cell_px = 7;
 
     // Font sizes
@@ -1399,6 +1400,19 @@ static void draw_kiosk_multicam(KioskController *ctrl, int screen_w, int screen_
     // B.11 (footer): Solid footer panel — same pattern as leaderboard (ADR-0022)
     int footer_y = screen_h - layout.bottom_panel_h;
     DrawRectangle(0, footer_y, screen_w, layout.bottom_panel_h, THEME_HUD);
+
+    // KI-Agent unterstützt: Update viewport bounds every frame so quadrants scale with the window (ADR-0022)
+    // DrawGridAndCellsCtx detects the size change and reallocates GPU resources automatically.
+    for (int i = 0; i < ctrl->match_count; i++) {
+        int col = i % layout.grid_cols;
+        int row = i / layout.grid_cols;
+        ctrl->renders[i].viewport_bounds = (Rectangle){
+            (float)(layout.pad + col * (layout.quad_w + layout.pad)),
+            (float)(layout.top_bar_h + row * (layout.quad_h + layout.pad)),
+            (float)layout.quad_w,
+            (float)layout.quad_h
+        };
+    }
 
     // Render simulation grids into their respective viewports
     for (int i = 0; i < ctrl->match_count; i++) {

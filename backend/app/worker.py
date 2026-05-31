@@ -5,7 +5,9 @@ import sys
 import json
 import tempfile
 from datetime import datetime
+from collections import deque
 from bson import ObjectId
+import numpy as np
 
 # Path management MUST be first
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -16,6 +18,110 @@ from app.database import get_db
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("epoch_worker")
+
+# ---------------------------------------------------------------------------
+# Oscillator Detection (ADR-0023)
+# World config mirrors run_isolated_match() in game_logic.c and
+# the kiosk seed placement in app_state_manager.c (KIOSK_SIM_ROWS/COLS).
+# ---------------------------------------------------------------------------
+# KI-Agent unterstützt
+_KIOSK_ROWS     = 8     # LOCAL_GRID_SIZE
+_KIOSK_COLS     = 16    # LOCAL_GRID_SIZE * 2
+_SEED_SIZE      = 8
+_RED_ORIGIN     = (0, 0)   # left half:  rows 0-7, cols 0-7
+_BLUE_ORIGIN    = (0, 8)   # right half: rows 0-7, cols 8-15
+_TEAM_RED       = 1
+_TEAM_BLUE      = 2
+_DEAD           = 0
+_MAX_PERIOD     = 5
+_CONFIRM_CYCLES = 2
+
+
+def _step_numpy(grid: np.ndarray) -> np.ndarray:
+    """One generation of two-team Conway rules with toroidal (wrap-around) boundary."""
+    # KI-Agent unterstützt: Translated from update_generation() in game_logic.c
+    red    = (grid == _TEAM_RED).astype(np.int16)
+    blue   = (grid == _TEAM_BLUE).astype(np.int16)
+    red_n  = np.zeros(grid.shape, dtype=np.int16)
+    blue_n = np.zeros(grid.shape, dtype=np.int16)
+
+    for dr in (-1, 0, 1):
+        for dc in (-1, 0, 1):
+            if dr == 0 and dc == 0:
+                continue
+            red_n  += np.roll(np.roll(red,  dr, axis=0), dc, axis=1)
+            blue_n += np.roll(np.roll(blue, dr, axis=0), dc, axis=1)
+
+    total_n  = red_n + blue_n
+    alive    = grid != _DEAD
+    survives = alive  & ((total_n == 2) | (total_n == 3))
+    born     = ~alive & (total_n == 3)
+
+    new_grid = np.zeros_like(grid)
+    new_grid[survives] = grid[survives]
+    new_grid[born]     = np.where(red_n[born] > blue_n[born], _TEAM_RED, _TEAM_BLUE)
+    return new_grid
+
+
+def is_oscillating_match(red_seed: list, blue_seed: list, max_generations: int) -> bool:
+    """
+    Returns True if the match converges to a period-2..5 oscillator in the kiosk world.
+    Simulates an 8x16 grid with same seed placement as app_state_manager.c (ADR-0023).
+    """
+    # KI-Agent unterstützt
+    grid = np.zeros((_KIOSK_ROWS, _KIOSK_COLS), dtype=np.int8)
+
+    r0_r, c0_r = _RED_ORIGIN
+    r0_b, c0_b = _BLUE_ORIGIN
+    seed_r = np.array(red_seed,  dtype=np.int8).reshape(_SEED_SIZE, _SEED_SIZE)
+    seed_b = np.array(blue_seed, dtype=np.int8).reshape(_SEED_SIZE, _SEED_SIZE)
+    grid[r0_r : r0_r + _SEED_SIZE, c0_r : c0_r + _SEED_SIZE] = seed_r * _TEAM_RED
+    grid[r0_b : r0_b + _SEED_SIZE, c0_b : c0_b + _SEED_SIZE] = seed_b * _TEAM_BLUE
+
+    buf_size   = _MAX_PERIOD * _CONFIRM_CYCLES + 1  # 11 state snapshots
+    state_buf  = deque(maxlen=buf_size)
+    prev_state: bytes = b""
+
+    for _ in range(max_generations):
+        grid       = _step_numpy(grid)
+        curr_state = grid.tobytes()
+        if curr_state == prev_state:   # Truly static (period-1): not an oscillator
+            return False
+        state_buf.append(curr_state)
+        prev_state = curr_state
+
+    buf = list(state_buf)
+    n   = len(buf)
+    for p in range(2, _MAX_PERIOD + 1):
+        if n >= 2 * p + 1:
+            if buf[-1] == buf[-1 - p] == buf[-1 - 2 * p]:
+                return True
+    return False
+
+
+def filter_highlights_by_oscillation(highlights: list, max_generations: int) -> list:
+    """
+    Reorders highlight candidates: non-oscillating first, oscillating as soft fallback.
+    Preserves descending metric_value order within each group.
+    """
+    # KI-Agent unterstützt
+    non_osc = []
+    osc     = []
+    for h in highlights:
+        if is_oscillating_match(h["red_seed"], h["blue_seed"], max_generations):
+            logger.info(
+                "Oscillator detected: %s vs %s (metric_value=%.0f)",
+                h.get("red_name", "?"), h.get("blue_name", "?"),
+                h.get("metric_value", 0)
+            )
+            osc.append(h)
+        else:
+            non_osc.append(h)
+    logger.info(
+        "Highlight filter: %d non-oscillating, %d oscillating (of %d candidates)",
+        len(non_osc), len(osc), len(highlights)
+    )
+    return non_osc + osc
 
 async def execute_epoch(db):
     """
@@ -89,7 +195,12 @@ async def execute_epoch(db):
         # KI-Agent unterstützt: Resolve UUID player_ids to human-readable nicknames (ADR-0021 bugfix)
         id_to_nickname = {str(s["_id"]): s["metadata"]["nickname"] for s in submissions}
         highlights_data = []
-        for h in results.get("highlights", []):
+        # KI-Agent unterstützt: Filter oscillating patterns before storing highlights (ADR-0023)
+        _raw_highlights = results.get("highlights", [])
+        _filtered_highlights = filter_highlights_by_oscillation(
+            _raw_highlights, batch_input["max_generations"]
+        )
+        for h in _filtered_highlights:
             highlights_data.append({
                 "metric_type": "activity_sum",
                 "red_name": id_to_nickname.get(h["red_name"], h["red_name"]),

@@ -1,6 +1,6 @@
 ### **ADR-0023: Oscillator Detection and Filtering for Kiosk Highlight Quality**
 
-**Status:** Proposed
+**Status:** Implemented
 
 **Date:** 2026-05-31
 
@@ -29,7 +29,7 @@ Implement oscillator detection as a **post-processing filter in the Python Worke
 
 For each of the 10 highlight candidates output by the Hyper-Worker:
 
-1. **Re-simulate** the match in Python using the **Kiosk world configuration**: a 50×50 grid with toroidal (wrapping) boundaries, with the blue seed placed at rows 20–27 / cols 10–17 and the red seed at rows 20–27 / cols 30–37 (0-indexed). This mirrors the placement in `app_state_manager.c` (`KIOSK_SIM_WORLD_SIZE = 50`, blue offset `(r+21, c+11)` in the 52×52 ghost grid = `(r+20, c+10)` in the 50×50 logical grid).
+1. **Re-simulate** the match in Python using the **Kiosk world configuration**: an 8×16 grid with toroidal (wrapping) boundaries, with the red seed placed at rows 0–7 / cols 0–7 (left half) and the blue seed at rows 0–7 / cols 8–15 (right half). This mirrors the placement in `app_state_manager.c` (`KIOSK_SIM_ROWS = 8`, `KIOSK_SIM_COLS = 16`, constants defined via `LOCAL_GRID_SIZE` from `config.h`). The constants in `worker.py` are `_RED_ORIGIN = (0, 0)` and `_BLUE_ORIGIN = (0, 8)`.
 
 2. **Run** the simulation for up to `max_generations` steps (1000 by default), applying the same two-team Conway rules as `update_generation()` in `game_logic.c`:
    - A living cell survives if it has 2 or 3 total neighbors (keeps its team).
@@ -51,9 +51,9 @@ For each of the 10 highlight candidates output by the Hyper-Worker:
 
 If fewer than 4 non-oscillating matches exist, oscillating matches fill the remaining slots from the fallback pool. The kiosk never displays fewer than `min(4, total_highlights_count)` matches. The MongoDB document always stores the complete ordered list of all available highlights.
 
-**Why the Kiosk world (50×50) and not the Hyper-Worker world (8×16):**
+**Why the 8×16 world (same as Hyper-Worker):**
 
-Oscillator behavior is world-size-dependent. The Hyper-Worker executes matches on a compact `LOCAL_GRID_SIZE × LOCAL_GRID_SIZE × 2` (8×16) grid; the kiosk displays the same seeds on a 50×50 grid. A pattern that oscillates in one configuration may behave completely differently in the other. Detection must use the same configuration as the display.
+Oscillator behavior is world-size-dependent: the same seeds produce different dynamics in differently sized arenas. Using the same world for detection and display is a correctness requirement — a match flagged as oscillating must actually be oscillating as the spectator sees it. Aligning the Kiosk display world to the Hyper-Worker world (both 8×16, `LOCAL_GRID_SIZE × LOCAL_GRID_SIZE × 2`) also eliminates a semantic inconsistency where the leaderboard winner and the on-screen winner could differ. The Python detector uses `_KIOSK_ROWS = 8`, `_KIOSK_COLS = 16` — identical to `run_isolated_match()` in `game_logic.c`.
 
 **Decision Summary — Why Python Worker:**
 
@@ -82,8 +82,8 @@ Oscillator behavior is world-size-dependent. The Hyper-Worker executes matches o
 **Negative Consequences (Disadvantages):**
 
 - **Duplicated simulation logic:** The Conway's Life rules are implemented in both `game_logic.c` (C) and `worker.py` (Python). If the game rules change in `game_logic.c`, `worker.py` must be updated in sync. This creates a maintenance dependency that must be documented.
-- **World configuration coupling:** The kiosk seed placement coordinates (`_BLUE_ORIGIN = (20, 10)`, `_RED_ORIGIN = (20, 30)`) are duplicated from `app_state_manager.c` into `worker.py`. If the C client changes the placement offsets, the Python detector becomes inaccurate without a corresponding update.
-- **Marginal epoch processing time increase:** Simulating 10 matches × 1000 generations × 50×50 grid in Python (NumPy) adds approximately 0.5–2 seconds to each 60-second epoch cycle. This is negligible in practice.
+- **World configuration coupling:** The kiosk seed placement coordinates (`_RED_ORIGIN = (0, 0)`, `_BLUE_ORIGIN = (0, 8)`) and world dimensions (`_KIOSK_ROWS = 8`, `_KIOSK_COLS = 16`) are duplicated from `app_state_manager.h` / `config.h` into `worker.py`. If the C client changes the world size or seed placement, the Python detector becomes inaccurate without a corresponding update.
+- **Marginal epoch processing time increase:** Simulating 10 matches × 1000 generations × 8×16 grid in Python (NumPy) adds well under 1 second to each 60-second epoch cycle. This is negligible in practice.
 
 ---
 

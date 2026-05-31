@@ -80,10 +80,8 @@ void init_kiosk_controller(KioskController *ctrl, int match_count,
             (float)layout.quad_w,
             (float)layout.quad_h
         };
-        init_simulation_context(&ctrl->sims[i],
-                                KIOSK_SIM_WORLD_SIZE, KIOSK_SIM_WORLD_SIZE);
-        init_render_context(&ctrl->renders[i],
-                            KIOSK_SIM_WORLD_SIZE, KIOSK_SIM_WORLD_SIZE, vp);
+        init_simulation_context(&ctrl->sims[i], KIOSK_SIM_ROWS, KIOSK_SIM_COLS);
+        init_render_context(&ctrl->renders[i],  KIOSK_SIM_COLS, KIOSK_SIM_ROWS, vp);
     }
 
     ctrl->initialized = true;
@@ -168,19 +166,20 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
         if (current_state == STATE_KIOSK_MODE) {
             // KI-Agent unterstützt: loop bound and world size from named constants (ADR-0022)
             for (int i = 0; i < kiosk_ctrl.match_count && i < hd.count; i++) {
-                int stride = KIOSK_SIM_WORLD_SIZE + 2;
+                // KI-Agent unterstützt: 8x16 world mirrors run_isolated_match() exactly (ADR-0023)
+                int stride = KIOSK_SIM_COLS + 2;  // 18
                 World* w = kiosk_ctrl.sims[i].current_world;
-                for (int k = 0; k < (KIOSK_SIM_WORLD_SIZE + 2) * stride; k++) w->grid[k] = DEAD;
+                for (int k = 0; k < (KIOSK_SIM_ROWS + 2) * stride; k++) w->grid[k] = DEAD;
                 if (w->chunk_map) memset(w->chunk_map, 0, w->chunk_rows * w->chunk_cols);
-                for (int r = 0; r < 8; r++) {
-                    for (int c = 0; c < 8; c++) {
-                        if (hd.matches[i].seed_blue[r * 8 + c] == 1) {
-                            w->grid[(r+21)*stride + (c+11)] = TEAM_BLUE;
-                            activate_chunk_at(w, r+20, c+10);
+                for (int r = 0; r < LOCAL_GRID_SIZE; r++) {
+                    for (int c = 0; c < LOCAL_GRID_SIZE; c++) {
+                        if (hd.matches[i].seed_red[r * LOCAL_GRID_SIZE + c] == 1) {
+                            w->grid[(r+1)*stride + (c+1)] = TEAM_RED;   // left half
+                            activate_chunk_at(w, r, c);
                         }
-                        if (hd.matches[i].seed_red[r * 8 + c] == 1) {
-                            w->grid[(r+21)*stride + (c+31)] = TEAM_RED;
-                            activate_chunk_at(w, r+20, c+30);
+                        if (hd.matches[i].seed_blue[r * LOCAL_GRID_SIZE + c] == 1) {
+                            w->grid[(r+1)*stride + (c+LOCAL_GRID_SIZE+1)] = TEAM_BLUE;  // right half
+                            activate_chunk_at(w, r, c + LOCAL_GRID_SIZE);
                         }
                     }
                 }

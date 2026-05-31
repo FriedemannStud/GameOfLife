@@ -15,24 +15,24 @@ This task implements the oscillator detection pipeline described in ADR-0023. Th
 
 *Goal: Confirm the development environment is ready and all required dependencies are in place before touching any code.*
 
-- [ ] **Step 0.1: Verify NumPy is available**
-    - [ ] **Action:** Open `backend/requirements.txt` and search for `numpy`.
-    - [ ] **Verification:** Run the following command and report the output:
+- [x] **Step 0.1: Verify NumPy is available**
+    - [x] **Action:** Open `backend/requirements.txt` and search for `numpy`.
+    - [x] **Verification:** Run the following command and report the output:
         ```bash
         grep -i numpy backend/requirements.txt
         ```
         **Expected Result:** A line like `numpy>=1.x.x` or `numpy` is printed.
         If numpy is **not** found: add `numpy>=1.24.0` to `backend/requirements.txt` and re-run `pip install -r backend/requirements.txt` inside the backend container or virtual environment.
 
-- [ ] **Step 0.2: Confirm seed format from the live data**
-    - [ ] **Action:** Open `backend/app/worker.py` and locate the line `"red_seed": h["red_seed"]` (around line 96). Then open `src/io/file_io.c` and locate the `save_batch_results` function — find the loop that builds `red_seed` and `blue_seed` JSON arrays.
-    - [ ] **Verification:** Confirm that the seed is serialized as a JSON array of 64 integers (0 or 1), where index `b` corresponds to bit `b` of the `uint64_t` bitboard (`(bitboard >> b) & 1`). This means `seed[r*8 + c]` is the cell at row `r`, column `c` of the 8×8 pattern.
+- [x] **Step 0.2: Confirm seed format from the live data**
+    - [x] **Action:** Open `backend/app/worker.py` and locate the line `"red_seed": h["red_seed"]` (around line 96). Then open `src/io/file_io.c` and locate the `save_batch_results` function — find the loop that builds `red_seed` and `blue_seed` JSON arrays.
+    - [x] **Verification:** Confirm that the seed is serialized as a JSON array of 64 integers (0 or 1), where index `b` corresponds to bit `b` of the `uint64_t` bitboard (`(bitboard >> b) & 1`). This means `seed[r*8 + c]` is the cell at row `r`, column `c` of the 8×8 pattern.
         **Expected Result:** You can read `file_io.c` line ~549: `cJSON_CreateNumber((highlights[i].seed_red & (1ULL << b)) ? 1 : 0)` inside a loop `for (int b = 0; b < 64; b++)`.
         Report: "Seed format confirmed as 64-element int array, row-major."
 
-- [ ] **Step 0.3: Locate the exact integration point in worker.py**
-    - [ ] **Action:** Open `backend/app/worker.py`. Find the block starting at `for h in results.get("highlights", []):` (around line 92). This is the loop that builds `highlights_data`. The filter call will be inserted **before** this loop.
-    - [ ] **Verification:** Report the exact line number where the `for h in results.get("highlights", []):` loop begins.
+- [x] **Step 0.3: Locate the exact integration point in worker.py**
+    - [x] **Action:** Open `backend/app/worker.py`. Find the block starting at `for h in results.get("highlights", []):` (around line 92). This is the loop that builds `highlights_data`. The filter call will be inserted **before** this loop.
+    - [x] **Verification:** Report the exact line number where the `for h in results.get("highlights", []):` loop begins.
 
 ---
 
@@ -40,28 +40,29 @@ This task implements the oscillator detection pipeline described in ADR-0023. Th
 
 *Goal: Write and validate the two core functions in isolation, completely independent of the epoch pipeline. This phase produces a working, tested module before any integration work begins.*
 
-- [ ] **Step 1.1: Add module-level constants and imports to `worker.py`**
-    - [ ] **Action:** At the top of `backend/app/worker.py`, after the existing imports, add the following block. Do **not** modify any existing imports.
+- [x] **Step 1.1: Add module-level constants and imports to `worker.py`**
+    - [x] **Action:** At the top of `backend/app/worker.py`, after the existing imports, add the following block. Do **not** modify any existing imports.
         ```python
         import numpy as np
         from collections import deque
 
-        # KI-Agent unterstützt: Constants mirror kiosk world config (app_state_manager.c / config.h)
-        _KIOSK_ROWS     = 50
-        _KIOSK_COLS     = 50
+        # KI-Agent unterstützt: Constants mirror kiosk world config (app_state_manager.h / config.h)
+        # World is 8x16 — identical to run_isolated_match() in game_logic.c
+        _KIOSK_ROWS     = 8     # LOCAL_GRID_SIZE
+        _KIOSK_COLS     = 16    # LOCAL_GRID_SIZE * 2
         _SEED_SIZE      = 8
-        _BLUE_ORIGIN    = (20, 10)   # (row, col) 0-indexed — matches (r+21)*stride+(c+11) in ghost grid
-        _RED_ORIGIN     = (20, 30)   # (row, col) 0-indexed — matches (r+21)*stride+(c+31) in ghost grid
+        _RED_ORIGIN     = (0, 0)   # left half:  rows 0-7, cols 0-7
+        _BLUE_ORIGIN    = (0, 8)   # right half: rows 0-7, cols 8-15
         _TEAM_RED       = 1
         _TEAM_BLUE      = 2
         _DEAD           = 0
         _MAX_PERIOD     = 5
         _CONFIRM_CYCLES = 2
         ```
-    - [ ] **Verification:** Run `python -c "import sys; sys.path.insert(0, 'backend'); from app import worker"` from the project root. Report: no ImportError printed.
+    - [x] **Verification:** Run `python -c "import sys; sys.path.insert(0, 'backend'); from app import worker"` from the project root. Report: no ImportError printed.
 
-- [ ] **Step 1.2: Add `_step_numpy(grid)` to `worker.py`**
-    - [ ] **Action:** Add the following function to `backend/app/worker.py`, **after** the constants block and **before** the `execute_epoch` function. This function implements exactly one generation of the two-team Conway rules with toroidal boundary using NumPy. It is a direct translation of `update_generation()` in `src/core/game_logic.c`.
+- [x] **Step 1.2: Add `_step_numpy(grid)` to `worker.py`**
+    - [x] **Action:** Add the following function to `backend/app/worker.py`, **after** the constants block and **before** the `execute_epoch` function. This function implements exactly one generation of the two-team Conway rules with toroidal boundary using NumPy. It is a direct translation of `update_generation()` in `src/core/game_logic.c`.
         ```python
         def _step_numpy(grid: np.ndarray) -> np.ndarray:
             """One generation of two-team Conway rules with toroidal (wrap-around) boundary."""
@@ -88,7 +89,7 @@ This task implements the oscillator detection pipeline described in ADR-0023. Th
             new_grid[born]     = np.where(red_n[born] > blue_n[born], _TEAM_RED, _TEAM_BLUE)
             return new_grid
         ```
-    - [ ] **Verification:** Run the following quick smoke test from the project root:
+    - [x] **Verification:** Run the following quick smoke test from the project root:
         ```bash
         python -c "
         import sys; sys.path.insert(0, 'backend')
@@ -103,8 +104,8 @@ This task implements the oscillator detection pipeline described in ADR-0023. Th
         ```
         **Expected Result:** `_step_numpy smoke test passed` is printed. Report the exact output.
 
-- [ ] **Step 1.3: Add `is_oscillating_match(red_seed, blue_seed, max_generations)` to `worker.py`**
-    - [ ] **Action:** Add the following function immediately after `_step_numpy`:
+- [x] **Step 1.3: Add `is_oscillating_match(red_seed, blue_seed, max_generations)` to `worker.py`**
+    - [x] **Action:** Add the following function immediately after `_step_numpy`:
         ```python
         def is_oscillating_match(red_seed: list, blue_seed: list, max_generations: int) -> bool:
             """
@@ -116,10 +117,12 @@ This task implements the oscillator detection pipeline described in ADR-0023. Th
 
             r0_b, c0_b = _BLUE_ORIGIN
             r0_r, c0_r = _RED_ORIGIN
-            seed_b = np.array(blue_seed, dtype=np.int8).reshape(_SEED_SIZE, _SEED_SIZE)
             seed_r = np.array(red_seed,  dtype=np.int8).reshape(_SEED_SIZE, _SEED_SIZE)
-            grid[r0_b : r0_b + _SEED_SIZE, c0_b : c0_b + _SEED_SIZE] = seed_b * _TEAM_BLUE
+            seed_b = np.array(blue_seed, dtype=np.int8).reshape(_SEED_SIZE, _SEED_SIZE)
+            r0_r, c0_r = _RED_ORIGIN
+            r0_b, c0_b = _BLUE_ORIGIN
             grid[r0_r : r0_r + _SEED_SIZE, c0_r : c0_r + _SEED_SIZE] = seed_r * _TEAM_RED
+            grid[r0_b : r0_b + _SEED_SIZE, c0_b : c0_b + _SEED_SIZE] = seed_b * _TEAM_BLUE
 
             buf_size   = _MAX_PERIOD * _CONFIRM_CYCLES + 1  # 11 entries
             state_buf  = deque(maxlen=buf_size)
@@ -141,7 +144,7 @@ This task implements the oscillator detection pipeline described in ADR-0023. Th
                         return True
             return False
         ```
-    - [ ] **Verification:** Run the following command and report the output:
+    - [x] **Verification:** Run the following command and report the output:
         ```bash
         python -c "
         import sys; sys.path.insert(0, 'backend')
@@ -172,8 +175,8 @@ This task implements the oscillator detection pipeline described in ADR-0023. Th
 
 *Goal: Create a proper test file that can be re-run as a regression guard after any future changes to the detection logic.*
 
-- [ ] **Step 2.1: Create `backend/tests/test_oscillator_detection.py`**
-    - [ ] **Action:** Create the file `backend/tests/test_oscillator_detection.py` with the following content:
+- [x] **Step 2.1: Create `backend/tests/test_oscillator_detection.py`**
+    - [x] **Action:** Create the file `backend/tests/test_oscillator_detection.py` with the following content:
         ```python
         """
         Unit tests for the oscillator detection functions in worker.py.
@@ -238,7 +241,7 @@ This task implements the oscillator detection pipeline described in ADR-0023. Th
             test_two_cell_block_stable()
             print("\nAll oscillator detection tests passed.")
         ```
-    - [ ] **Verification (Interactive Test):**
+    - [x] **Verification (Interactive Test):**
         1. Run: `python backend/tests/test_oscillator_detection.py`
         2. Report the full output.
         **Expected Result:**
@@ -259,8 +262,8 @@ This task implements the oscillator detection pipeline described in ADR-0023. Th
 
 *Goal: Add the orchestration function that applies the detector to all highlight candidates and reorders the list.*
 
-- [ ] **Step 3.1: Add `filter_highlights_by_oscillation(highlights, max_generations)` to `worker.py`**
-    - [ ] **Action:** Add the following function immediately after `is_oscillating_match` in `backend/app/worker.py`:
+- [x] **Step 3.1: Add `filter_highlights_by_oscillation(highlights, max_generations)` to `worker.py`**
+    - [x] **Action:** Add the following function immediately after `is_oscillating_match` in `backend/app/worker.py`:
         ```python
         def filter_highlights_by_oscillation(highlights: list, max_generations: int) -> list:
             """
@@ -287,7 +290,7 @@ This task implements the oscillator detection pipeline described in ADR-0023. Th
             )
             return non_osc + osc
         ```
-    - [ ] **Verification:** Run:
+    - [x] **Verification:** Run:
         ```bash
         python -c "
         import sys; sys.path.insert(0, 'backend')
@@ -321,16 +324,16 @@ This task implements the oscillator detection pipeline described in ADR-0023. Th
 
 *Goal: Wire the filter function into the existing epoch pipeline at the correct location.*
 
-- [ ] **Step 4.1: Identify the exact integration point**
-    - [ ] **Action:** Open `backend/app/worker.py`. Find the line:
+- [x] **Step 4.1: Identify the exact integration point**
+    - [x] **Action:** Open `backend/app/worker.py`. Find the line:
         ```python
         for h in results.get("highlights", []):
         ```
         This is the loop that builds `highlights_data`. Note the exact line number.
-    - [ ] **Verification:** Report the line number (should be around line 92–95).
+    - [x] **Verification:** Report the line number (should be around line 92–95).
 
-- [ ] **Step 4.2: Insert the filter call before the loop**
-    - [ ] **Action:** Replace the line:
+- [x] **Step 4.2: Insert the filter call before the loop**
+    - [x] **Action:** Replace the line:
         ```python
         for h in results.get("highlights", []):
         ```
@@ -344,19 +347,19 @@ This task implements the oscillator detection pipeline described in ADR-0023. Th
         for h in _filtered_highlights:
         ```
         **Important:** The loop body (`highlights_data.append({...})`) and all subsequent code remain completely unchanged.
-    - [ ] **Verification:** Run a Python syntax check on the modified file:
+    - [x] **Verification:** Run a Python syntax check on the modified file:
         ```bash
         python -m py_compile backend/app/worker.py && echo "Syntax OK"
         ```
         **Expected Result:** `Syntax OK` is printed. Report any errors if they appear.
 
-- [ ] **Step 4.3: Verify no regressions in existing backend tests**
-    - [ ] **Action:** Run the existing backend test suite:
+- [x] **Step 4.3: Verify no regressions in existing backend tests**
+    - [x] **Action:** Run the existing backend test suite:
         ```bash
         python backend/tests/test_ranking.py
         python backend/tests/test_validators.py
         ```
-    - [ ] **Verification:** Report the complete output of both commands.
+    - [x] **Verification:** Report the complete output of both commands.
         **Expected Result:** Both scripts exit without errors. All existing tests pass.
 
 ---
@@ -365,48 +368,48 @@ This task implements the oscillator detection pipeline described in ADR-0023. Th
 
 *Goal: Confirm the full pipeline works in the running Docker environment: hyper-worker runs, oscillator detection fires, MongoDB stores filtered highlights.*
 
-- [ ] **Step 5.1: Start the Docker environment**
-    - [ ] **Action:** From the project root, run:
+- [x] **Step 5.1: Start the Docker environment**
+    - [x] **Action:** From the project root, run:
         ```bash
         docker-compose up --build -d
         ```
         Wait until all containers report healthy/started.
-    - [ ] **Verification (Interactive Test):**
+    - [x] **Verification (Interactive Test):**
         1. Run: `docker-compose ps`
         2. Report the status of all containers.
         **Expected Result:** All services (backend, mongo, worker) show status `Up` or `healthy`.
 
-- [ ] **Step 5.2: Trigger a tournament epoch and observe worker logs**
-    - [ ] **Action:** The worker runs automatically every 60 seconds. Wait for one full cycle, or — if at least 2 active submissions exist — wait for the next epoch. Monitor the logs with:
+- [x] **Step 5.2: Trigger a tournament epoch and observe worker logs**
+    - [x] **Action:** The worker runs automatically every 60 seconds. Wait for one full cycle, or — if at least 2 active submissions exist — wait for the next epoch. Monitor the logs with:
         ```bash
         docker-compose logs -f worker
         ```
         Let it run until you see the `"Database updated with Epoch results."` log line.
-    - [ ] **Verification (Interactive Test):**
+    - [x] **Verification (Interactive Test):**
         1. Look for log lines containing `"Highlight filter result:"`.
         2. Look for any log lines containing `"Oscillator detected:"`.
         3. Report the exact log lines you see.
         **Expected Result:** You see at least one `"Highlight filter result: X non-oscillating, Y oscillating (of Z total candidates)"` line. If no oscillators were detected (Y=0), that is a valid result if the active patterns are genuinely non-oscillating.
 
-- [ ] **Step 5.3: Inspect MongoDB highlight ordering**
-    - [ ] **Action:** After the epoch completes, query the most recent `epoch_highlights` document:
+- [x] **Step 5.3: Inspect MongoDB highlight ordering**
+    - [x] **Action:** After the epoch completes, query the most recent `epoch_highlights` document:
         ```bash
         docker-compose exec mongo mongosh biotope --eval \
           "db.epoch_highlights.find({}).sort({timestamp:-1}).limit(1).pretty()"
         ```
-    - [ ] **Verification (Interactive Test):**
+    - [x] **Verification (Interactive Test):**
         1. Examine the `highlights` array in the returned document.
         2. Verify that if any oscillating matches were flagged (from Step 5.2 logs), they appear at higher indices in the array than non-oscillating matches.
         3. Report: the number of highlights stored and whether the ordering is correct.
         **Expected Result:** The `highlights` array contains entries. If Y oscillating matches were logged in Step 5.2, the last Y entries of the array correspond to those matches (cross-reference by player names).
 
-- [ ] **Step 5.4: Confirm the Kiosk Client is unaffected**
-    - [ ] **Action:** Build the C application and start it in kiosk mode:
+- [x] **Step 5.4: Confirm the Kiosk Client is unaffected**
+    - [x] **Action:** Build the C application and start it in kiosk mode:
         ```bash
         make
         ```
         Then start the application and navigate to Kiosk Mode (press `K`).
-    - [ ] **Verification (Interactive Test):**
+    - [x] **Verification (Interactive Test):**
         1. Start the app: `./build/biotope`
         2. Press `K` to enter Kiosk Mode.
         3. Wait for the Multicam view to appear (after the 15-second leaderboard phase).
@@ -420,12 +423,12 @@ This task implements the oscillator detection pipeline described in ADR-0023. Th
 
 *Goal: Mark the ADR as implemented and confirm all deliverables are complete.*
 
-- [ ] **Step 6.1: Update ADR-0023 status**
-    - [ ] **Action:** Open `docs/adr/ADR-0023-oscillator-filtering-highlight-quality.md` and change the `**Status:** Proposed` line to `**Status:** Implemented`.
-    - [ ] **Verification:** Confirm the change is saved.
+- [x] **Step 6.1: Update ADR-0023 status**
+    - [x] **Action:** Open `docs/adr/ADR-0023-oscillator-filtering-highlight-quality.md` and change the `**Status:** Proposed` line to `**Status:** Implemented`.
+    - [x] **Verification:** Confirm the change is saved.
 
-- [ ] **Step 6.2: Update CHANGELOG.md**
-    - [ ] **Action:** Add an entry to `docs/CHANGELOG.md` under a new section for today's date:
+- [x] **Step 6.2: Update CHANGELOG.md**
+    - [x] **Action:** Add an entry to `docs/CHANGELOG.md` under a new section for today's date:
         ```
         ### 2026-05-31 — ADR-0023: Oscillator Filtering for Kiosk Highlight Quality
         - Added `_step_numpy`, `is_oscillating_match`, and `filter_highlights_by_oscillation`
@@ -435,4 +438,4 @@ This task implements the oscillator detection pipeline described in ADR-0023. Th
           receives dynamic highlights first.
         - 5 unit tests added in `backend/tests/test_oscillator_detection.py`.
         ```
-    - [ ] **Verification:** Confirm the entry is saved.
+    - [x] **Verification:** Confirm the entry is saved.

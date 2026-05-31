@@ -1,3 +1,18 @@
+2026-05-31 — ADR-0023: Oscillator Filtering & Kiosk World Alignment
+
+- Kiosk-Simulationswelt von 50×50 auf 8×16 umgestellt (app_state_manager.h/.c),
+  identisch mit run_isolated_match() im Hyper-Worker. Leaderboard-Ergebnis und
+  Kiosk-Anzeige verwenden jetzt dieselbe Arena.
+- Seed-Platzierung im Kiosk korrigiert: Rot links (wie im Hyper-Worker), Blau rechts.
+- Oscillator-Filterung in backend/app/worker.py implementiert (ADR-0023):
+  _step_numpy(), is_oscillating_match(), filter_highlights_by_oscillation().
+  Oszillierende Muster (Periode 2–5) werden in epoch_highlights ans Ende verschoben;
+  nicht-oszillierende Matches erscheinen zuerst. Soft Fallback bei 0 sauberen Kandidaten.
+- numpy>=1.24.0 zu backend/requirements.txt hinzugefügt.
+- 13 Unit-Tests in backend/tests/test_oscillator_detection.py, alle grün.
+- End-to-End verifiziert: Worker erkennt und loggt Oszillatoren, MongoDB enthält
+  korrekt aufgelöste Nicknames und 10 geordnete Highlights.
+
 26.12.2025: GitHub Account eingerichtet, GitHub Repository eingerichtet, Dockerfile angelegt, docker-compose angelegt, DEV Container angelegt, C-Umgebung angelegt, Hello Skript angelegt und getestet.
 
 28.12.2025: README.md erstellt

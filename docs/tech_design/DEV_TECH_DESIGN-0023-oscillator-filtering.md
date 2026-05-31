@@ -77,13 +77,15 @@ The Python simulation MUST replicate the kiosk world exactly to detect oscillati
 
 | Parameter | Value | Source in C |
 |---|---|---|
-| Grid dimensions | 50 × 50 | `KIOSK_SIM_WORLD_SIZE` in `app_state_manager.h` |
+| Grid dimensions | 8 rows × 16 cols | `KIOSK_SIM_ROWS` / `KIOSK_SIM_COLS` in `app_state_manager.h` |
 | Boundary condition | Toroidal (wrap-around) | `sync_ghost_borders()` in `game_logic.c` |
-| Blue seed origin | row=20, col=10 (0-indexed) | `(r+21)*stride + (c+11)` where stride=52 |
-| Red seed origin | row=20, col=30 (0-indexed) | `(r+21)*stride + (c+31)` where stride=52 |
+| Red seed origin | row=0, col=0 (0-indexed, left half) | `(r+1)*stride + (c+1)` where stride=18 |
+| Blue seed origin | row=0, col=8 (0-indexed, right half) | `(r+1)*stride + (c+LOCAL_GRID_SIZE+1)` |
 | Seed size | 8 × 8 cells | `LOCAL_GRID_SIZE` in `config.h` |
 | Seed format | flat list of 64 ints (0/1), row-major: `seed[r*8+c]` | `file_io.c`: `(bitboard >> b) & 1` for b=0..63 |
 | Max generations | `max_generations` from batch input (default 1000) | `MAX_ROUNDS` in `core_types.h` |
+
+> **Note:** This configuration is identical to `run_isolated_match()` in `game_logic.c`. The Kiosk world and the Hyper-Worker world now use the same arena, ensuring that the match outcome visible on screen matches the leaderboard result.
 
 ---
 
@@ -163,12 +165,13 @@ The following is the complete reference implementation for `worker.py`. This is 
 import numpy as np
 from collections import deque
 
-# KI-Agent unterstützt: Constants mirror kiosk world config (app_state_manager.c / config.h)
-_KIOSK_ROWS     = 50
-_KIOSK_COLS     = 50
-_SEED_SIZE      = 8
-_BLUE_ORIGIN    = (20, 10)   # (row, col) 0-indexed in 50x50 grid
-_RED_ORIGIN     = (20, 30)   # (row, col) 0-indexed in 50x50 grid
+# KI-Agent unterstützt: Constants mirror kiosk world config (app_state_manager.h / config.h)
+# World is 8x16 — identical to run_isolated_match() in game_logic.c
+_KIOSK_ROWS  = 8            # LOCAL_GRID_SIZE
+_KIOSK_COLS  = 16           # LOCAL_GRID_SIZE * 2
+_SEED_SIZE   = 8
+_RED_ORIGIN  = (0, 0)       # left half:  rows 0-7, cols 0-7
+_BLUE_ORIGIN = (0, 8)       # right half: rows 0-7, cols 8-15
 _TEAM_RED       = 1
 _TEAM_BLUE      = 2
 _DEAD           = 0

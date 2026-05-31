@@ -12,7 +12,9 @@ typedef enum {
 } KioskSubState;
 
 // KI-Agent unterstützt: Named constants replacing magic numbers (ADR-0022)
-#define KIOSK_SIM_WORLD_SIZE      50  // world grid size for each kiosk simulation
+// KI-Agent unterstützt: Matches run_isolated_match() world exactly (rows=8, cols=16)
+#define KIOSK_SIM_ROWS  LOCAL_GRID_SIZE        //  8 rows  — single source of truth: config.h
+#define KIOSK_SIM_COLS  (LOCAL_GRID_SIZE * 2)  // 16 cols  — same 1:2 ratio as hyper-worker
 #define KIOSK_DEFAULT_MATCH_COUNT  4  // number of simultaneous matches shown
 
 typedef struct {

@@ -44,6 +44,47 @@ const Color THEME_HINT = { 130, 140, 160, 255 };   // Muted Grey-Blue for hints 
 const Color THEME_ACCENT = { 180, 190, 210, 255 }; // Call to action / Secondary Header
 const Color THEME_HIGHLIGHT = { 255, 255, 255, 40 }; // Selection Glow
 
+// KI-Agent unterstützt: Single source of truth for all kiosk pixel geometry (ADR-0022)
+// Pure function — no drawing, no Raylib calls, safe to call at any time.
+// All HUD proportions are derived from screen size and match count so the layout
+// scales correctly to any monitor resolution or match count.
+KioskLayout compute_kiosk_layout(int screen_w, int screen_h, int match_count) {
+    KioskLayout l = {0};
+    if (match_count < 1) match_count = 1;
+
+    // Near-square grid: ceil(sqrt(N)) columns, enough rows to fit all N matches.
+    // Examples: 4 → 2×2,  6 → 3×2,  9 → 3×3,  11 → 4×3 (1 empty slot).
+    l.grid_cols = (int)ceilf(sqrtf((float)match_count));
+    l.grid_rows = (match_count + l.grid_cols - 1) / l.grid_cols;
+
+    // Global chrome — fixed pixel heights (small enough for any ≥720p screen)
+    l.top_bar_h      = 44;
+    l.bottom_panel_h = 55;
+    l.pad            = 12;
+    l.separator_px   = 2;
+
+    // Quadrant pixel size: fill available area after chrome and inter-quad padding.
+    // Horizontal: pad on left, between every column, and on right → (cols+1) pads.
+    // Vertical:   starts immediately below top bar, one pad between rows, no inner top pad.
+    l.quad_w = (screen_w - l.pad * (l.grid_cols + 1)) / l.grid_cols;
+    l.quad_h = (screen_h - l.top_bar_h - l.bottom_panel_h
+                          - l.pad * (l.grid_rows - 1)) / l.grid_rows;
+
+    // Phase A: preserve current HUD pixel values — Phase B will make these proportional
+    l.header_h     = 26;
+    l.score_bar_h  = 14;
+    l.badge_h      = 0;   // not yet rendered; placeholder for Phase B
+    l.seed_cell_px = 5;
+
+    // Font sizes
+    l.font_name  = 16;
+    l.font_badge = 12;
+    l.font_score = 11;
+    l.font_cta   = 20;
+
+    return l;
+}
+
 // Helper to draw the grid (reused in multiple states)
 // KI-Agent unterstützt: Optimized Texture-Based Rendering for VcXsrv performance
 // --- NEW SHADER PIPELINE GLOBALS ---
@@ -1284,12 +1325,13 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                              screenHeight - 46, 20, THEME_ACCENT);
                     
                 } else if (kiosk_ctrl.current_sub_state == KIOSK_SUB_MULTICAM) {
-                    for (int i = 0; i < 4; i++) {
+                    // KI-Agent unterstützt: loop bound from match_count — not hardcoded 4 (ADR-0022)
+                    for (int i = 0; i < kiosk_ctrl.match_count; i++) {
                         DrawGridAndCellsCtx(&kiosk_ctrl.renders[i], config, kiosk_ctrl.sims[i].current_world, false);
                     }
 
                     // KI-Agent unterstützt: Per-quadrant HUD overlay — names, score bar, thumbnail (ADR-0021)
-                    for (int i = 0; i < 4; i++) {
+                    for (int i = 0; i < kiosk_ctrl.match_count; i++) {
                         Rectangle vp = kiosk_ctrl.renders[i].viewport_bounds;
                         int rx = (int)vp.x;
                         int ry = (int)vp.y;

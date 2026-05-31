@@ -44,4 +44,36 @@ void DrawGridAndCellsCtx(RenderContext *r_ctx, const GameConfig *config, const W
 // KI-Agent unterstützt: Clear accumulated shader trail from ping-pong buffers (ADR-0020)
 void clear_render_context_trail(RenderContext *ctx);
 
+// KI-Agent unterstützt: Proportional layout descriptor for the Kiosk multi-match grid (ADR-0022)
+// All pixel values are derived from screen size and match count — no magic numbers in draw code.
+typedef struct {
+    // Grid geometry — computed from match_count and screen dimensions
+    int grid_cols;       // columns in the match grid (e.g. 2 for 4 matches, 3 for 9)
+    int grid_rows;       // rows in the match grid
+    int quad_w;          // quadrant pixel width
+    int quad_h;          // quadrant pixel height
+    int pad;             // uniform padding between and around quadrants
+    int separator_px;    // cross-line thickness drawn between quadrants
+
+    // Per-quadrant HUD proportions — all derived from quad_h / quad_w
+    int header_h;        // name strip height at top of each quadrant
+    int score_bar_h;     // score bar height at bottom of each quadrant
+    int badge_h;         // metric-reason badge height (used from Phase B onward)
+    int seed_cell_px;    // pixel size of each cell in the 8x8 seed thumbnail
+
+    // Derived font sizes
+    int font_name;       // player name font size
+    int font_badge;      // metric reason label font size
+    int font_score;      // score number font size
+
+    // Global chrome areas
+    int top_bar_h;       // global top bar height
+    int bottom_panel_h;  // footer panel height (holds CTA + progress bar)
+    int font_cta;        // CTA instruction font size
+} KioskLayout;
+
+// Pure function: derives all pixel values from screen size and match count.
+// No drawing, no Raylib calls, no side effects — safe to call any time.
+KioskLayout compute_kiosk_layout(int screen_w, int screen_h, int match_count);
+
 #endif // RENDERER_H

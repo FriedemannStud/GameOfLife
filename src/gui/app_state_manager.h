@@ -11,23 +11,32 @@ typedef enum {
     KIOSK_SUB_MULTICAM
 } KioskSubState;
 
+// KI-Agent unterstützt: Named constants replacing magic numbers (ADR-0022)
+#define KIOSK_SIM_WORLD_SIZE      50  // world grid size for each kiosk simulation
+#define KIOSK_DEFAULT_MATCH_COUNT  4  // number of simultaneous matches shown
+
 typedef struct {
     KioskSubState current_sub_state;
     float state_timer;
+    int   match_count;               // single source of truth for all kiosk loops (ADR-0022)
 
-    RenderContext* renders;
-    SimulationContext* sims;
+    RenderContext    *renders;       // dynamically allocated array (match_count elements)
+    SimulationContext *sims;         // dynamically allocated array (match_count elements)
     bool initialized;
-    LeaderboardData cached_lb;
-    HighlightData cached_highlights;
+    LeaderboardData   cached_lb;
+    HighlightData     cached_highlights;
 
-    // KI-Agent unterstützt: Per-quadrant live population for score bar (ADR-0021)
-    int quad_red_pop[4];
-    int quad_blue_pop[4];
+    // KI-Agent unterstützt: Per-quadrant live population — dynamic arrays (ADR-0022)
+    int *quad_red_pop;               // length == match_count
+    int *quad_blue_pop;              // length == match_count
 } KioskController;
 
 extern KioskController kiosk_ctrl;
 void reset_kiosk_timers(void);
+
+// KI-Agent unterstützt: Explicit lifecycle for kiosk GPU and simulation resources (ADR-0022)
+void init_kiosk_controller(KioskController *ctrl, int match_count, int screen_w, int screen_h);
+void free_kiosk_controller(KioskController *ctrl);
 
 // KI-Agent unterstützt: Ignition time accessors — single source of truth (ADR-0020)
 double get_ignition_start_time(void);

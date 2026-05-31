@@ -65,14 +65,8 @@ int main(int argc, char *argv[]) {
 
     free_render_context(&global_render);
     free_simulation_context(&global_sim);
-    
-    if (kiosk_ctrl.initialized) {
-        for (int i = 0; i < 4; i++) {
-            free_render_context(&kiosk_ctrl.renders[i]);
-            free_simulation_context(&kiosk_ctrl.sims[i]);
-        }
-    }
-    
+    // KI-Agent unterstützt: Explicit kiosk lifecycle cleanup (ADR-0022)
+    free_kiosk_controller(&kiosk_ctrl);
     close_renderer();
     network_cleanup();
     

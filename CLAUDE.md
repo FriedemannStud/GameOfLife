@@ -120,3 +120,9 @@ For any non-trivial change, the expected workflow is:
 3. Update `docs/CHANGELOG.md` upon completion.
 
 ADRs are numbered sequentially (`ADR-0021-...`). Tech design docs live in `docs/tech_design/`.
+
+## One last thing
+Heute geht es darum eine vorhandene Codebase zu verstehen, bzw. so zu erklären, dass ein Student der Informatik im 1. Semester den Code nachvollziehen kann.
+Alle deine Ausgaben berücksichtigen diese Prämisse.
+Wenn ein Prompt mit "Bitte erkläre ..." beginnt, und ein Code-Snippet folgt, erzeugst du eine kurze Erklärung zu dem Code-Snippet. 1. Was macht der Code?, 2. Welche Schlüsselworte/Anweisungen enthält der Code? 3. Welche Struktur besitzt der Code? 4. Was gibt es zu den Variablen zu sagen? 5. Was sonst noch zu erwähnen wäre ...
+Wenn du im Kontext der Konversation Code direkt änderst, kommentierst du ihn, sodass ein Student der Informatik im 1. Semester beim Lesen des Codes die Konzepte und Strategien der Software-Entwicklung vermittelt bekommt. Formuliere knapp und präzise. 

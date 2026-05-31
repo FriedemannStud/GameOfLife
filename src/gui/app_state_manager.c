@@ -14,19 +14,80 @@ static float interactive_time_accumulator = 0.0f;
 double get_ignition_start_time(void) { return ignitionStartTime; }
 void set_ignition_start_time(double t) { ignitionStartTime = t; }
 
-static SimulationContext kiosk_sims[4];
-static RenderContext kiosk_renders[4];
-
+// KI-Agent unterstützt: Dynamic arrays replace static [4] buffers (ADR-0022)
+// Resources are allocated in init_kiosk_controller and freed in free_kiosk_controller.
 KioskController kiosk_ctrl = {
     .current_sub_state = KIOSK_SUB_LEADERBOARD,
-    .state_timer = 0.0f,
-    .renders = kiosk_renders,
-    .sims = kiosk_sims,
-    .initialized = false,
-    // KI-Agent unterstützt: Zero-initialize per-quadrant population arrays (ADR-0021)
-    .quad_red_pop = {0, 0, 0, 0},
-    .quad_blue_pop = {0, 0, 0, 0}
+    .state_timer       = 0.0f,
+    .match_count       = 0,
+    .renders           = NULL,
+    .sims              = NULL,
+    .initialized       = false,
+    .quad_red_pop      = NULL,
+    .quad_blue_pop     = NULL
 };
+
+// KI-Agent unterstützt: Free all GPU and simulation resources owned by the kiosk (ADR-0022)
+// Safe to call only when ctrl->initialized == true (all arrays are valid).
+void free_kiosk_controller(KioskController *ctrl) {
+    if (!ctrl || !ctrl->initialized) return;
+
+    for (int i = 0; i < ctrl->match_count; i++) {
+        free_render_context(&ctrl->renders[i]);
+        free_simulation_context(&ctrl->sims[i]);
+    }
+
+    free(ctrl->renders);        ctrl->renders       = NULL;
+    free(ctrl->sims);           ctrl->sims          = NULL;
+    free(ctrl->quad_red_pop);   ctrl->quad_red_pop  = NULL;
+    free(ctrl->quad_blue_pop);  ctrl->quad_blue_pop = NULL;
+
+    ctrl->match_count = 0;
+    ctrl->initialized = false;
+}
+
+// KI-Agent unterstützt: Allocate and initialize all kiosk resources (ADR-0022)
+// Viewport geometry is derived from compute_kiosk_layout — no magic pixel numbers here.
+void init_kiosk_controller(KioskController *ctrl, int match_count,
+                            int screen_w, int screen_h) {
+    if (!ctrl) return;
+    if (ctrl->initialized) free_kiosk_controller(ctrl);
+
+    ctrl->match_count  = match_count;
+    ctrl->sims         = (SimulationContext*)calloc(match_count, sizeof(SimulationContext));
+    ctrl->renders      = (RenderContext*)calloc(match_count, sizeof(RenderContext));
+    ctrl->quad_red_pop = (int*)calloc(match_count, sizeof(int));
+    ctrl->quad_blue_pop = (int*)calloc(match_count, sizeof(int));
+
+    // On partial allocation failure: clean up manually and bail out
+    if (!ctrl->sims || !ctrl->renders || !ctrl->quad_red_pop || !ctrl->quad_blue_pop) {
+        free(ctrl->sims);         ctrl->sims         = NULL;
+        free(ctrl->renders);      ctrl->renders       = NULL;
+        free(ctrl->quad_red_pop); ctrl->quad_red_pop  = NULL;
+        free(ctrl->quad_blue_pop);ctrl->quad_blue_pop = NULL;
+        ctrl->match_count = 0;
+        return;
+    }
+
+    KioskLayout layout = compute_kiosk_layout(screen_w, screen_h, match_count);
+
+    for (int i = 0; i < match_count; i++) {
+        int col = i % layout.grid_cols;
+        int row = i / layout.grid_cols;
+        Rectangle vp = {
+            (float)(layout.pad + col * (layout.quad_w + layout.pad)),
+            (float)(layout.top_bar_h + row * (layout.quad_h + layout.pad)),
+            (float)layout.quad_w,
+            (float)layout.quad_h
+        };
+        init_simulation_context(&ctrl->sims[i],
+                                KIOSK_SIM_WORLD_SIZE, KIOSK_SIM_WORLD_SIZE);
+        init_render_context(&ctrl->renders[i],
+                            KIOSK_SIM_WORLD_SIZE, KIOSK_SIM_WORLD_SIZE, vp);
+    }
+
+    ctrl->initialized = true;
+}
 
 static double time_since_last_input = 0.0;
 
@@ -35,7 +96,7 @@ void reset_kiosk_timers(void) {
     kiosk_ctrl.current_sub_state = KIOSK_SUB_LEADERBOARD;
     // KI-Agent unterstützt: Clear stale shader trail buffers to avoid visual artifacts (ADR-0020)
     if (kiosk_ctrl.initialized) {
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < kiosk_ctrl.match_count; i++) {
             clear_render_context_trail(&kiosk_ctrl.renders[i]);
         }
     }
@@ -105,10 +166,11 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
         printf("--- Highlights Received: %d matches ---\n", hd.count);
         
         if (current_state == STATE_KIOSK_MODE) {
-            for (int i = 0; i < 4 && i < hd.count; i++) {
-                int stride = 50 + 2;
+            // KI-Agent unterstützt: loop bound and world size from named constants (ADR-0022)
+            for (int i = 0; i < kiosk_ctrl.match_count && i < hd.count; i++) {
+                int stride = KIOSK_SIM_WORLD_SIZE + 2;
                 World* w = kiosk_ctrl.sims[i].current_world;
-                for (int k = 0; k < (50 + 2) * stride; k++) w->grid[k] = DEAD;
+                for (int k = 0; k < (KIOSK_SIM_WORLD_SIZE + 2) * stride; k++) w->grid[k] = DEAD;
                 if (w->chunk_map) memset(w->chunk_map, 0, w->chunk_rows * w->chunk_cols);
                 for (int r = 0; r < 8; r++) {
                     for (int c = 0; c < 8; c++) {
@@ -181,24 +243,9 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
             
         case STATE_KIOSK_MODE:
             if (!kiosk_ctrl.initialized) {
-                int w = GetScreenWidth();
-                int h = GetScreenHeight();
-                // KI-Agent unterstützt: Reserve space for global top bar and bottom controls (ADR-0021)
-                int top_offset = 44;  // global top bar (40px) + small gap
-                int bot_offset = 55;  // PRESS [P] hint + progress bar
-                int pad = 12;
-                int q_w = (w - pad * 3) / 2;
-                int q_h = (h - top_offset - bot_offset - pad) / 2;
-                for (int i = 0; i < 4; i++) {
-                    int col = i % 2;
-                    int row = i / 2;
-                    float rx = pad + col * (q_w + pad);
-                    float ry = top_offset + row * (q_h + pad);
-                    init_simulation_context(&kiosk_ctrl.sims[i], 50, 50);
-                    kiosk_ctrl.renders[i].viewport_bounds = (Rectangle){ rx, ry, (float)q_w, (float)q_h };
-                    init_render_context(&kiosk_ctrl.renders[i], 50, 50, (Rectangle){ rx, ry, (float)q_w, (float)q_h });
-                }
-                kiosk_ctrl.initialized = true;
+                // KI-Agent unterstützt: Replaced inline geometry with init_kiosk_controller (ADR-0022)
+                init_kiosk_controller(&kiosk_ctrl, KIOSK_DEFAULT_MATCH_COUNT,
+                                      GetScreenWidth(), GetScreenHeight());
                 reset_kiosk_timers();
             }
             
@@ -215,7 +262,7 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
                 if (kiosk_time_accumulator >= 0.1f) {
                     kiosk_time_accumulator = 0.0f;
                     // KI-Agent unterstützt: Store per-quadrant pop for score bar (ADR-0021)
-                    for (int i = 0; i < 4; i++) {
+                    for (int i = 0; i < kiosk_ctrl.match_count; i++) {
                         update_generation_ctx(&kiosk_ctrl.sims[i],
                                               &kiosk_ctrl.quad_red_pop[i],
                                               &kiosk_ctrl.quad_blue_pop[i]);
@@ -230,7 +277,7 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
                 
                 if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
                     Vector2 mousePos = GetMousePosition();
-                    for (int i = 0; i < 4; i++) {
+                    for (int i = 0; i < kiosk_ctrl.match_count; i++) {
                         if (CheckCollisionPointRec(mousePos, kiosk_ctrl.renders[i].viewport_bounds)) {
                             // KI-Agent unterstützt: Use reset_simulation_context to maintain
                             // world_a/world_b ownership invariant (ADR-0020 fix)
@@ -253,7 +300,7 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
                             
                             for (int r = 0; r < 8; r++) {
                                 for (int c = 0; c < 8; c++) {
-                                    int src_stride = 50 + 2;
+                                    int src_stride = KIOSK_SIM_WORLD_SIZE + 2;
                                     World* kiosk_w = kiosk_ctrl.sims[i].current_world;
                                     if (kiosk_w->grid[(r+21)*src_stride + (c+11)] == TEAM_BLUE) {
                                         sim_ctx->current_world->grid[(center_r + r + 1)*stride + (center_c_b + c + 1)] = TEAM_BLUE;

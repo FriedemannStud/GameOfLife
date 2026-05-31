@@ -1,6 +1,6 @@
 # Project briefing and work instructions for Gemini
 
-Hello Gemini. Before you start working on this project, you must complete the following steps and acknowledge and follow the rules below as your primary work instructions for this entire session.
+Hi Claude. Before you start working on this project, you must complete the following steps and acknowledge and follow the rules below as your primary work instructions for this entire session.
 
 ## Phase 1: Initial Project Analysis (Do this now)
 

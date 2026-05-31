@@ -39,11 +39,11 @@ Every pixel size must come from `KioskLayout` — zero new magic numbers allowed
 
 ### Pre-flight check before starting Phase B
 
-- [ ] **Pre-flight:** Confirm clean build baseline.
-    - [ ] **Action:** Run `make` in the project root.
-    - [ ] **Verification:** Terminal output ends with the `biotope` link line and shows **zero warnings**.
-    - [ ] **Action:** Run `./build/biotope`, wait 5 seconds, close the window.
-    - [ ] **Verification:** App starts and closes without crash. If either check fails, resolve before continuing.
+- [x] **Pre-flight:** Confirm clean build baseline.
+    - [x] **Action:** Run `make` in the project root.
+    - [x] **Verification:** Terminal output ends with the `biotope` link line and shows **zero warnings**.
+    - [x] **Action:** Run `./build/biotope`, wait 5 seconds, close the window.
+    - [x] **Verification:** App starts and closes without crash. If either check fails, resolve before continuing.
 
 ---
 
@@ -53,54 +53,54 @@ Every pixel size must come from `KioskLayout` — zero new magic numbers allowed
 their own dedicated static functions. Zero visual change. This is the prerequisite for all
 subsequent steps — do not skip.*
 
-- [ ] **Step B.1.1: Add forward declarations for the two new functions**
-    - [ ] **Action:** Open `src/gui/renderer.c`. Find the line that begins
+- [x] **Step B.1.1: Add forward declarations for the two new functions**
+    - [x] **Action:** Open `src/gui/renderer.c`. Find the line that begins
       `void draw_current_state(AppState state, ...` (around line 900 after Phase A).
       Directly **above** that function definition, insert these two lines:
         ```c
         static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, int screen_h);
         static void draw_kiosk_multicam(const KioskController *ctrl, int screen_w, int screen_h);
         ```
-    - [ ] **Verification:** Run `make`. Zero warnings expected (forward declarations alone introduce no warnings).
+    - [x] **Verification:** Run `make`. Zero warnings expected (forward declarations alone introduce no warnings).
 
-- [ ] **Step B.1.2: Create `draw_kiosk_leaderboard()` function body**
-    - [ ] **Action:** Scroll to the very **end** of `renderer.c` (after `draw_current_state()` closes).
+- [x] **Step B.1.2: Create `draw_kiosk_leaderboard()` function body**
+    - [x] **Action:** Scroll to the very **end** of `renderer.c` (after `draw_current_state()` closes).
       Add a new function:
         ```c
         // KI-Agent unterstützt: Dedicated leaderboard render function extracted from draw_current_state (ADR-0022)
         static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, int screen_h) {
         ```
-    - [ ] **Action:** Copy the entire content of the `if (kiosk_ctrl.current_sub_state == KIOSK_SUB_LEADERBOARD)`
+    - [x] **Action:** Copy the entire content of the `if (kiosk_ctrl.current_sub_state == KIOSK_SUB_LEADERBOARD)`
       block from inside `draw_current_state()` and paste it as the body of this new function.
       Close the function with `}`.
-    - [ ] **Action:** Inside the pasted body, replace every occurrence of `screenWidth` with `screen_w`
+    - [x] **Action:** Inside the pasted body, replace every occurrence of `screenWidth` with `screen_w`
       and every occurrence of `screenHeight` with `screen_h`.
-    - [ ] **Action:** Replace every occurrence of `kiosk_ctrl` with `ctrl->` (adjust member access
+    - [x] **Action:** Replace every occurrence of `kiosk_ctrl` with `ctrl->` (adjust member access
       accordingly, e.g. `kiosk_ctrl.cached_lb` → `ctrl->cached_lb`).
-    - [ ] **Verification:** Run `make`. Expect warnings about the function being defined but not yet
+    - [x] **Verification:** Run `make`. Expect warnings about the function being defined but not yet
       called — that is acceptable at this step. Expect **zero errors**.
 
-- [ ] **Step B.1.3: Create `draw_kiosk_multicam()` function body**
-    - [ ] **Action:** Directly after the closing `}` of `draw_kiosk_leaderboard()`, add:
+- [x] **Step B.1.3: Create `draw_kiosk_multicam()` function body**
+    - [x] **Action:** Directly after the closing `}` of `draw_kiosk_leaderboard()`, add:
         ```c
         // KI-Agent unterstützt: Dedicated multicam render function extracted from draw_current_state (ADR-0022)
         static void draw_kiosk_multicam(const KioskController *ctrl, int screen_w, int screen_h) {
         ```
-    - [ ] **Action:** Copy the entire content of the
+    - [x] **Action:** Copy the entire content of the
       `else if (kiosk_ctrl.current_sub_state == KIOSK_SUB_MULTICAM)` block and paste it as the body.
       Close with `}`.
-    - [ ] **Action:** Replace `screenWidth` → `screen_w`, `screenHeight` → `screen_h`,
+    - [x] **Action:** Replace `screenWidth` → `screen_w`, `screenHeight` → `screen_h`,
       `kiosk_ctrl` → `ctrl->` (member access) throughout the pasted body.
-    - [ ] **Action:** The `DrawGridAndCellsCtx` calls pass `config` as second argument.
+    - [x] **Action:** The `DrawGridAndCellsCtx` calls pass `config` as second argument.
       Since `config` is `(void)`d inside that function (ADR-0020), replace it with `NULL`:
         ```c
         DrawGridAndCellsCtx(&ctrl->renders[i], NULL, ctrl->sims[i].current_world, false);
         ```
-    - [ ] **Verification:** Run `make`. Zero errors expected. Unused-function warnings still
+    - [x] **Verification:** Run `make`. Zero errors expected. Unused-function warnings still
       acceptable at this point.
 
-- [ ] **Step B.1.4: Replace inline blocks in `draw_current_state()` with function calls**
-    - [ ] **Action:** In `draw_current_state()`, locate the `case STATE_KIOSK_MODE:` block.
+- [x] **Step B.1.4: Replace inline blocks in `draw_current_state()` with function calls**
+    - [x] **Action:** In `draw_current_state()`, locate the `case STATE_KIOSK_MODE:` block.
       Replace the entire `if / else if` structure (both render blocks) with:
         ```c
         case STATE_KIOSK_MODE:
@@ -110,11 +110,11 @@ subsequent steps — do not skip.*
                 draw_kiosk_multicam(&kiosk_ctrl, screenWidth, screenHeight);
             break;
         ```
-    - [ ] **Verification:** Run `make`. **Zero warnings, zero errors.** This is the go/no-go gate
+    - [x] **Verification:** Run `make`. **Zero warnings, zero errors.** This is the go/no-go gate
       for the rest of Phase B.
 
-- [ ] **Step B.1.5: Interactive test — confirm zero visual change**
-    - [ ] **Verification (Interactive Test):**
+- [x] **Step B.1.5: Interactive test — confirm zero visual change**
+    - [x] **Verification (Interactive Test):**
         1. Start the app: `./build/biotope`
         2. The leaderboard screen appears. Observe: layout, text positions, progress bar, and
            `PRESS [P] TO PLAY` look **identical** to before this step.
@@ -132,8 +132,8 @@ subsequent steps — do not skip.*
 *Goal: Remove the mouse-based match replay trigger and replace it with keyboard keys `[1]`–`[4]`.
 Update the on-screen instruction to reflect the real interaction.*
 
-- [ ] **Step B.2.1: Remove the mouse handler in `app_state_manager.c`**
-    - [ ] **Action:** Open `src/gui/app_state_manager.c`. Find the block:
+- [x] **Step B.2.1: Remove the mouse handler in `app_state_manager.c`**
+    - [x] **Action:** Open `src/gui/app_state_manager.c`. Find the block:
         ```c
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             Vector2 mousePos = GetMousePosition();
@@ -142,10 +142,10 @@ Update the on-screen instruction to reflect the real interaction.*
         ```
       Delete the entire `if (IsMouseButtonPressed(...))` block including its closing braces.
       Keep everything outside this block intact.
-    - [ ] **Verification:** Run `make`. Zero warnings.
+    - [x] **Verification:** Run `make`. Zero warnings.
 
-- [ ] **Step B.2.2: Add keyboard replay trigger**
-    - [ ] **Action:** In the same `KIOSK_SUB_MULTICAM` section of `update_app_state()`, directly
+- [x] **Step B.2.2: Add keyboard replay trigger**
+    - [x] **Action:** In the same `KIOSK_SUB_MULTICAM` section of `update_app_state()`, directly
       after the `kiosk_ctrl.state_timer > 30.0f` transition block, add:
         ```c
         // KI-Agent unterstützt: Keyboard match selection replaces mouse click (ADR-0022)
@@ -163,10 +163,10 @@ Update the on-screen instruction to reflect the real interaction.*
         ```
       **Note:** `KEY_ONE + i` maps to `KEY_ONE` (i=0), `KEY_TWO` (i=1), etc.
       This is valid in Raylib because the KEY_* constants for digit keys are sequential.
-    - [ ] **Verification:** Run `make`. Zero warnings.
+    - [x] **Verification:** Run `make`. Zero warnings.
 
-- [ ] **Step B.2.3: Update the on-screen CTA in `draw_kiosk_multicam()`**
-    - [ ] **Action:** Open `src/gui/renderer.c`. In `draw_kiosk_multicam()`, find:
+- [x] **Step B.2.3: Update the on-screen CTA in `draw_kiosk_multicam()`**
+    - [x] **Action:** Open `src/gui/renderer.c`. In `draw_kiosk_multicam()`, find:
         ```c
         DrawText("CLICK ANY MATCH TO VIEW REPLAY", ...
         ```
@@ -176,10 +176,10 @@ Update the on-screen instruction to reflect the real interaction.*
                  screen_w - MeasureText("[1-4] WATCH MATCH  |  [P] PLAY", 16) - 20,
                  12, 16, THEME_ACCENT);
         ```
-    - [ ] **Verification:** Run `make`. Zero warnings.
+    - [x] **Verification:** Run `make`. Zero warnings.
 
-- [ ] **Step B.2.4: Interactive test — keyboard replay**
-    - [ ] **Verification (Interactive Test):**
+- [x] **Step B.2.4: Interactive test — keyboard replay**
+    - [x] **Verification (Interactive Test):**
         1. Start `./build/biotope`. Wait for the multicam view (15 s).
         2. Read the top-right corner. It should now say
            `[1-4] WATCH MATCH  |  [P] PLAY` — not "CLICK ANY MATCH".
@@ -198,8 +198,8 @@ Update the on-screen instruction to reflect the real interaction.*
 All changes confined to `draw_kiosk_leaderboard()` and `compute_kiosk_layout()`.
 After each step: compile. Interactive test at end of Part 3.*
 
-- [ ] **Step B.3: Footer backing panel — leaderboard**
-    - [ ] **Action:** Open `src/gui/renderer.c`. In `draw_kiosk_leaderboard()`, find the section
+- [x] **Step B.3: Footer backing panel — leaderboard**
+    - [x] **Action:** Open `src/gui/renderer.c`. In `draw_kiosk_leaderboard()`, find the section
       that draws the progress bar and the `PRESS [P] TO PLAY` text (currently near the bottom
       of the function). **Before** those drawing calls, insert:
         ```c
@@ -208,14 +208,14 @@ After each step: compile. Interactive test at end of Part 3.*
         int footer_y = screen_h - layout.bottom_panel_h;
         DrawRectangle(0, footer_y, screen_w, layout.bottom_panel_h, THEME_HUD);
         ```
-    - [ ] **Action:** Update the y-coordinates of the progress bar and CTA text to use
+    - [x] **Action:** Update the y-coordinates of the progress bar and CTA text to use
       `footer_y` as their baseline instead of the current hardcoded values:
         - Progress bar: `int bar_y = screen_h - 22;` → `int bar_y = footer_y + layout.bottom_panel_h - 14;`
         - CTA text: `screen_h - 46` → `footer_y + 8`
-    - [ ] **Verification:** Run `make`. Zero warnings.
+    - [x] **Verification:** Run `make`. Zero warnings.
 
-- [ ] **Step B.4: QR code as a dedicated panel**
-    - [ ] **Action:** In `draw_kiosk_leaderboard()`, find the QR placeholder drawing block
+- [x] **Step B.4: QR code as a dedicated panel**
+    - [x] **Action:** In `draw_kiosk_leaderboard()`, find the QR placeholder drawing block
       (the section starting with `int qr_size = 90;`). Replace the entire block with the
       following panel-based layout:
         ```c
@@ -258,10 +258,10 @@ After each step: compile. Interactive test at end of Part 3.*
         DrawText(cta2, panel_x + (panel_w - cta2_w) / 2,
                  qr_y + qr_size + 14 + font_cta + 6, font_url, THEME_BLUE);
         ```
-    - [ ] **Verification:** Run `make`. Zero warnings.
+    - [x] **Verification:** Run `make`. Zero warnings.
 
-- [ ] **Step B.5: Top-3 leaderboard row highlights**
-    - [ ] **Action:** In `draw_kiosk_leaderboard()`, find the section that defines `rowHeight`
+- [x] **Step B.5: Top-3 leaderboard row highlights**
+    - [x] **Action:** In `draw_kiosk_leaderboard()`, find the section that defines `rowHeight`
       and the loop that draws leaderboard entries. Currently `rowHeight = 30` is hardcoded.
       Replace it with a proportional value:
         ```c
@@ -274,7 +274,7 @@ After each step: compile. Interactive test at end of Part 3.*
         if (rowHeight < 28) rowHeight = 28;
         ```
       **Note:** `startY` is already defined in the function; `footer_y` was added in B.3.
-    - [ ] **Action:** Inside the entry-drawing loop, before the `DrawText` calls for rank 1, 2, 3,
+    - [x] **Action:** Inside the entry-drawing loop, before the `DrawText` calls for rank 1, 2, 3,
       add a semi-transparent background rectangle:
         ```c
         if (i < 3) {
@@ -285,18 +285,18 @@ After each step: compile. Interactive test at end of Part 3.*
                           610, rowHeight, row_bg);
         }
         ```
-    - [ ] **Verification:** Run `make`. Zero warnings.
+    - [x] **Verification:** Run `make`. Zero warnings.
 
-- [ ] **Step B.6: Column header rename — "STAMINA" → "ENDURANCE"**
-    - [ ] **Action:** In `draw_kiosk_leaderboard()`, find:
+- [x] **Step B.6: Column header rename — "STAMINA" → "ENDURANCE"**
+    - [x] **Action:** In `draw_kiosk_leaderboard()`, find:
         ```c
         DrawText("STAMINA",  screenWidth/2 + 260, startY, 20, THEME_HINT);
         ```
       Replace `"STAMINA"` with `"ENDURANCE"`.
-    - [ ] **Verification:** Run `make`. Zero warnings.
+    - [x] **Verification:** Run `make`. Zero warnings.
 
-- [ ] **Step B.3–B.6 Interactive test — leaderboard improvements**
-    - [ ] **Verification (Interactive Test — requires Docker backend):**
+- [x] **Step B.3–B.6 Interactive test — leaderboard improvements**
+    - [x] **Verification (Interactive Test — requires Docker backend):**
         1. Start the backend: `docker compose up` (in a separate terminal). Wait for
            `Application startup complete.`
         2. Start the app: `./build/biotope`
@@ -319,8 +319,8 @@ After each step: compile. Interactive test at end of Part 3.*
 larger thumbnails. All changes confined to `draw_kiosk_multicam()` and `compute_kiosk_layout()`.
 After each step: compile. Interactive test at end of Part 4.*
 
-- [ ] **Step B.7: Score bar — proportional height**
-    - [ ] **Action:** Open `src/gui/renderer.c`. In `compute_kiosk_layout()`, find the line:
+- [x] **Step B.7: Score bar — proportional height**
+    - [x] **Action:** Open `src/gui/renderer.c`. In `compute_kiosk_layout()`, find the line:
         ```c
         l.score_bar_h = 14;
         ```
@@ -330,20 +330,20 @@ After each step: compile. Interactive test at end of Part 4.*
         l.score_bar_h = l.quad_h / 18;
         if (l.score_bar_h < 20) l.score_bar_h = 20;
         ```
-    - [ ] **Action:** In `draw_kiosk_multicam()`, find the score-bar drawing section
+    - [x] **Action:** In `draw_kiosk_multicam()`, find the score-bar drawing section
       (`int bar_y = ry + qh - 14;`). Update it:
         ```c
         KioskLayout layout = compute_kiosk_layout(screen_w, screen_h, ctrl->match_count);
         ```
       Add this call once at the **top** of `draw_kiosk_multicam()` (before the simulation
       rendering loop) so all subsequent steps can use `layout.*` values.
-    - [ ] **Action:** Replace `int bar_y = ry + qh - 14;` with:
+    - [x] **Action:** Replace `int bar_y = ry + qh - 14;` with:
         ```c
         int bar_y = ry + qh - layout.score_bar_h;
         ```
-    - [ ] **Action:** Replace the hardcoded `14` in `DrawRectangle(rx, bar_y, qw, 14, ...)` calls
+    - [x] **Action:** Replace the hardcoded `14` in `DrawRectangle(rx, bar_y, qw, 14, ...)` calls
       with `layout.score_bar_h`.
-    - [ ] **Action:** Derive the score font size from bar height. Replace the hardcoded font
+    - [x] **Action:** Derive the score font size from bar height. Replace the hardcoded font
       size `11` in the population number `DrawText` calls with:
         ```c
         int score_font = (int)(layout.score_bar_h * 0.72f);
@@ -351,10 +351,10 @@ After each step: compile. Interactive test at end of Part 4.*
         ```
       Then use `score_font` in the two `DrawText` calls that render the red and blue
       population numbers.
-    - [ ] **Verification:** Run `make`. Zero warnings.
+    - [x] **Verification:** Run `make`. Zero warnings.
 
-- [ ] **Step B.8: Multicam screen title**
-    - [ ] **Action:** In `draw_kiosk_multicam()`, find:
+- [x] **Step B.8: Multicam screen title**
+    - [x] **Action:** In `draw_kiosk_multicam()`, find:
         ```c
         DrawText("WUSEL-MULTICAM KIOSK MODE", 20, 10, 20, THEME_BLUE);
         ```
@@ -362,10 +362,10 @@ After each step: compile. Interactive test at end of Part 4.*
         ```c
         DrawText("LIVE BATTLES", 20, 10, 20, THEME_BLUE);
         ```
-    - [ ] **Verification:** Run `make`. Zero warnings.
+    - [x] **Verification:** Run `make`. Zero warnings.
 
-- [ ] **Step B.9: Quadrant separator cross-line**
-    - [ ] **Action:** In `draw_kiosk_multicam()`, after the two rendering loops
+- [x] **Step B.9: Quadrant separator cross-line**
+    - [x] **Action:** In `draw_kiosk_multicam()`, after the two rendering loops
       (after the closing `}` of the HUD overlay loop), add:
         ```c
         // KI-Agent unterstützt: Visible cross-line separating quadrants (ADR-0022)
@@ -400,10 +400,10 @@ After each step: compile. Interactive test at end of Part 4.*
       **Note:** The `layout` local variable for the separator block is independent of the one
       declared in B.7. If B.7 already added `KioskLayout layout = ...` at the top of the
       function, reuse that variable and remove the duplicate declaration here.
-    - [ ] **Verification:** Run `make`. Zero warnings.
+    - [x] **Verification:** Run `make`. Zero warnings.
 
-- [ ] **Step B.10: `metric_reason` as a badge below the name strip**
-    - [ ] **Action:** In `compute_kiosk_layout()`, update the Phase-A placeholder:
+- [x] **Step B.10: `metric_reason` as a badge below the name strip**
+    - [x] **Action:** In `compute_kiosk_layout()`, update the Phase-A placeholder:
         ```c
         l.badge_h = 0;   // not yet rendered (Phase B)
         ```
@@ -413,7 +413,7 @@ After each step: compile. Interactive test at end of Part 4.*
         l.badge_h = (int)(l.header_h * 0.85f);
         if (l.badge_h < 16) l.badge_h = 16;
         ```
-    - [ ] **Action:** In `compute_kiosk_layout()`, update `header_h` to accommodate two rows:
+    - [x] **Action:** In `compute_kiosk_layout()`, update `header_h` to accommodate two rows:
         ```c
         l.header_h = 26;
         ```
@@ -422,7 +422,7 @@ After each step: compile. Interactive test at end of Part 4.*
         // Combined height: name row + badge row
         l.header_h = 26 + l.badge_h;
         ```
-    - [ ] **Action:** In `draw_kiosk_multicam()`, find the header-strip drawing block for each
+    - [x] **Action:** In `draw_kiosk_multicam()`, find the header-strip drawing block for each
       quadrant. Currently it draws the name strip (26 px) and places `metric_reason` right-aligned
       within it. Update as follows:
         - Keep the name strip at its current height (`layout.header_h - layout.badge_h` px for
@@ -446,10 +446,10 @@ After each step: compile. Interactive test at end of Part 4.*
                          layout.font_badge, THEME_ACCENT);
             }
             ```
-    - [ ] **Verification:** Run `make`. Zero warnings.
+    - [x] **Verification:** Run `make`. Zero warnings.
 
-- [ ] **Step B.11: Seed thumbnails — larger cells**
-    - [ ] **Action:** In `compute_kiosk_layout()`, replace:
+- [x] **Step B.11: Seed thumbnails — larger cells**
+    - [x] **Action:** In `compute_kiosk_layout()`, replace:
         ```c
         l.seed_cell_px = 5;
         ```
@@ -459,33 +459,33 @@ After each step: compile. Interactive test at end of Part 4.*
         l.seed_cell_px = l.quad_h / 30;
         if (l.seed_cell_px < 7) l.seed_cell_px = 7;
         ```
-    - [ ] **Action:** In `draw_kiosk_multicam()`, find the thumbnail drawing section.
+    - [x] **Action:** In `draw_kiosk_multicam()`, find the thumbnail drawing section.
       Replace the hardcoded `int thumb_cell = 5;` with:
         ```c
         int thumb_cell = layout.seed_cell_px;
         ```
       The rest of the thumbnail drawing code uses `thumb_cell` throughout, so this single
       change propagates to all thumbnail geometry (backing rect, cell drawing, gap).
-    - [ ] **Verification:** Run `make`. Zero warnings.
+    - [x] **Verification:** Run `make`. Zero warnings.
 
-- [ ] **Step B.11 — also: Footer backing panel for multicam**
-    - [ ] **Action:** At the top of `draw_kiosk_multicam()`, directly after the `layout`
+- [x] **Step B.11 — also: Footer backing panel for multicam**
+    - [x] **Action:** At the top of `draw_kiosk_multicam()`, directly after the `layout`
       declaration (added in B.7), insert:
         ```c
         // KI-Agent unterstützt: Solid footer panel — same pattern as leaderboard (ADR-0022)
         int footer_y = screen_h - layout.bottom_panel_h;
         DrawRectangle(0, footer_y, screen_w, layout.bottom_panel_h, THEME_HUD);
         ```
-    - [ ] **Action:** Update the progress bar y-position in `draw_kiosk_multicam()`:
+    - [x] **Action:** Update the progress bar y-position in `draw_kiosk_multicam()`:
         - Find `int bar_y2 = screenHeight - 22;` (or `screen_h - 22` after B.1 rename).
         - Replace with `int bar_y2 = footer_y + layout.bottom_panel_h - 14;`
-    - [ ] **Action:** Update the `PRESS [P] TO PLAY` y-position:
+    - [x] **Action:** Update the `PRESS [P] TO PLAY` y-position:
         - Find `screen_h - 46` (or equivalent).
         - Replace with `footer_y + 8`.
-    - [ ] **Verification:** Run `make`. Zero warnings.
+    - [x] **Verification:** Run `make`. Zero warnings.
 
-- [ ] **Step B.7–B.11 Interactive test — multicam improvements**
-    - [ ] **Verification (Interactive Test — requires Docker backend):**
+- [x] **Step B.7–B.11 Interactive test — multicam improvements**
+    - [x] **Verification (Interactive Test — requires Docker backend):**
         1. Ensure Docker backend is running. Start `./build/biotope`.
         2. Wait 15 seconds for the multicam view. Observe and report each point:
             - **Footer:** Is there a solid dark panel behind `[1-4] WATCH MATCH` and the
@@ -511,38 +511,38 @@ After each step: compile. Interactive test at end of Part 4.*
 *Goal: Confirm all 10 UX items are present and all existing features still work correctly.
 Run with Docker backend active.*
 
-- [ ] **Step B.12: Full regression test**
-    - [ ] **Action:** Run `make`. Confirm **zero warnings, zero errors**.
-    - [ ] **Verification (Interactive Test — requires Docker backend):**
+- [x] **Step B.12: Full regression test**
+    - [x] **Action:** Run `make`. Confirm **zero warnings, zero errors**.
+    - [x] **Verification (Interactive Test — requires Docker backend):**
         1. Start `docker compose up`. Wait for `Application startup complete.`
         2. Start `./build/biotope`.
         3. **Leaderboard screen (first 15 s):** Confirm all of the following:
-            - [ ] Real player entries are visible
-            - [ ] Top 3 entries have coloured background highlights
-            - [ ] Column header reads `ENDURANCE` (not `STAMINA`)
-            - [ ] QR panel is a clearly bordered block on the right side (≥ 140 px QR image)
-            - [ ] CTA text in QR panel is ≥ 20 px and clearly readable
-            - [ ] Footer panel is solid behind `PRESS [P] TO PLAY` and the progress bar
+            - [x] Real player entries are visible
+            - [x] Top 3 entries have coloured background highlights
+            - [x] Column header reads `ENDURANCE` (not `STAMINA`)
+            - [x] QR panel is a clearly bordered block on the right side (≥ 140 px QR image)
+            - [x] CTA text in QR panel is ≥ 20 px and clearly readable
+            - [x] Footer panel is solid behind `PRESS [P] TO PLAY` and the progress bar
         4. **Wait 15 s — Multicam screen:** Confirm all of the following:
-            - [ ] Title reads `LIVE BATTLES`
-            - [ ] Simulations run with red and blue cells in all 4 quadrants
-            - [ ] Player names visible in quadrant headers
-            - [ ] Metric badge visible on its own line below the names
-            - [ ] Score bar is ≥ 20 px tall, population numbers readable
-            - [ ] Cross-line separator visible between quadrants
-            - [ ] Seed thumbnails are larger and recognisable
-            - [ ] Footer panel is solid — no floating progress bar
-            - [ ] Top-right corner reads `[1-4] WATCH MATCH  |  [P] PLAY` (not "CLICK ANY MATCH")
+            - [x] Title reads `LIVE BATTLES`
+            - [x] Simulations run with red and blue cells in all 4 quadrants
+            - [x] Player names visible in quadrant headers
+            - [x] Metric badge visible on its own line below the names
+            - [x] Score bar is ≥ 20 px tall, population numbers readable
+            - [x] Cross-line separator visible between quadrants
+            - [x] Seed thumbnails are larger and recognisable
+            - [x] Footer panel is solid — no floating progress bar
+            - [x] Top-right corner reads `[1-4] WATCH MATCH  |  [P] PLAY` (not "CLICK ANY MATCH")
         5. **Keyboard navigation:**
-            - [ ] Press `[1]` → ignition countdown → simulation runs full-screen
-            - [ ] Press `[Q]` → returns to kiosk leaderboard
-            - [ ] Press `[P]` → config screen appears
-            - [ ] Press `[K]` → returns to kiosk leaderboard
+            - [x] Press `[1]` → ignition countdown → simulation runs full-screen
+            - [x] Press `[Q]` → returns to kiosk leaderboard
+            - [x] Press `[P]` → config screen appears
+            - [x] Press `[K]` → returns to kiosk leaderboard
         6. **Clean exit:** Close the window. Terminal shows no crash, no memory error.
         - **Expected Result:** All checkboxes above confirmed. Report any single deviation
           before marking this step complete.
 
-- [ ] **Step B.12.1: Update CHANGELOG**
-    - [ ] **Action:** Open `docs/CHANGELOG.md`. Add an entry for ADR-0022 Phase B
+- [x] **Step B.12.1: Update CHANGELOG**
+    - [x] **Action:** Open `docs/CHANGELOG.md`. Add an entry for ADR-0022 Phase B
       describing the 10 UX improvements and the architectural refactor.
-    - [ ] **Action:** Mark all Phase B steps in this document as `[x]`.
+    - [x] **Action:** Mark all Phase B steps in this document as `[x]`.

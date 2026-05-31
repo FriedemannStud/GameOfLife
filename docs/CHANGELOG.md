@@ -89,3 +89,11 @@ feat ADR-0021: Kiosk Mode Engagement Enhancement
 - P4: 8×8-Startmuster-Thumbnail — Zeigt das ursprüngliche Einsaat-Muster als kleines farbiges Raster in der oberen linken Ecke jedes Quadranten, um den Kontrast zwischen einfacher Eingabe und komplexem Ergebnis sichtbar zu machen.
 - P5: QR-Code-Platzhalter + CTA auf dem Leaderboard-Screen — Stilisierter QR-Code und "Submit YOUR strategy!" Einladungstext für Messegäste.
 - P6: Visueller Fortschrittsbalken ersetzt den Text-Timer "SWITCHING IN X SECONDS" in beiden Kiosk-Substates.
+
+feat ADR-0022: Kiosk UI Architecture Refactor & UX Enhancement (Phase B)
+- Architektur: Render-Blöcke aus monolithischem switch extrahiert in `draw_kiosk_leaderboard()` und `draw_kiosk_multicam()`.
+- Skalierung: `viewport_bounds` wird jetzt jedes Frame aus `compute_kiosk_layout()` neu berechnet — Quadranten skalieren korrekt bei Fenstergrößenänderung und Vollbild.
+- Interaktion: Maus-Click-Trigger entfernt; Tasten `[1]`–`[4]` starten Replay des gewählten Matches vom Startzustand (Seed), nicht vom laufenden Zustand.
+- Leaderboard: Footer-Panel (feste Leiste hinter CTA + Fortschrittsbalken), proportionales Spalten-Layout (80 % Bildschirmbreite, 10 % Margin), Clip-to-fit mit `+N more`-Indikator, Top-3-Zeilenhighlights, Spalte "STAMINA" → "ENDURANCE", QR-Panel entfernt.
+- Multicam: Titel "WUSEL-MULTICAM KIOSK MODE" → "LIVE BATTLES", proportionale Score-Bar (≥ 20 px), Quadrant-Separator-Linien, metric_reason als zentrierter Badge unter Spielernamen, Thumbnail-Zellgröße proportional (≈ 20 % Quadranthöhe), Footer-Panel.
+- Cleanup (Boy Scout Rule): Ungenutzte KioskLayout-Felder `font_cta`, `font_name`, `font_score` entfernt.

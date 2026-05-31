@@ -275,54 +275,51 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
                     network_fetch_leaderboard_async();
                 }
                 
-                if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-                    Vector2 mousePos = GetMousePosition();
-                    for (int i = 0; i < kiosk_ctrl.match_count; i++) {
-                        if (CheckCollisionPointRec(mousePos, kiosk_ctrl.renders[i].viewport_bounds)) {
-                            // KI-Agent unterstützt: Use reset_simulation_context to maintain
-                            // world_a/world_b ownership invariant (ADR-0020 fix)
-                            reset_simulation_context(sim_ctx, config->rows, config->cols);
+                // KI-Agent unterstützt: Keyboard match selection replaces mouse click (ADR-0022)
+                // KEY_ONE + i maps to keys 1, 2, 3, 4 ... (Raylib digit key constants are sequential).
+                for (int i = 0; i < kiosk_ctrl.match_count; i++) {
+                    if (IsKeyPressed(KEY_ONE + i)) {
+                        // KI-Agent unterstützt: Use reset_simulation_context to maintain
+                        // world_a/world_b ownership invariant (ADR-0020 fix)
+                        reset_simulation_context(sim_ctx, config->rows, config->cols);
 
-                            // Copy seed data into single-player ctx
-                            int stride = config->cols + 2;
-                            // Reset single-player world (already done by reset_simulation_context)
-                            for (int k = 0; k < (config->rows + 2) * stride; k++) {
-                                sim_ctx->current_world->grid[k] = DEAD;
-                            }
-                            if (sim_ctx->current_world->chunk_map) {
-                                memset(sim_ctx->current_world->chunk_map, 0, sim_ctx->current_world->chunk_rows * sim_ctx->current_world->chunk_cols);
-                            }
-                            
-                            // To match Kiosk multicam, inject at center
-                            int center_r = config->rows / 2 - 4;
-                            int center_c_b = config->cols / 4 - 4;
-                            int center_c_r = config->cols * 3 / 4 - 4;
-                            
-                            for (int r = 0; r < 8; r++) {
-                                for (int c = 0; c < 8; c++) {
-                                    int src_stride = KIOSK_SIM_WORLD_SIZE + 2;
-                                    World* kiosk_w = kiosk_ctrl.sims[i].current_world;
-                                    if (kiosk_w->grid[(r+21)*src_stride + (c+11)] == TEAM_BLUE) {
-                                        sim_ctx->current_world->grid[(center_r + r + 1)*stride + (center_c_b + c + 1)] = TEAM_BLUE;
-                                        activate_chunk_at(sim_ctx->current_world, center_r + r, center_c_b + c);
-                                    }
-                                    if (kiosk_w->grid[(r+21)*src_stride + (c+31)] == TEAM_RED) {
-                                        sim_ctx->current_world->grid[(center_r + r + 1)*stride + (center_c_r + c + 1)] = TEAM_RED;
-                                        activate_chunk_at(sim_ctx->current_world, center_r + r, center_c_r + c);
-                                    }
+                        int stride = config->cols + 2;
+                        for (int k = 0; k < (config->rows + 2) * stride; k++) {
+                            sim_ctx->current_world->grid[k] = DEAD;
+                        }
+                        if (sim_ctx->current_world->chunk_map) {
+                            memset(sim_ctx->current_world->chunk_map, 0,
+                                   sim_ctx->current_world->chunk_rows * sim_ctx->current_world->chunk_cols);
+                        }
+
+                        int center_r   = config->rows / 2 - 4;
+                        int center_c_b = config->cols / 4 - 4;
+                        int center_c_r = config->cols * 3 / 4 - 4;
+
+                        // KI-Agent unterstützt: Read original seed — not the live simulation state (ADR-0022 fix)
+                        // cached_highlights holds the 8x8 start pattern; current_world is mid-game.
+                        for (int r = 0; r < 8; r++) {
+                            for (int c = 0; c < 8; c++) {
+                                if (kiosk_ctrl.cached_highlights.matches[i].seed_blue[r * 8 + c]) {
+                                    sim_ctx->current_world->grid[(center_r + r + 1)*stride + (center_c_b + c + 1)] = TEAM_BLUE;
+                                    activate_chunk_at(sim_ctx->current_world, center_r + r, center_c_b + c);
+                                }
+                                if (kiosk_ctrl.cached_highlights.matches[i].seed_red[r * 8 + c]) {
+                                    sim_ctx->current_world->grid[(center_r + r + 1)*stride + (center_c_r + c + 1)] = TEAM_RED;
+                                    activate_chunk_at(sim_ctx->current_world, center_r + r, center_c_r + c);
                                 }
                             }
-                            
-                            config->current_red_pop = 1;
-                            config->current_blue_pop = 1;
-                            config->current_round = 0;
-                            config->is_paused = false;
-                            time_since_last_input = 0.0;
-                            // KI-Agent unterstützt: Mark this session as a Kiosk replay (ADR-0020)
-                            if (session_origin) *session_origin = ORIGIN_KIOSK_REPLAY;
-                            interactive_time_accumulator = 0.0f;
-                            return STATE_IGNITION;
                         }
+
+                        config->current_red_pop = 1;
+                        config->current_blue_pop = 1;
+                        config->current_round = 0;
+                        config->is_paused = false;
+                        time_since_last_input = 0.0;
+                        // KI-Agent unterstützt: Mark this session as a Kiosk replay (ADR-0020)
+                        if (session_origin) *session_origin = ORIGIN_KIOSK_REPLAY;
+                        interactive_time_accumulator = 0.0f;
+                        return STATE_IGNITION;
                     }
                 }
             }

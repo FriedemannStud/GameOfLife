@@ -14,12 +14,16 @@ typedef enum {
 typedef struct {
     KioskSubState current_sub_state;
     float state_timer;
-    
-    RenderContext* renders; 
+
+    RenderContext* renders;
     SimulationContext* sims;
     bool initialized;
     LeaderboardData cached_lb;
     HighlightData cached_highlights;
+
+    // KI-Agent unterstützt: Per-quadrant live population for score bar (ADR-0021)
+    int quad_red_pop[4];
+    int quad_blue_pop[4];
 } KioskController;
 
 extern KioskController kiosk_ctrl;

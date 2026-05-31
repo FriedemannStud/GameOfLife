@@ -80,3 +80,12 @@ feat ADR-0019: Kiosk Mode State Machine and UI
 - Click-to-Replay Funktion eingebaut: Bei Klick auf einen Multicam-Quadranten startet ein Replay der Simulation im Vollbild (inklusive Ignition Countdown).
 - Global Failsafe Inactivity Timer: Rückkehr zum Kiosk Mode nach 60 Sekunden Inaktivität aus jeglichen Menüs oder Replays heraus.
 - Speichersicherheit beim Beenden von Simulationen und Kiosk-Übergängen (Fixing von Segfaults und Memory Leaks bei World-Allokationen).
+
+31.05.2026:
+feat ADR-0021: Kiosk Mode Engagement Enhancement
+- P1: Spielernamen pro Multicam-Quadrant — `MatchHighlight.participant_red/blue` wird jetzt nach `SimulationContext.participant_red/blue` kopiert (vorher verworfen) und als farbiger Name-Header (`THEME_RED` / `THEME_BLUE`) über jedem Quadrant gerendert.
+- P2: Live-Populationsbalken pro Quadrant — `KioskController` erweitert um `quad_red_pop[4]` / `quad_blue_pop[4]`; die bisher verworfenen `dummy_red/dummy_blue`-Ausgaben von `update_generation_ctx` werden jetzt persistent gespeichert und als proportionaler Rot/Blau-Balken am unteren Rand jedes Quadranten gerendert.
+- P3: Metric-Reason-Label — `MatchHighlight.metric_reason` (z.B. "LONGEST MATCH") wird rechts-bündig im Header-Strip jedes Quadranten angezeigt.
+- P4: 8×8-Startmuster-Thumbnail — Zeigt das ursprüngliche Einsaat-Muster als kleines farbiges Raster in der oberen linken Ecke jedes Quadranten, um den Kontrast zwischen einfacher Eingabe und komplexem Ergebnis sichtbar zu machen.
+- P5: QR-Code-Platzhalter + CTA auf dem Leaderboard-Screen — Stilisierter QR-Code und "Submit YOUR strategy!" Einladungstext für Messegäste.
+- P6: Visueller Fortschrittsbalken ersetzt den Text-Timer "SWITCHING IN X SECONDS" in beiden Kiosk-Substates.

@@ -160,8 +160,13 @@ static void* fetch_highlights_thread(void* arg) {
                                 strncpy(g_highlights.matches[i].participant_blue, blue_name->valuestring, MAX_NAME_LENGTH - 1);
                                 g_highlights.matches[i].participant_blue[MAX_NAME_LENGTH - 1] = '\0';
                                 
+                                // KI-Agent unterstützt: Translate internal metric IDs to human-readable labels (ADR-0021)
                                 if (cJSON_IsString(metric)) {
-                                    strncpy(g_highlights.matches[i].metric_reason, metric->valuestring, 63);
+                                    const char *raw = metric->valuestring;
+                                    const char *label = raw; // fallback: show as-is
+                                    if (strcmp(raw, "activity_sum") == 0)  label = "MOST VOLATILE";
+                                    else if (strcmp(raw, "duration") == 0) label = "LONGEST MATCH";
+                                    strncpy(g_highlights.matches[i].metric_reason, label, 63);
                                     g_highlights.matches[i].metric_reason[63] = '\0';
                                 }
 

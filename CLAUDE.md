@@ -103,6 +103,15 @@ Key states: `STATE_CONFIG` → `STATE_EDIT_RED` → `STATE_EDIT_BLUE` → `STATE
 - **Memory:** Always pair `malloc`/`calloc` with `free`. No dynamic allocation inside the hot simulation loop. Use `create_world` / `free_world` constructor/destructor pattern.
 - **Refactoring workflow:** Before renaming any symbol, grep project-wide for all references and update atomically. Recompile with `make` after every change.
 
+## Collaborative Working Mode (Team Principle)
+
+Claude and the developer work as a team. This has concrete consequences for how verification is done:
+
+- **"Interactive Test" means exactly that:** When a `DEV_TASKS` step is marked `Verification (Interactive Test)`, Claude defines precisely *what* to look for and *how* to navigate there. The developer then runs the app, observes the result with their own eyes, and reports back. Claude does **not** attempt to capture the screen autonomously.
+- **Claude's role in interactive tests:** Formulate clear, numbered observation instructions ("Start the app, press [K], wait 3 seconds, report what you see in the top bar of each quadrant"). Then wait for the report.
+- **Developer's role:** Run the app, follow the navigation steps, report honestly what is visible — including unexpected behaviour.
+- **Autonomous screenshot attempts are a last resort**, not a first instinct. The Raylib GUI runs with OpenGL on a local display; the developer is sitting in front of it. Trust that.
+
 ## Documentation Conventions (`docs/DEVELOPMENT_GUIDELINES.md`)
 
 For any non-trivial change, the expected workflow is:

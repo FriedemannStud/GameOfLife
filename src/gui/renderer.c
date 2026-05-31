@@ -823,10 +823,16 @@ AppState process_ui_events(AppState state, GameConfig* config, SimulationContext
                         append_protocol_result(currentProtocolFilename, config, winner);
                      }                }
                 if (IsKeyPressed(KEY_Q)) {
-                    // KI-Agent unterstützt: Centralized cleanup (ADR-0020 Phase 4)
+                    // KI-Agent unterstützt: Session-origin-aware routing (ADR-0021 bugfix)
                     cleanup_interactive_session(sim_ctx, config, r_ctx);
                     set_ignition_start_time(0.0);
-                    state = STATE_CONFIG;
+                    if (session_origin && *session_origin == ORIGIN_KIOSK_REPLAY) {
+                        state = STATE_KIOSK_MODE;
+                        reset_kiosk_timers();
+                    } else {
+                        state = STATE_CONFIG;
+                    }
+                    if (session_origin) *session_origin = ORIGIN_NONE;
                     gui_world = NULL;
                 }
                 break;
@@ -1239,31 +1245,148 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                         DrawText("LOADING DATA...", screenWidth/2 - MeasureText("LOADING DATA...", 20)/2, startY + 60, 20, THEME_HINT);
                     }
                     
-                    char timerBuf[64];
-                    sprintf(timerBuf, "SWITCHING IN %.0f SECONDS", 15.0f - kiosk_ctrl.state_timer);
-                    DrawText(timerBuf, screenWidth/2 - MeasureText(timerBuf, 16)/2, screenHeight - 60, 16, THEME_HINT);
+                    // KI-Agent unterstützt: QR placeholder + submission CTA (ADR-0021)
+                    {
+                        int qr_size = 90;
+                        int qr_x = screenWidth - qr_size - 30;
+                        int qr_y = screenHeight / 2 - qr_size / 2 - 20;
+                        DrawRectangle(qr_x - 4, qr_y - 4, qr_size + 8, qr_size + 8, THEME_TEXT);
+                        DrawRectangle(qr_x, qr_y, qr_size, qr_size, BLACK);
+                        for (int qi = 0; qi < 5; qi++) {
+                            for (int qj = 0; qj < 5; qj++) {
+                                if ((qi + qj) % 2 == 0)
+                                    DrawRectangle(qr_x + qi * 18 + 4, qr_y + qj * 18 + 4, 10, 10, THEME_BLUE);
+                            }
+                        }
+                        const char *cta1 = "Submit YOUR strategy!";
+                        const char *cta2 = "editor.biotope.io";
+                        DrawText(cta1, qr_x - MeasureText(cta1, 14) / 2 + qr_size / 2,
+                                 qr_y + qr_size + 10, 14, THEME_ACCENT);
+                        DrawText(cta2, qr_x - MeasureText(cta2, 16) / 2 + qr_size / 2,
+                                 qr_y + qr_size + 28, 16, THEME_BLUE);
+                    }
+
+                    // --- P6: Progress bar replacing text timer ---
+                    // KI-Agent unterstützt: Visual progress bar instead of text countdown (ADR-0021)
+                    {
+                        int bar_w = 240;
+                        int bar_x = screenWidth / 2 - bar_w / 2;
+                        int bar_y = screenHeight - 22;
+                        float progress = kiosk_ctrl.state_timer / 15.0f;
+                        if (progress > 1.0f) progress = 1.0f;
+                        DrawRectangle(bar_x, bar_y, bar_w, 6, Fade(THEME_HINT, 0.3f));
+                        DrawRectangle(bar_x, bar_y, (int)(bar_w * progress), 6, THEME_ACCENT);
+                    }
+
                     // KI-Agent unterstützt: [P] play shortcut hint (ADR-0020 Phase 6)
                     DrawText("PRESS [P] TO PLAY",
                              screenWidth / 2 - MeasureText("PRESS [P] TO PLAY", 20) / 2,
-                             screenHeight - 100, 20, THEME_ACCENT);
+                             screenHeight - 46, 20, THEME_ACCENT);
                     
                 } else if (kiosk_ctrl.current_sub_state == KIOSK_SUB_MULTICAM) {
                     for (int i = 0; i < 4; i++) {
                         DrawGridAndCellsCtx(&kiosk_ctrl.renders[i], config, kiosk_ctrl.sims[i].current_world, false);
                     }
-                    
-                    // Draw HUD for Kiosk
+
+                    // KI-Agent unterstützt: Per-quadrant HUD overlay — names, score bar, thumbnail (ADR-0021)
+                    for (int i = 0; i < 4; i++) {
+                        Rectangle vp = kiosk_ctrl.renders[i].viewport_bounds;
+                        int rx = (int)vp.x;
+                        int ry = (int)vp.y;
+                        int qw = (int)vp.width;
+                        int qh = (int)vp.height;
+
+                        // --- P1: Player name header strip ---
+                        DrawRectangle(rx, ry, qw, 26, Fade(THEME_HUD, 0.88f));
+                        const char *name_red  = kiosk_ctrl.sims[i].participant_red;
+                        const char *name_blue = kiosk_ctrl.sims[i].participant_blue;
+                        DrawText(name_red,  rx + 6,  ry + 5, 16, THEME_RED);
+                        int vs_x = rx + 6 + MeasureText(name_red, 16) + 5;
+                        DrawText("vs", vs_x, ry + 7, 13, THEME_HINT);
+                        int blue_x = vs_x + MeasureText("vs", 13) + 5;
+                        DrawText(name_blue, blue_x, ry + 5, 16, THEME_BLUE);
+
+                        // --- P3: Metric reason label (right-aligned in header) ---
+                        const char *reason = kiosk_ctrl.cached_highlights.matches[i].metric_reason;
+                        if (strlen(reason) > 0) {
+                            int rw = MeasureText(reason, 12);
+                            DrawText(reason, rx + qw - rw - 6, ry + 7, 12, THEME_ACCENT);
+                        }
+
+                        // --- P4: 8x8 seed thumbnails — blue left, red right (mirrors game field layout) ---
+                        // KI-Agent unterstützt: Side-by-side thumbnails correcting overlap bug (ADR-0021 bugfix)
+                        int thumb_cell = 5;
+                        int thumb_x = rx + 4;
+                        int thumb_y = ry + 30;
+                        int thumb_w = 8 * thumb_cell;
+                        int thumb_gap = 3;
+                        DrawRectangle(thumb_x - 1, thumb_y - 1,
+                                      thumb_w * 2 + thumb_gap + 2, 8 * thumb_cell + 2,
+                                      Fade(BLACK, 0.65f));
+                        // Blue thumbnail (left half)
+                        for (int tr = 0; tr < 8; tr++) {
+                            for (int tc = 0; tc < 8; tc++) {
+                                if (kiosk_ctrl.cached_highlights.matches[i].seed_blue[tr * 8 + tc]) {
+                                    DrawRectangle(thumb_x + tc * thumb_cell,
+                                                  thumb_y + tr * thumb_cell,
+                                                  thumb_cell - 1, thumb_cell - 1,
+                                                  Fade(THEME_BLUE, 0.9f));
+                                }
+                            }
+                        }
+                        // Red thumbnail (right half)
+                        int thumb_x_red = thumb_x + thumb_w + thumb_gap;
+                        for (int tr = 0; tr < 8; tr++) {
+                            for (int tc = 0; tc < 8; tc++) {
+                                if (kiosk_ctrl.cached_highlights.matches[i].seed_red[tr * 8 + tc]) {
+                                    DrawRectangle(thumb_x_red + tc * thumb_cell,
+                                                  thumb_y + tr * thumb_cell,
+                                                  thumb_cell - 1, thumb_cell - 1,
+                                                  Fade(THEME_RED, 0.9f));
+                                }
+                            }
+                        }
+
+                        // --- P2: Live population score bar ---
+                        int bar_y = ry + qh - 14;
+                        DrawRectangle(rx, bar_y, qw, 14, Fade(THEME_HUD, 0.88f));
+                        int red_pop  = kiosk_ctrl.quad_red_pop[i];
+                        int blue_pop = kiosk_ctrl.quad_blue_pop[i];
+                        int total    = red_pop + blue_pop;
+                        if (total > 0) {
+                            int red_w = (int)((float)red_pop / total * qw);
+                            DrawRectangle(rx,           bar_y, red_w,      14, Fade(THEME_RED,  0.75f));
+                            DrawRectangle(rx + red_w,   bar_y, qw - red_w, 14, Fade(THEME_BLUE, 0.75f));
+                        }
+                        char pop_buf[16];
+                        sprintf(pop_buf, "%d", red_pop);
+                        DrawText(pop_buf, rx + 4, bar_y + 1, 11, WHITE);
+                        sprintf(pop_buf, "%d", blue_pop);
+                        int pw = MeasureText(pop_buf, 11);
+                        DrawText(pop_buf, rx + qw - pw - 4, bar_y + 1, 11, WHITE);
+                    }
+
+                    // Global top bar
                     DrawRectangle(0, 0, GetScreenWidth(), 40, THEME_HUD);
                     DrawText("WUSEL-MULTICAM KIOSK MODE", 20, 10, 20, THEME_BLUE);
                     DrawText("CLICK ANY MATCH TO VIEW REPLAY", GetScreenWidth() - MeasureText("CLICK ANY MATCH TO VIEW REPLAY", 16) - 20, 12, 16, THEME_RED);
-                    
-                    char timerBuf2[64];
-                    sprintf(timerBuf2, "SWITCHING IN %.0f SECONDS", 30.0f - kiosk_ctrl.state_timer);
-                    DrawText(timerBuf2, screenWidth/2 - MeasureText(timerBuf2, 16)/2, screenHeight - 60, 16, THEME_HINT);
+
+                    // --- P6: Progress bar replacing text timer ---
+                    // KI-Agent unterstützt: Visual progress bar instead of text countdown (ADR-0021)
+                    {
+                        int bar_w = 240;
+                        int bar_x = screenWidth / 2 - bar_w / 2;
+                        int bar_y2 = screenHeight - 22;
+                        float progress = kiosk_ctrl.state_timer / 30.0f;
+                        if (progress > 1.0f) progress = 1.0f;
+                        DrawRectangle(bar_x, bar_y2, bar_w, 6, Fade(THEME_HINT, 0.3f));
+                        DrawRectangle(bar_x, bar_y2, (int)(bar_w * progress), 6, THEME_ACCENT);
+                    }
+
                     // KI-Agent unterstützt: [P] play shortcut hint (ADR-0020 Phase 6)
                     DrawText("PRESS [P] TO PLAY",
                              screenWidth / 2 - MeasureText("PRESS [P] TO PLAY", 20) / 2,
-                             screenHeight - 100, 20, THEME_ACCENT);
+                             screenHeight - 46, 20, THEME_ACCENT);
                 }
                 break;
         }

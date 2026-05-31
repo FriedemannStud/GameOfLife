@@ -22,7 +22,10 @@ KioskController kiosk_ctrl = {
     .state_timer = 0.0f,
     .renders = kiosk_renders,
     .sims = kiosk_sims,
-    .initialized = false
+    .initialized = false,
+    // KI-Agent unterstützt: Zero-initialize per-quadrant population arrays (ADR-0021)
+    .quad_red_pop = {0, 0, 0, 0},
+    .quad_blue_pop = {0, 0, 0, 0}
 };
 
 static double time_since_last_input = 0.0;
@@ -119,6 +122,13 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
                         }
                     }
                 }
+                // KI-Agent unterstützt: Forward participant names for kiosk HUD (ADR-0021)
+                strncpy(kiosk_ctrl.sims[i].participant_red, hd.matches[i].participant_red,
+                        sizeof(kiosk_ctrl.sims[i].participant_red) - 1);
+                kiosk_ctrl.sims[i].participant_red[sizeof(kiosk_ctrl.sims[i].participant_red) - 1] = '\0';
+                strncpy(kiosk_ctrl.sims[i].participant_blue, hd.matches[i].participant_blue,
+                        sizeof(kiosk_ctrl.sims[i].participant_blue) - 1);
+                kiosk_ctrl.sims[i].participant_blue[sizeof(kiosk_ctrl.sims[i].participant_blue) - 1] = '\0';
             }
         }
     }
@@ -173,14 +183,17 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
             if (!kiosk_ctrl.initialized) {
                 int w = GetScreenWidth();
                 int h = GetScreenHeight();
+                // KI-Agent unterstützt: Reserve space for global top bar and bottom controls (ADR-0021)
+                int top_offset = 44;  // global top bar (40px) + small gap
+                int bot_offset = 55;  // PRESS [P] hint + progress bar
                 int pad = 12;
                 int q_w = (w - pad * 3) / 2;
-                int q_h = (h - pad * 3) / 2;
+                int q_h = (h - top_offset - bot_offset - pad) / 2;
                 for (int i = 0; i < 4; i++) {
                     int col = i % 2;
                     int row = i / 2;
                     float rx = pad + col * (q_w + pad);
-                    float ry = pad + row * (q_h + pad);
+                    float ry = top_offset + row * (q_h + pad);
                     init_simulation_context(&kiosk_ctrl.sims[i], 50, 50);
                     kiosk_ctrl.renders[i].viewport_bounds = (Rectangle){ rx, ry, (float)q_w, (float)q_h };
                     init_render_context(&kiosk_ctrl.renders[i], 50, 50, (Rectangle){ rx, ry, (float)q_w, (float)q_h });
@@ -201,9 +214,11 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
                 kiosk_time_accumulator += delta_time;
                 if (kiosk_time_accumulator >= 0.1f) {
                     kiosk_time_accumulator = 0.0f;
-                    int dummy_red, dummy_blue;
+                    // KI-Agent unterstützt: Store per-quadrant pop for score bar (ADR-0021)
                     for (int i = 0; i < 4; i++) {
-                        update_generation_ctx(&kiosk_ctrl.sims[i], &dummy_red, &dummy_blue);
+                        update_generation_ctx(&kiosk_ctrl.sims[i],
+                                              &kiosk_ctrl.quad_red_pop[i],
+                                              &kiosk_ctrl.quad_blue_pop[i]);
                     }
                 }
                 

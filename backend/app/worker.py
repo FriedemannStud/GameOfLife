@@ -86,12 +86,14 @@ async def execute_epoch(db):
 
         # Store Highlights
         epoch_id = f"epoch_{int(datetime.utcnow().timestamp())}"
+        # KI-Agent unterstützt: Resolve UUID player_ids to human-readable nicknames (ADR-0021 bugfix)
+        id_to_nickname = {str(s["_id"]): s["metadata"]["nickname"] for s in submissions}
         highlights_data = []
         for h in results.get("highlights", []):
             highlights_data.append({
                 "metric_type": "activity_sum",
-                "red_name": h["red_name"],
-                "blue_name": h["blue_name"],
+                "red_name": id_to_nickname.get(h["red_name"], h["red_name"]),
+                "blue_name": id_to_nickname.get(h["blue_name"], h["blue_name"]),
                 "red_seed": h["red_seed"],
                 "blue_seed": h["blue_seed"],
                 "metric_value": h["metric_value"]

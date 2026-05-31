@@ -61,15 +61,11 @@ typedef struct {
     int badge_h;         // metric-reason badge height (used from Phase B onward)
     int seed_cell_px;    // pixel size of each cell in the 8x8 seed thumbnail
 
-    // Derived font sizes
-    int font_name;       // player name font size
-    int font_badge;      // metric reason label font size
-    int font_score;      // score number font size
+    int font_badge;      // metric reason badge font size
 
     // Global chrome areas
     int top_bar_h;       // global top bar height
     int bottom_panel_h;  // footer panel height (holds CTA + progress bar)
-    int font_cta;        // CTA instruction font size
 } KioskLayout;
 
 // Pure function: derives all pixel values from screen size and match count.

@@ -85,11 +85,7 @@ KioskLayout compute_kiosk_layout(int screen_w, int screen_h, int match_count) {
     l.seed_cell_px = l.quad_h / 40;
     if (l.seed_cell_px < 7) l.seed_cell_px = 7;
 
-    // Font sizes
-    l.font_name  = 16;
     l.font_badge = 12;
-    l.font_score = 11;
-    l.font_cta   = 20;
 
     return l;
 }
@@ -1300,14 +1296,25 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
         hidden_count = total_entries - show_count;
     }
 
-    // B.6: Column header — "STAMINA" renamed to "ENDURANCE" (ADR-0022)
-    DrawText("RANK",      screen_w / 2 - 230, startY, 20, THEME_HINT);
-    DrawText("PLAYER",    screen_w / 2 - 120, startY, 20, THEME_HINT);
-    DrawText("WIN RATE",  screen_w / 2 +  40, startY, 20, THEME_HINT);
-    DrawText("W / D / L", screen_w / 2 + 150, startY, 20, THEME_HINT);
-    DrawText("ENDURANCE", screen_w / 2 + 260, startY, 20, THEME_HINT);
+    // KI-Agent unterstützt: Proportional column layout — 80% of screen width, 10% margins (ADR-0022)
+    // Column x-positions are cumulative percentages of table_w:
+    //   RANK 0-8% | PLAYER 8-42% | WIN RATE 42-58% | W/D/L 58-80% | ENDURANCE 80-100%
+    int table_x       = (int)(screen_w * 0.10f);
+    int table_w       = (int)(screen_w * 0.80f);
+    int col_rank      = table_x;
+    int col_player    = table_x + (int)(table_w * 0.08f);
+    int col_winrate   = table_x + (int)(table_w * 0.42f);
+    int col_wdl       = table_x + (int)(table_w * 0.58f);
+    int col_endurance = table_x + (int)(table_w * 0.80f);
 
-    DrawLine(screen_w / 2 - 240, startY + 25, screen_w / 2 + 370, startY + 25, THEME_GRID);
+    // B.6: Column headers
+    DrawText("RANK",      col_rank,      startY, 20, THEME_HINT);
+    DrawText("PLAYER",    col_player,    startY, 20, THEME_HINT);
+    DrawText("WIN RATE",  col_winrate,   startY, 20, THEME_HINT);
+    DrawText("W / D / L", col_wdl,       startY, 20, THEME_HINT);
+    DrawText("ENDURANCE", col_endurance, startY, 20, THEME_HINT);
+
+    DrawLine(table_x, startY + 25, table_x + table_w, startY + 25, THEME_GRID);
 
     if (total_entries > 0) {
         for (int i = 0; i < show_count; i++) {
@@ -1335,14 +1342,14 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
                 Color row_bg = (i == 0) ? Fade(THEME_RED,    0.12f)
                              : (i == 1) ? Fade(THEME_BLUE,   0.12f)
                                         : Fade(THEME_ACCENT,  0.10f);
-                DrawRectangle(screen_w / 2 - 240, y - 4, 610, rowHeight, row_bg);
+                DrawRectangle(table_x, y - 4, table_w, rowHeight, row_bg);
             }
 
-            DrawText(rankBuf,                          screen_w / 2 - 230, y, 20, rankCol);
-            DrawText(ctrl->cached_lb.entries[i].name,  screen_w / 2 - 120, y, 20, THEME_TEXT);
-            DrawText(winBuf,                           screen_w / 2 +  40, y, 20, THEME_ACCENT);
-            DrawText(wdlBuf,                           screen_w / 2 + 150, y, 20, THEME_TEXT);
-            DrawText(asgBuf,                           screen_w / 2 + 260, y, 20, THEME_HINT);
+            DrawText(rankBuf,                          col_rank,      y, 20, rankCol);
+            DrawText(ctrl->cached_lb.entries[i].name,  col_player,    y, 20, THEME_TEXT);
+            DrawText(winBuf,                           col_winrate,   y, 20, THEME_ACCENT);
+            DrawText(wdlBuf,                           col_wdl,       y, 20, THEME_TEXT);
+            DrawText(asgBuf,                           col_endurance, y, 20, THEME_HINT);
         }
 
         // "+N more" indicator — only shown when entries were clipped
@@ -1350,50 +1357,12 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
             char more_buf[32];
             sprintf(more_buf, "+ %d more", hidden_count);
             int more_y = startY + 40 + show_count * rowHeight + 4;
-            DrawText(more_buf, screen_w / 2 - 230, more_y, 16, THEME_HINT);
+            DrawText(more_buf, col_rank, more_y, 16, THEME_HINT);
         }
     } else {
         DrawText("LOADING DATA...",
                  screen_w / 2 - MeasureText("LOADING DATA...", 20) / 2,
                  startY + 60, 20, THEME_HINT);
-    }
-
-    // B.4: QR panel — proportional to screen width (ADR-0022)
-    // Replaces the fixed 90x90 corner orphan with a clearly bordered, invitation panel.
-    {
-        int panel_w = screen_w / 4;
-        int panel_h = (int)(screen_h * 0.42f);
-        int panel_x = screen_w - panel_w - 20;
-        int panel_y = (screen_h - layout.bottom_panel_h - panel_h) / 2;
-        int qr_size = (int)(panel_w * 0.55f);
-        if (qr_size < 140) qr_size = 140;
-        int qr_x    = panel_x + (panel_w - qr_size) / 2;
-        int qr_y    = panel_y + 20;
-        int font_cta = layout.font_cta;
-        int font_url = font_cta - 2;
-
-        DrawRectangle(panel_x - 2, panel_y - 2, panel_w + 4, panel_h + 4, Fade(THEME_ACCENT, 0.25f));
-        DrawRectangle(panel_x, panel_y, panel_w, panel_h, THEME_HUD);
-
-        DrawRectangle(qr_x - 4, qr_y - 4, qr_size + 8, qr_size + 8, THEME_TEXT);
-        DrawRectangle(qr_x, qr_y, qr_size, qr_size, BLACK);
-        int cell = qr_size / 10;
-        for (int qi = 0; qi < 9; qi++) {
-            for (int qj = 0; qj < 9; qj++) {
-                if ((qi + qj) % 2 == 0)
-                    DrawRectangle(qr_x + qi * cell + 2, qr_y + qj * cell + 2,
-                                  cell - 2, cell - 2, THEME_BLUE);
-            }
-        }
-
-        const char *cta1  = "Submit YOUR strategy!";
-        const char *cta2  = "editor.biotope.io";
-        int          cta1_w = MeasureText(cta1, font_cta);
-        int          cta2_w = MeasureText(cta2, font_url);
-        DrawText(cta1, panel_x + (panel_w - cta1_w) / 2,
-                 qr_y + qr_size + 14, font_cta, THEME_ACCENT);
-        DrawText(cta2, panel_x + (panel_w - cta2_w) / 2,
-                 qr_y + qr_size + 14 + font_cta + 6, font_url, THEME_BLUE);
     }
 
     // B.3: Progress bar anchored to footer panel (ADR-0022)

@@ -1405,14 +1405,22 @@ static void draw_kiosk_multicam(KioskController *ctrl, int screen_w, int screen_
 
     // KI-Agent unterstützt: Update viewport bounds every frame so quadrants scale with the window (ADR-0022)
     // DrawGridAndCellsCtx detects the size change and reallocates GPU resources automatically.
+    // KI-Agent unterstützt: Field viewport = quad minus header (top) and score bar (bottom).
+    // The grid no longer fills the whole quad, so the HUD bands no longer overlap it (ADR-0022).
     for (int i = 0; i < ctrl->match_count; i++) {
         int col = i % layout.grid_cols;
         int row = i / layout.grid_cols;
+        int quad_x = layout.pad + col * (layout.quad_w + layout.pad);
+        int quad_y = layout.top_bar_h + row * (layout.quad_h + layout.pad);
+
+        int field_h = layout.quad_h - layout.header_h - layout.score_bar_h;
+        if (field_h < 1) field_h = 1;  // clamp for very small quads / many matches
+
         ctrl->renders[i].viewport_bounds = (Rectangle){
-            (float)(layout.pad + col * (layout.quad_w + layout.pad)),
-            (float)(layout.top_bar_h + row * (layout.quad_h + layout.pad)),
+            (float)quad_x,
+            (float)(quad_y + layout.header_h),
             (float)layout.quad_w,
-            (float)layout.quad_h
+            (float)field_h
         };
     }
 
@@ -1428,11 +1436,14 @@ static void draw_kiosk_multicam(KioskController *ctrl, int screen_w, int screen_
         int render_slot = (ctrl->highlight_pool_size > 0)
             ? (ctrl->highlight_pool_index + i) % ctrl->highlight_pool_size
             : i;
-        Rectangle vp = ctrl->renders[i].viewport_bounds;
-        int rx = (int)vp.x;
-        int ry = (int)vp.y;
-        int qw = (int)vp.width;
-        int qh = (int)vp.height;
+        // KI-Agent unterstützt: HUD anchors use the FULL quad rect (recomputed from layout),
+        // not the shrunken field viewport — so header/score-bar bands frame the field (ADR-0022).
+        int col = i % layout.grid_cols;
+        int row = i / layout.grid_cols;
+        int rx = layout.pad + col * (layout.quad_w + layout.pad);
+        int ry = layout.top_bar_h + row * (layout.quad_h + layout.pad);
+        int qw = layout.quad_w;
+        int qh = layout.quad_h;
 
         // B.10: Two-row header — name strip + badge strip (ADR-0022)
         DrawRectangle(rx, ry, qw, layout.header_h - layout.badge_h, Fade(THEME_HUD, 0.88f));
@@ -1512,7 +1523,9 @@ static void draw_kiosk_multicam(KioskController *ctrl, int screen_w, int screen_
     // B.9: Cross-line separators between quadrants (ADR-0022)
     // Positions derived from stored viewport bounds — not hardcoded.
     if (ctrl->match_count > 1) {
-        int line_top    = (int)ctrl->renders[0].viewport_bounds.y;
+        // KI-Agent unterstützt: Span separators over the full quad area; derive from layout,
+        // not viewport_bounds.y (which now marks the field top, below the header) (ADR-0022).
+        int line_top    = layout.top_bar_h;
         int line_bottom = footer_y;
 
         for (int col = 1; col < layout.grid_cols; col++) {
@@ -1527,7 +1540,7 @@ static void draw_kiosk_multicam(KioskController *ctrl, int screen_w, int screen_
         for (int row = 1; row < layout.grid_rows; row++) {
             int first_in_row = row * layout.grid_cols;
             if (first_in_row >= ctrl->match_count) break;
-            int sep_y = (int)(ctrl->renders[first_in_row].viewport_bounds.y)
+            int sep_y = layout.top_bar_h + row * (layout.quad_h + layout.pad)
                         - layout.pad / 2;
             DrawRectangle(0, sep_y - layout.separator_px / 2,
                           screen_w, layout.separator_px,

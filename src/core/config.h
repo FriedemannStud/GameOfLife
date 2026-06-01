@@ -14,6 +14,9 @@
 // Worker / Grid Configuration
 #define LOCAL_GRID_SIZE 8
 
+// Kiosk Mode — simulation timing
+#define KIOSK_SIM_GEN_INTERVAL_S  0.4f   // 1/xf = Generationen/s im Live-Battles-Fenster
+
 // Maximum string lengths
 #define MAX_PATH_LENGTH 512
 #define MAX_FILENAME_LENGTH 256

@@ -303,7 +303,7 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
                 }
             } else if (kiosk_ctrl.current_sub_state == KIOSK_SUB_MULTICAM) {
                 kiosk_time_accumulator += delta_time;
-                if (kiosk_time_accumulator >= 0.1f) {
+                if (kiosk_time_accumulator >= KIOSK_SIM_GEN_INTERVAL_S) {
                     kiosk_time_accumulator = 0.0f;
                     // KI-Agent unterstützt: Store per-quadrant pop for score bar (ADR-0021)
                     for (int i = 0; i < kiosk_ctrl.match_count; i++) {

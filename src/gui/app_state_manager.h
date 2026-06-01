@@ -28,6 +28,10 @@ typedef struct {
     LeaderboardData   cached_lb;
     HighlightData     cached_highlights;
 
+    // KI-Agent unterstützt: Round-robin pool state (ADR-0024)
+    int highlight_pool_index;   // index of first match in current display window
+    int highlight_pool_size;    // total matches available in cached_highlights
+
     // KI-Agent unterstützt: Per-quadrant live population — dynamic arrays (ADR-0022)
     int *quad_red_pop;               // length == match_count
     int *quad_blue_pop;              // length == match_count
@@ -47,13 +51,18 @@ void set_ignition_start_time(double t);
 // KI-Agent unterstützt: Centralized cleanup for interactive sessions (ADR-0020)
 void cleanup_interactive_session(SimulationContext *sim, GameConfig *config, RenderContext *r_ctx);
 
+// KI-Agent unterstützt: Restore main-game grid (50x50) after a kiosk replay on 8x16 (ADR-0024)
+void restore_main_game_context(GameConfig *config, RenderContext *r_ctx);
+
 // KI-Agent unterstützt: update_global_input with full context for cleanup on timeout
 void update_global_input(AppState* current_app_state, SimulationContext *sim,
                          GameConfig *config, RenderContext *r_ctx);
 
 // KI-Agent unterstützt: App state manager decoupled from rendering
+// KI-Agent unterstützt: r_ctx added to allow kiosk replay to reinit GPU resources (ADR-0024)
 AppState update_app_state(AppState current_state, GameConfig* config,
-                          SimulationContext *sim_ctx, float delta_time,
-                          double current_time, SessionOrigin *session_origin);
+                          SimulationContext *sim_ctx, RenderContext *r_ctx,
+                          float delta_time, double current_time,
+                          SessionOrigin *session_origin);
 
 #endif // APP_STATE_MANAGER_H

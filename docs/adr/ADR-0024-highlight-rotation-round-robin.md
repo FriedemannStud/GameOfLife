@@ -1,6 +1,6 @@
 ### **ADR-0024: Client-Side Round-Robin Highlight Rotation for Kiosk Mode**
 
-**Status:** Proposed
+**Status:** Implemented
 
 **Date:** 2026-05-31
 

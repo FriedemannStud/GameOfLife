@@ -37,8 +37,8 @@ void MainLoopStep(void) {
     update_global_input(&state, &global_sim, &config, &global_render);
     
     state = process_ui_events(state, &config, &global_sim, &global_render, &session_origin);
-    state = update_app_state(state, &config, &global_sim, GetFrameTime(), GetTime(), &session_origin);
-    draw_current_state(state, &config, global_sim.current_world, &global_render);
+    state = update_app_state(state, &config, &global_sim, &global_render, GetFrameTime(), GetTime(), &session_origin);
+    draw_current_state(state, &config, global_sim.current_world, &global_render, &global_sim);
 }
 
 int main(int argc, char *argv[]) {

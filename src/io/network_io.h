@@ -34,7 +34,8 @@ typedef struct {
 } MatchHighlight;
 
 typedef struct {
-    MatchHighlight matches[4];     // Assume top 4 highlights for Multicam
+    // KI-Agent unterstützt: Pool of up to 10 highlights for round-robin rotation (ADR-0024)
+    MatchHighlight matches[10];
     int count;
     bool is_ready;
 } HighlightData;

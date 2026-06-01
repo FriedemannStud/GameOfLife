@@ -771,6 +771,7 @@ AppState process_ui_events(AppState state, GameConfig* config, SimulationContext
             case STATE_RUNNING:  // Hier zurücklehnen und zuschauen
                 if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_Q)) {
                     // KI-Agent unterstützt: Session-origin-aware routing (ADR-0020 Phase 5)
+                    restore_main_game_context(config, r_ctx);  // no-op if not a kiosk replay
                     cleanup_interactive_session(sim_ctx, config, r_ctx);
                     set_ignition_start_time(0.0);
                     if (session_origin && *session_origin == ORIGIN_KIOSK_REPLAY) {
@@ -786,6 +787,7 @@ AppState process_ui_events(AppState state, GameConfig* config, SimulationContext
 
                 // KI-Agent unterstützt: [K] always returns to Kiosk (ADR-0020 Phase 5)
                 if (IsKeyPressed(KEY_K)) {
+                    restore_main_game_context(config, r_ctx);  // no-op if not a kiosk replay
                     cleanup_interactive_session(sim_ctx, config, r_ctx);
                     set_ignition_start_time(0.0);
                     state = STATE_KIOSK_MODE;
@@ -847,6 +849,7 @@ AppState process_ui_events(AppState state, GameConfig* config, SimulationContext
 
                 // KI-Agent unterstützt: [K] always returns to Kiosk from Observer (ADR-0020)
                 if (IsKeyPressed(KEY_K)) {
+                    restore_main_game_context(config, r_ctx);  // no-op if not a kiosk replay
                     cleanup_interactive_session(sim_ctx, config, r_ctx);
                     set_ignition_start_time(0.0);
                     state = STATE_KIOSK_MODE;
@@ -870,6 +873,7 @@ AppState process_ui_events(AppState state, GameConfig* config, SimulationContext
                      }                }
                 if (IsKeyPressed(KEY_Q)) {
                     // KI-Agent unterstützt: Session-origin-aware routing (ADR-0021 bugfix)
+                    restore_main_game_context(config, r_ctx);  // no-op if not a kiosk replay
                     cleanup_interactive_session(sim_ctx, config, r_ctx);
                     set_ignition_start_time(0.0);
                     if (session_origin && *session_origin == ORIGIN_KIOSK_REPLAY) {
@@ -912,7 +916,8 @@ AppState process_ui_events(AppState state, GameConfig* config, SimulationContext
 static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, int screen_h);
 static void draw_kiosk_multicam(KioskController *ctrl, int screen_w, int screen_h);
 
-void draw_current_state(AppState state, const GameConfig* config, const World* gui_world, RenderContext *r_ctx) {
+void draw_current_state(AppState state, const GameConfig* config, const World* gui_world,
+                        RenderContext *r_ctx, const SimulationContext *sim_ctx) {
     int screenWidth = GetScreenWidth();
     int screenHeight = GetScreenHeight();
     // --- Drawing ---
@@ -1137,8 +1142,17 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
 
             case STATE_OBSERVER:
             case STATE_RUNNING:
-                DrawText("SIMULATION ACTIVE", 20, 18, 24, THEME_RED);
-                
+                // KI-Agent unterstützt: In kiosk replay, replace generic title with player names (ADR-0024)
+                if (sim_ctx && sim_ctx->participant_red[0] != '\0') {
+                    DrawText(sim_ctx->participant_red, 20, 18, 24, THEME_RED);
+                    int name_end_x = 20 + MeasureText(sim_ctx->participant_red, 24);
+                    DrawText(" vs ", name_end_x, 20, 20, THEME_HINT);
+                    DrawText(sim_ctx->participant_blue,
+                             name_end_x + MeasureText(" vs ", 20), 18, 24, THEME_BLUE);
+                } else {
+                    DrawText("SIMULATION ACTIVE", 20, 18, 24, THEME_RED);
+                }
+
                 if (state == STATE_OBSERVER) {
                     DrawText("(OBSERVER MODE)", 230, 22, 18, THEME_HINT);
                 }
@@ -1410,6 +1424,10 @@ static void draw_kiosk_multicam(KioskController *ctrl, int screen_w, int screen_
     // Per-quadrant HUD overlay: header, badge, thumbnails, score bar
     // KI-Agent unterstützt: Per-quadrant HUD overlay — names, badge, score bar, thumbnail (ADR-0021/ADR-0022)
     for (int i = 0; i < ctrl->match_count; i++) {
+        // KI-Agent unterstützt: Resolve quadrant to pool slot for thumbnail/badge (ADR-0024)
+        int render_slot = (ctrl->highlight_pool_size > 0)
+            ? (ctrl->highlight_pool_index + i) % ctrl->highlight_pool_size
+            : i;
         Rectangle vp = ctrl->renders[i].viewport_bounds;
         int rx = (int)vp.x;
         int ry = (int)vp.y;
@@ -1430,7 +1448,7 @@ static void draw_kiosk_multicam(KioskController *ctrl, int screen_w, int screen_
         DrawText(name_blue, blue_x, ry + 5, 16, THEME_BLUE);
 
         // B.10: metric_reason centred in badge strip (ADR-0022)
-        const char *reason = ctrl->cached_highlights.matches[i].metric_reason;
+        const char *reason = ctrl->cached_highlights.matches[render_slot].metric_reason;
         if (strlen(reason) > 0) {
             int rw = MeasureText(reason, layout.font_badge);
             DrawText(reason,
@@ -1452,7 +1470,7 @@ static void draw_kiosk_multicam(KioskController *ctrl, int screen_w, int screen_
                       Fade(BLACK, 0.65f));
         for (int tr = 0; tr < 8; tr++) {
             for (int tc = 0; tc < 8; tc++) {
-                if (ctrl->cached_highlights.matches[i].seed_blue[tr * 8 + tc])
+                if (ctrl->cached_highlights.matches[render_slot].seed_blue[tr * 8 + tc])
                     DrawRectangle(thumb_x + tc * thumb_cell,
                                   thumb_y + tr * thumb_cell,
                                   thumb_cell - 1, thumb_cell - 1,
@@ -1462,7 +1480,7 @@ static void draw_kiosk_multicam(KioskController *ctrl, int screen_w, int screen_
         int thumb_x_red = thumb_x + thumb_w + thumb_gap;
         for (int tr = 0; tr < 8; tr++) {
             for (int tc = 0; tc < 8; tc++) {
-                if (ctrl->cached_highlights.matches[i].seed_red[tr * 8 + tc])
+                if (ctrl->cached_highlights.matches[render_slot].seed_red[tr * 8 + tc])
                     DrawRectangle(thumb_x_red + tc * thumb_cell,
                                   thumb_y + tr * thumb_cell,
                                   thumb_cell - 1, thumb_cell - 1,

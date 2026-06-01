@@ -1,3 +1,25 @@
+2026-06-01 — ADR-0024: Client-Side Highlight Rotation (Round-Robin) + Replay Bugfixes
+
+- `src/io/network_io.h`: `MatchHighlight matches[4]` → `matches[10]` (pool capacity).
+- `src/io/network_io.c`: Parse-Schleife `i < 4` → `i < 10`.
+- `src/gui/app_state_manager.h`: `highlight_pool_index`, `highlight_pool_size` zu
+  `KioskController` hinzugefügt; `restore_main_game_context` deklariert;
+  `update_app_state`-Signatur um `RenderContext *r_ctx` erweitert.
+- `src/gui/app_state_manager.c`: Statische Hilfsfunktion `load_kiosk_sims_from_pool()`
+  extrahiert; Pool-Index rotiert bei MULTICAM→LB-Wechsel um `match_count`; bei
+  LB→MULTICAM-Wechsel werden Sims aus dem neuen Pool-Fenster geladen.
+  `highlight_pool_index` wird nur beim ersten Datenabruf (pool_size==0) zurückgesetzt,
+  nicht bei jedem Refresh — das war der Root-Cause des Rotations-Bugs.
+- `src/core/config.h`: `DEFAULT_GRID_ROWS` / `DEFAULT_GRID_COLS` (50) hinzugefügt.
+- Replay-Fix: KEY_1..4 startet Vollbild-Replay jetzt auf korrektem 8×16-Grid
+  (identisch zum Turnier). `restore_main_game_context()` stellt 50×50 beim Verlassen
+  wieder her. `r_ctx` wird korrekt neu initialisiert.
+- Renderer-Fix: Spielernamen im Replay-Header sichtbar (ersetzt "SIMULATION ACTIVE").
+- `src/gui/renderer.c`: `draw_current_state` um `SimulationContext *sim_ctx` erweitert;
+  Bonus-Fix: Thumbnails und `metric_reason`-Badge nutzen `render_slot`-Formel.
+- Effekt: Der Kiosk zeigt bei jedem 30s-Zyklus andere Matches (Round-Robin über bis zu
+  10 Highlights). Vollbild-Replay zeigt korrekte Partie auf korrektem Spielfeld.
+
 2026-05-31 — ADR-0023: Oscillator Filtering & Kiosk World Alignment
 
 - Kiosk-Simulationswelt von 50×50 auf 8×16 umgestellt (app_state_manager.h/.c),

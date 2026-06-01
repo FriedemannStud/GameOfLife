@@ -84,7 +84,47 @@ void init_kiosk_controller(KioskController *ctrl, int match_count,
         init_render_context(&ctrl->renders[i],  KIOSK_SIM_COLS, KIOSK_SIM_ROWS, vp);
     }
 
+    // KI-Agent unterstützt: Pool starts empty; populated on first API response (ADR-0024)
+    ctrl->highlight_pool_index = 0;
+    ctrl->highlight_pool_size  = 0;
     ctrl->initialized = true;
+}
+
+// KI-Agent unterstützt: Loads match_count sims from the pool starting at highlight_pool_index (ADR-0024)
+// Uses modulo wrap-around so the pool is cycled continuously.
+static void load_kiosk_sims_from_pool(void) {
+    if (kiosk_ctrl.highlight_pool_size == 0) return;  // guard: no data yet
+    for (int i = 0; i < kiosk_ctrl.match_count; i++) {
+        // Modulo-Arithmetik: Index springt am Pool-Ende wieder auf 0
+        int slot = (kiosk_ctrl.highlight_pool_index + i) % kiosk_ctrl.highlight_pool_size;
+        MatchHighlight *m = &kiosk_ctrl.cached_highlights.matches[slot];
+
+        int stride = KIOSK_SIM_COLS + 2;
+        World *w   = kiosk_ctrl.sims[i].current_world;
+        // Grid leeren bevor neues Muster geladen wird
+        for (int k = 0; k < (KIOSK_SIM_ROWS + 2) * stride; k++) w->grid[k] = DEAD;
+        if (w->chunk_map) memset(w->chunk_map, 0, w->chunk_rows * w->chunk_cols);
+
+        for (int r = 0; r < LOCAL_GRID_SIZE; r++) {
+            for (int c = 0; c < LOCAL_GRID_SIZE; c++) {
+                if (m->seed_red[r * LOCAL_GRID_SIZE + c] == 1) {
+                    w->grid[(r+1)*stride + (c+1)] = TEAM_RED;
+                    activate_chunk_at(w, r, c);
+                }
+                if (m->seed_blue[r * LOCAL_GRID_SIZE + c] == 1) {
+                    w->grid[(r+1)*stride + (c+LOCAL_GRID_SIZE+1)] = TEAM_BLUE;
+                    activate_chunk_at(w, r, c + LOCAL_GRID_SIZE);
+                }
+            }
+        }
+        // Spielernamen in den SimulationContext übertragen (für HUD-Anzeige)
+        strncpy(kiosk_ctrl.sims[i].participant_red,  m->participant_red,
+                sizeof(kiosk_ctrl.sims[i].participant_red) - 1);
+        kiosk_ctrl.sims[i].participant_red[sizeof(kiosk_ctrl.sims[i].participant_red) - 1] = '\0';
+        strncpy(kiosk_ctrl.sims[i].participant_blue, m->participant_blue,
+                sizeof(kiosk_ctrl.sims[i].participant_blue) - 1);
+        kiosk_ctrl.sims[i].participant_blue[sizeof(kiosk_ctrl.sims[i].participant_blue) - 1] = '\0';
+    }
 }
 
 static double time_since_last_input = 0.0;
@@ -130,6 +170,20 @@ void cleanup_interactive_session(SimulationContext *sim, GameConfig *config, Ren
     }
 }
 
+// KI-Agent unterstützt: Restore main-game grid (50x50) after a kiosk replay (ADR-0024)
+// Only acts when config was changed to 8x16 for the kiosk replay.
+void restore_main_game_context(GameConfig *config, RenderContext *r_ctx) {
+    if (config->rows != DEFAULT_GRID_ROWS || config->cols != DEFAULT_GRID_COLS) {
+        config->rows = DEFAULT_GRID_ROWS;
+        config->cols = DEFAULT_GRID_COLS;
+        free_render_context(r_ctx);
+        Rectangle vp = { 20, 60,
+                         (float)(GetScreenWidth()  - 40),
+                         (float)(GetScreenHeight() - 120) };
+        init_render_context(r_ctx, DEFAULT_GRID_COLS, DEFAULT_GRID_ROWS, vp);
+    }
+}
+
 void update_global_input(AppState* current_app_state, SimulationContext *sim,
                          GameConfig *config, RenderContext *r_ctx) {
     if (IsKeyPressed(KEY_NULL) || IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || 
@@ -141,6 +195,7 @@ void update_global_input(AppState* current_app_state, SimulationContext *sim,
     
     if (time_since_last_input > 60.0 && *current_app_state != STATE_KIOSK_MODE) {
         // KI-Agent unterstützt: Clean up interactive session before forced kiosk return (ADR-0020)
+        restore_main_game_context(config, r_ctx);  // no-op if not a kiosk replay
         cleanup_interactive_session(sim, config, r_ctx);
         set_ignition_start_time(0.0);
         interactive_time_accumulator = 0.0f;
@@ -150,7 +205,8 @@ void update_global_input(AppState* current_app_state, SimulationContext *sim,
 }
 
 AppState update_app_state(AppState current_state, GameConfig* config, SimulationContext *sim_ctx,
-                          float delta_time, double current_time, SessionOrigin *session_origin) {
+                          RenderContext *r_ctx, float delta_time, double current_time,
+                          SessionOrigin *session_origin) {
     // KI-Agent unterstützt: Poll for network updates
     LeaderboardData lb;
     if (network_get_leaderboard(&lb)) {
@@ -160,37 +216,22 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
 
     HighlightData hd;
     if (network_get_highlights(&hd)) {
-        kiosk_ctrl.cached_highlights = hd;
-        printf("--- Highlights Received: %d matches ---\n", hd.count);
-        
-        if (current_state == STATE_KIOSK_MODE) {
-            // KI-Agent unterstützt: loop bound and world size from named constants (ADR-0022)
-            for (int i = 0; i < kiosk_ctrl.match_count && i < hd.count; i++) {
-                // KI-Agent unterstützt: 8x16 world mirrors run_isolated_match() exactly (ADR-0023)
-                int stride = KIOSK_SIM_COLS + 2;  // 18
-                World* w = kiosk_ctrl.sims[i].current_world;
-                for (int k = 0; k < (KIOSK_SIM_ROWS + 2) * stride; k++) w->grid[k] = DEAD;
-                if (w->chunk_map) memset(w->chunk_map, 0, w->chunk_rows * w->chunk_cols);
-                for (int r = 0; r < LOCAL_GRID_SIZE; r++) {
-                    for (int c = 0; c < LOCAL_GRID_SIZE; c++) {
-                        if (hd.matches[i].seed_red[r * LOCAL_GRID_SIZE + c] == 1) {
-                            w->grid[(r+1)*stride + (c+1)] = TEAM_RED;   // left half
-                            activate_chunk_at(w, r, c);
-                        }
-                        if (hd.matches[i].seed_blue[r * LOCAL_GRID_SIZE + c] == 1) {
-                            w->grid[(r+1)*stride + (c+LOCAL_GRID_SIZE+1)] = TEAM_BLUE;  // right half
-                            activate_chunk_at(w, r, c + LOCAL_GRID_SIZE);
-                        }
-                    }
-                }
-                // KI-Agent unterstützt: Forward participant names for kiosk HUD (ADR-0021)
-                strncpy(kiosk_ctrl.sims[i].participant_red, hd.matches[i].participant_red,
-                        sizeof(kiosk_ctrl.sims[i].participant_red) - 1);
-                kiosk_ctrl.sims[i].participant_red[sizeof(kiosk_ctrl.sims[i].participant_red) - 1] = '\0';
-                strncpy(kiosk_ctrl.sims[i].participant_blue, hd.matches[i].participant_blue,
-                        sizeof(kiosk_ctrl.sims[i].participant_blue) - 1);
-                kiosk_ctrl.sims[i].participant_blue[sizeof(kiosk_ctrl.sims[i].participant_blue) - 1] = '\0';
+        // KI-Agent unterstützt: Distinguish first load from epoch refresh (ADR-0024)
+        // pool_index is only reset to 0 on the very first response (pool was empty).
+        // Subsequent refreshes keep the current rotation position so the round-robin
+        // is not interrupted by background network responses.
+        bool first_load = (kiosk_ctrl.highlight_pool_size == 0);
+        kiosk_ctrl.cached_highlights   = hd;
+        kiosk_ctrl.highlight_pool_size = hd.count;
+        if (first_load) {
+            kiosk_ctrl.highlight_pool_index = 0;
+            printf("--- Highlights Received: %d matches (first load) ---\n", hd.count);
+            if (current_state == STATE_KIOSK_MODE) {
+                load_kiosk_sims_from_pool();
             }
+        } else {
+            printf("--- Highlights Received: %d matches (refresh, index=%d kept) ---\n",
+                   hd.count, kiosk_ctrl.highlight_pool_index);
         }
     }
 
@@ -255,6 +296,8 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
                     kiosk_ctrl.current_sub_state = KIOSK_SUB_MULTICAM;
                     kiosk_ctrl.state_timer = 0.0f;
                     network_fetch_highlights_async();
+                    // KI-Agent unterstützt: Load the next rotation window from the pool (ADR-0024)
+                    load_kiosk_sims_from_pool();
                 }
             } else if (kiosk_ctrl.current_sub_state == KIOSK_SUB_MULTICAM) {
                 kiosk_time_accumulator += delta_time;
@@ -269,6 +312,12 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
                 }
                 
                 if (kiosk_ctrl.state_timer > 30.0f) {
+                    // KI-Agent unterstützt: Advance round-robin index before switching away (ADR-0024)
+                    if (kiosk_ctrl.highlight_pool_size > 0) {
+                        kiosk_ctrl.highlight_pool_index =
+                            (kiosk_ctrl.highlight_pool_index + kiosk_ctrl.match_count)
+                            % kiosk_ctrl.highlight_pool_size;
+                    }
                     kiosk_ctrl.current_sub_state = KIOSK_SUB_LEADERBOARD;
                     kiosk_ctrl.state_timer = 0.0f;
                     network_fetch_leaderboard_async();
@@ -278,11 +327,33 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
                 // KEY_ONE + i maps to keys 1, 2, 3, 4 ... (Raylib digit key constants are sequential).
                 for (int i = 0; i < kiosk_ctrl.match_count; i++) {
                     if (IsKeyPressed(KEY_ONE + i)) {
-                        // KI-Agent unterstützt: Use reset_simulation_context to maintain
-                        // world_a/world_b ownership invariant (ADR-0020 fix)
-                        reset_simulation_context(sim_ctx, config->rows, config->cols);
+                        // KI-Agent unterstützt: Resolve quadrant index to current pool slot (ADR-0024)
+                        int slot = (kiosk_ctrl.highlight_pool_size > 0)
+                            ? (kiosk_ctrl.highlight_pool_index + i) % kiosk_ctrl.highlight_pool_size
+                            : i;
+                        // Namen aus dem Pool-Slot in den Replay-Context kopieren (für STATE_RUNNING HUD)
+                        strncpy(sim_ctx->participant_red,
+                                kiosk_ctrl.cached_highlights.matches[slot].participant_red,
+                                sizeof(sim_ctx->participant_red) - 1);
+                        sim_ctx->participant_red[sizeof(sim_ctx->participant_red) - 1] = '\0';
+                        strncpy(sim_ctx->participant_blue,
+                                kiosk_ctrl.cached_highlights.matches[slot].participant_blue,
+                                sizeof(sim_ctx->participant_blue) - 1);
+                        sim_ctx->participant_blue[sizeof(sim_ctx->participant_blue) - 1] = '\0';
+                        // KI-Agent unterstützt: Run replay on the same 8x16 grid as the tournament (ADR-0024)
+                        // 1. Resize config so DrawGridAndCellsCtx and update_generation use 8x16.
+                        config->rows = KIOSK_SIM_ROWS;
+                        config->cols = KIOSK_SIM_COLS;
+                        // 2. Reinitialise GPU render context for 8x16 (pixel buffer & texture must match world).
+                        free_render_context(r_ctx);
+                        Rectangle kiosk_vp = { 20, 60,
+                                               (float)(GetScreenWidth()  - 40),
+                                               (float)(GetScreenHeight() - 120) };
+                        init_render_context(r_ctx, KIOSK_SIM_COLS, KIOSK_SIM_ROWS, kiosk_vp);
+                        // 3. Reset sim to 8x16.
+                        reset_simulation_context(sim_ctx, KIOSK_SIM_ROWS, KIOSK_SIM_COLS);
 
-                        int stride = config->cols + 2;
+                        int stride = config->cols + 2;  // 18
                         for (int k = 0; k < (config->rows + 2) * stride; k++) {
                             sim_ctx->current_world->grid[k] = DEAD;
                         }
@@ -291,19 +362,20 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
                                    sim_ctx->current_world->chunk_rows * sim_ctx->current_world->chunk_cols);
                         }
 
-                        int center_r   = config->rows / 2 - 4;
-                        int center_c_b = config->cols / 4 - 4;
-                        int center_c_r = config->cols * 3 / 4 - 4;
+                        // Centering math reduces to (0, 0, 8) for 8x16 — same layout as kiosk sims.
+                        int center_r   = config->rows / 2 - 4;       // 0
+                        int center_c_b = config->cols / 4 - 4;        // 0  (blue: left half)
+                        int center_c_r = config->cols * 3 / 4 - 4;   // 8  (red:  right half)
 
                         // KI-Agent unterstützt: Read original seed — not the live simulation state (ADR-0022 fix)
                         // cached_highlights holds the 8x8 start pattern; current_world is mid-game.
                         for (int r = 0; r < 8; r++) {
                             for (int c = 0; c < 8; c++) {
-                                if (kiosk_ctrl.cached_highlights.matches[i].seed_blue[r * 8 + c]) {
+                                if (kiosk_ctrl.cached_highlights.matches[slot].seed_blue[r * 8 + c]) {
                                     sim_ctx->current_world->grid[(center_r + r + 1)*stride + (center_c_b + c + 1)] = TEAM_BLUE;
                                     activate_chunk_at(sim_ctx->current_world, center_r + r, center_c_b + c);
                                 }
-                                if (kiosk_ctrl.cached_highlights.matches[i].seed_red[r * 8 + c]) {
+                                if (kiosk_ctrl.cached_highlights.matches[slot].seed_red[r * 8 + c]) {
                                     sim_ctx->current_world->grid[(center_r + r + 1)*stride + (center_c_r + c + 1)] = TEAM_RED;
                                     activate_chunk_at(sim_ctx->current_world, center_r + r, center_c_r + c);
                                 }

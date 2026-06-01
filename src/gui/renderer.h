@@ -35,7 +35,9 @@ void free_render_context(RenderContext *ctx);
 void init_renderer(int window_width, int window_height, const char* title);
 // KI-Agent unterstützt: Refactored to use SimulationContext* instead of raw World** (ADR-0020)
 AppState process_ui_events(AppState current_state, GameConfig* config, SimulationContext *sim_ctx, RenderContext *r_ctx, SessionOrigin *session_origin);
-void draw_current_state(AppState state, const GameConfig* config, const World* gui_world, RenderContext *r_ctx);
+// KI-Agent unterstützt: sim_ctx added to display participant names in KIOSK_REPLAY (ADR-0024)
+void draw_current_state(AppState state, const GameConfig* config, const World* gui_world,
+                        RenderContext *r_ctx, const SimulationContext *sim_ctx);
 void close_renderer(void);
 
 // Refactored grid rendering using instance context

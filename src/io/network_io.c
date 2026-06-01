@@ -144,7 +144,14 @@ static void* fetch_highlights_thread(void* arg) {
                         pthread_mutex_lock(&g_network_mutex);
                         g_highlights.count = 0;
                         int size = cJSON_GetArraySize(h_array);
-                        for (int i = 0; i < size && i < 10; i++) {  // KI-Agent unterstützt: expanded to full pool (ADR-0024)
+                        cJSON* eid = cJSON_GetObjectItemCaseSensitive(root, "epoch_id");
+                        if (cJSON_IsString(eid)) {
+                            strncpy(g_highlights.epoch_id, eid->valuestring, sizeof(g_highlights.epoch_id) - 1);
+                            g_highlights.epoch_id[sizeof(g_highlights.epoch_id) - 1] = '\0';
+                        } else {
+                            g_highlights.epoch_id[0] = '\0';
+                        }
+                        for (int i = 0; i < size && i < MAX_HIGHLIGHT_MATCHES; i++) {  // KI-Agent unterstützt: named constant — single source of truth (ADR-0024)
                             cJSON* item = cJSON_GetArrayItem(h_array, i);
                             cJSON* red_name = cJSON_GetObjectItemCaseSensitive(item, "red_name");
                             cJSON* blue_name = cJSON_GetObjectItemCaseSensitive(item, "blue_name");

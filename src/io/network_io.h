@@ -9,6 +9,8 @@
 #define MAX_LEADERBOARD_ENTRIES 20
 #define MAX_NAME_LENGTH 32
 #define GRID_SIZE_8X8 64
+// KI-Agent unterstützt: Single source of truth for highlight pool capacity (ADR-0024)
+#define MAX_HIGHLIGHT_MATCHES 10
 
 typedef struct {
     char name[MAX_NAME_LENGTH];
@@ -34,10 +36,11 @@ typedef struct {
 } MatchHighlight;
 
 typedef struct {
-    // KI-Agent unterstützt: Pool of up to 10 highlights for round-robin rotation (ADR-0024)
-    MatchHighlight matches[10];
+    // KI-Agent unterstützt: Pool of up to MAX_HIGHLIGHT_MATCHES highlights for round-robin rotation (ADR-0024)
+    MatchHighlight matches[MAX_HIGHLIGHT_MATCHES];
     int count;
     bool is_ready;
+    char epoch_id[64];  // KI-Agent unterstützt: Epoch boundary detection — reset pool only on new epoch
 } HighlightData;
 
 // API functions

@@ -87,6 +87,7 @@ void init_kiosk_controller(KioskController *ctrl, int match_count,
     // KI-Agent unterstützt: Pool starts empty; populated on first API response (ADR-0024)
     ctrl->highlight_pool_index = 0;
     ctrl->highlight_pool_size  = 0;
+    ctrl->last_epoch_id[0]     = '\0';   // empty string — any epoch_id triggers first reset
     ctrl->initialized = true;
 }
 
@@ -216,21 +217,22 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
 
     HighlightData hd;
     if (network_get_highlights(&hd)) {
-        // KI-Agent unterstützt: Distinguish first load from epoch refresh (ADR-0024)
-        // pool_index is only reset to 0 on the very first response (pool was empty).
-        // Subsequent refreshes keep the current rotation position so the round-robin
-        // is not interrupted by background network responses.
-        bool first_load = (kiosk_ctrl.highlight_pool_size == 0);
+        // KI-Agent unterstützt: Pool resets only when epoch_id changes — preserves rotation
+        // within an epoch; resets correctly on epoch boundary or first load (ADR-0024)
+        bool new_epoch = (strcmp(hd.epoch_id, kiosk_ctrl.last_epoch_id) != 0);
         kiosk_ctrl.cached_highlights   = hd;
         kiosk_ctrl.highlight_pool_size = hd.count;
-        if (first_load) {
+        if (new_epoch) {
             kiosk_ctrl.highlight_pool_index = 0;
-            printf("--- Highlights Received: %d matches (first load) ---\n", hd.count);
+            strncpy(kiosk_ctrl.last_epoch_id, hd.epoch_id, sizeof(kiosk_ctrl.last_epoch_id) - 1);
+            kiosk_ctrl.last_epoch_id[sizeof(kiosk_ctrl.last_epoch_id) - 1] = '\0';
+            printf("--- Highlights: %d matches (new epoch '%s', pool reset) ---\n",
+                   hd.count, hd.epoch_id);
             if (current_state == STATE_KIOSK_MODE) {
                 load_kiosk_sims_from_pool();
             }
         } else {
-            printf("--- Highlights Received: %d matches (refresh, index=%d kept) ---\n",
+            printf("--- Highlights: %d matches (same epoch, index=%d kept) ---\n",
                    hd.count, kiosk_ctrl.highlight_pool_index);
         }
     }

@@ -29,8 +29,9 @@ typedef struct {
     HighlightData     cached_highlights;
 
     // KI-Agent unterstützt: Round-robin pool state (ADR-0024)
-    int highlight_pool_index;   // index of first match in current display window
-    int highlight_pool_size;    // total matches available in cached_highlights
+    int  highlight_pool_index;            // index of first match in current display window
+    int  highlight_pool_size;             // total matches available in cached_highlights
+    char last_epoch_id[64];               // last seen epoch_id — pool resets only when this changes
 
     // KI-Agent unterstützt: Per-quadrant live population — dynamic arrays (ADR-0022)
     int *quad_red_pop;               // length == match_count

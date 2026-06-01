@@ -19,6 +19,7 @@ typedef struct {
     int draws;
     int losses;
     float avg_stable_generation;
+    int seed[GRID_SIZE_8X8];  // KI-Agent unterstützt: Dense 8x8 start config for leaderboard icon (ADR-0025)
 } LeaderboardEntry;
 
 typedef struct {

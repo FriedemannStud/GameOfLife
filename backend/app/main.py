@@ -4,6 +4,7 @@ from datetime import datetime
 from .models import Submission, DBSubmission, Player
 from .validators import validate_biotope_rules
 from .database import get_db
+from .grid_utils import cells_to_grid
 
 # KI-Agent unterstützt: Biotope Backend with MongoDB integration for Matchmaking
 
@@ -93,25 +94,29 @@ async def get_submission_count():
 async def get_leaderboard():
     try:
         db = get_db()
-        # Fetch top 20 players by Elo
-        # KI-Agent unterstützt: Epoch-fresh ranking sorted by win_rate, tiebreak by avg_stable_generation
-        players = (
-            await db.players.find({})
+        # KI-Agent unterstützt: Per-configuration leaderboard read from `submissions` (ADR-0025).
+        # Each active, already-ranked submission is its own row with its own stats and seed
+        # icon. This avoids the per-nickname last-write-wins aggregation on `players`, where a
+        # player's weakest submission would overwrite the displayed stats.
+        submissions = (
+            await db.submissions.find({"status": "active", "matches_played": {"$gt": 0}})
             .sort([("win_rate", -1), ("avg_stable_generation", 1)])
             .limit(20)
             .to_list(length=20)
         )
 
         leaderboard = []
-        for position, p in enumerate(players, start=1):
+        for position, s in enumerate(submissions, start=1):
             leaderboard.append({
                 "rank": position,
-                "name": p["nickname"],
-                "win_rate": round(p.get("win_rate", 0.0) * 100, 1),
-                "wins": p.get("wins", 0),
-                "draws": p.get("draws", 0),
-                "losses": p.get("losses", 0),
-                "avg_stable_generation": round(p.get("avg_stable_generation", 0.0), 1),
+                "name": s["metadata"]["nickname"],
+                "win_rate": round(s.get("win_rate", 0.0) * 100, 1),
+                "wins": s.get("wins", 0),
+                "draws": s.get("draws", 0),
+                "losses": s.get("losses", 0),
+                "avg_stable_generation": round(s.get("avg_stable_generation", 0.0), 1),
+                # KI-Agent unterstützt: Dense 8x8 start configuration for the leaderboard icon (ADR-0025)
+                "seed": cells_to_grid(s.get("config", {}).get("cells", [])),
             })
 
         return {"leaderboard": leaderboard}

@@ -77,6 +77,7 @@ static void* fetch_leaderboard_thread(void* arg) {
                             cJSON* d    = cJSON_GetObjectItemCaseSensitive(item, "draws");
                             cJSON* l    = cJSON_GetObjectItemCaseSensitive(item, "losses");
                             cJSON* asg  = cJSON_GetObjectItemCaseSensitive(item, "avg_stable_generation");
+                            cJSON* seed = cJSON_GetObjectItemCaseSensitive(item, "seed");
 
                             if (cJSON_IsString(name) && cJSON_IsNumber(wr)) {
                                 strncpy(g_leaderboard.entries[i].name, name->valuestring, MAX_NAME_LENGTH - 1);
@@ -86,6 +87,15 @@ static void* fetch_leaderboard_thread(void* arg) {
                                 g_leaderboard.entries[i].draws  = cJSON_IsNumber(d) ? d->valueint : 0;
                                 g_leaderboard.entries[i].losses = cJSON_IsNumber(l) ? l->valueint : 0;
                                 g_leaderboard.entries[i].avg_stable_generation = cJSON_IsNumber(asg) ? (float)asg->valuedouble : 0.0f;
+
+                                // KI-Agent unterstützt: Parse dense 8x8 start config for icon (ADR-0025)
+                                for (int b = 0; b < GRID_SIZE_8X8; b++)
+                                    g_leaderboard.entries[i].seed[b] = 0;
+                                if (cJSON_IsArray(seed)) {
+                                    int n = cJSON_GetArraySize(seed);
+                                    for (int b = 0; b < GRID_SIZE_8X8 && b < n; b++)
+                                        g_leaderboard.entries[i].seed[b] = cJSON_GetArrayItem(seed, b)->valueint;
+                                }
                                 g_leaderboard.count++;
                             }
                         }

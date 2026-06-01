@@ -1311,18 +1311,21 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
     }
 
     // KI-Agent unterstützt: Proportional column layout — 80% of screen width, 10% margins (ADR-0022)
+    // KI-Agent unterstützt: CONFIG icon column inserted between RANK and PLAYER (ADR-0025)
     // Column x-positions are cumulative percentages of table_w:
-    //   RANK 0-8% | PLAYER 8-42% | WIN RATE 42-58% | W/D/L 58-80% | ENDURANCE 80-100%
+    //   RANK 0-7% | CONFIG 7-15% | PLAYER 15-45% | WIN RATE 45-60% | W/D/L 60-80% | ENDURANCE 80-100%
     int table_x       = (int)(screen_w * 0.10f);
     int table_w       = (int)(screen_w * 0.80f);
     int col_rank      = table_x;
-    int col_player    = table_x + (int)(table_w * 0.08f);
-    int col_winrate   = table_x + (int)(table_w * 0.42f);
-    int col_wdl       = table_x + (int)(table_w * 0.58f);
+    int col_icon      = table_x + (int)(table_w * 0.07f);
+    int col_player    = table_x + (int)(table_w * 0.15f);
+    int col_winrate   = table_x + (int)(table_w * 0.45f);
+    int col_wdl       = table_x + (int)(table_w * 0.60f);
     int col_endurance = table_x + (int)(table_w * 0.80f);
 
     // B.6: Column headers
     DrawText("RANK",      col_rank,      startY, 20, THEME_HINT);
+    DrawText("CONFIG",    col_icon,      startY, 20, THEME_HINT);
     DrawText("PLAYER",    col_player,    startY, 20, THEME_HINT);
     DrawText("WIN RATE",  col_winrate,   startY, 20, THEME_HINT);
     DrawText("W / D / L", col_wdl,       startY, 20, THEME_HINT);
@@ -1360,6 +1363,28 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
             }
 
             DrawText(rankBuf,                          col_rank,      y, 20, rankCol);
+
+            // KI-Agent unterstützt: 8x8 start-config icon between rank and name (ADR-0025)
+            // Single colour (no red/blue split) — a start config has no team assignment yet.
+            // Icon size is coupled to rowHeight so it never collides with text or the footer.
+            {
+                int icon_px = rowHeight - 8;
+                if (icon_px > 24) icon_px = 24;
+                int cell_px = icon_px / 8;
+                if (cell_px < 1) cell_px = 1;
+                int icon_y  = y + (20 - 8 * cell_px) / 2;
+                DrawRectangle(col_icon - 1, icon_y - 1,
+                              8 * cell_px + 2, 8 * cell_px + 2, Fade(BLACK, 0.55f));
+                for (int tr = 0; tr < 8; tr++) {
+                    for (int tc = 0; tc < 8; tc++) {
+                        if (ctrl->cached_lb.entries[i].seed[tr * 8 + tc])
+                            DrawRectangle(col_icon + tc * cell_px,
+                                          icon_y + tr * cell_px,
+                                          cell_px - 1, cell_px - 1, THEME_ACCENT);
+                    }
+                }
+            }
+
             DrawText(ctrl->cached_lb.entries[i].name,  col_player,    y, 20, THEME_TEXT);
             DrawText(winBuf,                           col_winrate,   y, 20, THEME_ACCENT);
             DrawText(wdlBuf,                           col_wdl,       y, 20, THEME_TEXT);

@@ -1,3 +1,19 @@
+2026-06-01 — ADR-0025: Per-Config Leaderboard + 8x8 Start-Config Icon
+
+- `backend/app/grid_utils.py` (neu): `cells_to_grid()` — sparse `[x,y]` → dichtes 64-int Grid
+  (`index = y*8 + x`), defensiv gegen leere/fehlerhafte/out-of-bounds Zellen.
+- `backend/app/main.py`: `get_leaderboard` liest jetzt per-Konfiguration aus `submissions`
+  (`status=active`, `matches_played>0`) statt aggregiert per-Nickname aus `players`. Behebt die
+  Last-Write-Wins-Verzerrung (schwächste Submission überschrieb die Anzeige). Pro Eintrag neues
+  Feld `seed` (8x8 Startkonfiguration).
+- `src/io/network_io.h`: `int seed[GRID_SIZE_8X8]` zu `LeaderboardEntry` hinzugefügt.
+- `src/io/network_io.c`: Leaderboard-Parser liest `seed`-Array (Default 0, 64er-Guard).
+- `src/gui/renderer.c`: `draw_kiosk_leaderboard` zeigt eine CONFIG-Icon-Spalte zwischen RANK und
+  PLAYER; Spalten-Layout neu verteilt; 8x8-Icon einfarbig (`THEME_ACCENT`), Größe an `rowHeight`
+  gekoppelt.
+- Effekt: Jede Konfiguration ist eine eigene Leaderboard-Zeile mit eigenem Icon und korrekten
+  Stats; gleicher Spielername kann mehrfach erscheinen und wird durch das Icon unterscheidbar.
+
 2026-06-01 — ADR-0024: Client-Side Highlight Rotation (Round-Robin) + Replay Bugfixes
 
 - `src/io/network_io.h`: `MatchHighlight matches[4]` → `matches[10]` (pool capacity).

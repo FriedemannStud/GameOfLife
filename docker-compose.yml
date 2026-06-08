@@ -9,6 +9,23 @@ services:
     environment:
       - DISPLAY=host.docker.internal:0
 
+  # KI-Agent unterstützt: Local MongoDB replacing Atlas
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     image: python:3.11-slim
     volumes:
@@ -24,6 +41,10 @@ services:
     # KI-Agent unterstützt: Environment variables for development
     environment:
       - PYTHONUNBUFFERED=1
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
 
   matchmaker:
     image: python:3.11-slim
@@ -37,3 +58,10 @@ services:
     command: /bin/bash -c "pip install -r requirements.txt && apt-get update && apt-get install -y libgomp1 libcurl4 && python3 app/worker.py"
     environment:
       - PYTHONUNBUFFERED=1
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  mongo_data:

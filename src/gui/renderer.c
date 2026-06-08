@@ -1506,21 +1506,21 @@ static void draw_kiosk_multicam(KioskController *ctrl, int screen_w, int screen_
                       Fade(BLACK, 0.65f));
         for (int tr = 0; tr < 8; tr++) {
             for (int tc = 0; tc < 8; tc++) {
-                if (ctrl->cached_highlights.matches[render_slot].seed_blue[tr * 8 + tc])
+                if (ctrl->cached_highlights.matches[render_slot].seed_red[tr * 8 + tc])
                     DrawRectangle(thumb_x + tc * thumb_cell,
                                   thumb_y + tr * thumb_cell,
                                   thumb_cell - 1, thumb_cell - 1,
-                                  Fade(THEME_BLUE, 0.9f));
+                                  Fade(THEME_RED, 0.9f));
             }
         }
-        int thumb_x_red = thumb_x + thumb_w + thumb_gap;
+        int thumb_x_blue = thumb_x + thumb_w + thumb_gap;
         for (int tr = 0; tr < 8; tr++) {
             for (int tc = 0; tc < 8; tc++) {
-                if (ctrl->cached_highlights.matches[render_slot].seed_red[tr * 8 + tc])
-                    DrawRectangle(thumb_x_red + tc * thumb_cell,
+                if (ctrl->cached_highlights.matches[render_slot].seed_blue[tr * 8 + tc])
+                    DrawRectangle(thumb_x_blue + tc * thumb_cell,
                                   thumb_y + tr * thumb_cell,
                                   thumb_cell - 1, thumb_cell - 1,
-                                  Fade(THEME_RED, 0.9f));
+                                  Fade(THEME_BLUE, 0.9f));
             }
         }
 

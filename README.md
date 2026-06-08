@@ -3,6 +3,8 @@
 > [!IMPORTANT]
 > **🚀 Neu hier oder lange nicht da gewesen?**  
 > Schau dir die [**Start-Routine**](docs/START_ROUTINE.md) an, um die App in 2 Minuten zu bauen und zu starten!
+>
+> Für den Betrieb auf einem Server (VM, Zugriff per SSH) siehe die [**Deployment-Anleitung**](docs/DEPLOYMENT.md).
 
 #### Author1: Friedemann Decker / 2203777
 #### Video: <URL> oder "VC"

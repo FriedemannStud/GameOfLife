@@ -1,3 +1,15 @@
+2026-06-08 — Deployment-Anleitung für Server-Betrieb
+
+- `docs/DEPLOYMENT.md` (neu): Schritt-für-Schritt-Anleitung, um den Stack auf einem
+  Server (VM, SSH) zu starten. Trennung headless Server-Stack (Mongo, Backend, Editor,
+  Matchmaker via `docker compose`) vs. grafische Anzeige (`build/biotope`, braucht Display).
+- Dokumentiert: nur `build/biotope_hyper_worker` + `build/biotope_headless` sind für den
+  Matchmaker nötig (keine Raylib-Abhängigkeit), `.env` muss auf dem Server neu angelegt
+  werden (gitignored), Passwort identisch in `MONGO_PASSWORD` und `MONGODB_URI`.
+- Drei Wege für die Anzeige beschrieben; empfohlen: Weg C (lokale GUI + SSH-Tunnel
+  `-L 8000:localhost:8000`), da die GUI fest `http://localhost:8000` anspricht.
+- `README.md`: Verweis auf die neue Deployment-Anleitung im Intro-Block ergänzt.
+
 2026-06-01 — ADR-0025: Per-Config Leaderboard + 8x8 Start-Config Icon
 
 - `backend/app/grid_utils.py` (neu): `cells_to_grid()` — sparse `[x,y]` → dichtes 64-int Grid

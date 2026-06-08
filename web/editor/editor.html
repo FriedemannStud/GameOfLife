@@ -361,7 +361,7 @@
         showStatus("Übertrage Spezies...", "");
 
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/v1/submit_config', {
+            const res = await fetch('/api/v1/submit_config', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload)
@@ -383,7 +383,7 @@
     async function fetchGlobalCount() {
         try {
             // Fetch directly from the FastAPI backend
-            const res = await fetch('http://127.0.0.1:8000/api/v1/stats/count');
+            const res = await fetch('/api/v1/stats/count');
             if(res.ok) {
                 const data = await res.json();
                 document.getElementById('global-counter').innerText = data.count || "0";

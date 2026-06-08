@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from datetime import datetime
 from .models import Submission, DBSubmission, Player
 from .validators import validate_biotope_rules
@@ -32,6 +33,9 @@ async def startup_db_client():
 @app.get("/")
 async def root():
     return {"message": "Hello Biotope"}
+
+# KI-Agent unterstützt: Serve web editor as static files
+app.mount("/editor", StaticFiles(directory="web/editor"), name="editor")
 
 
 @app.post("/api/v1/submit_config", status_code=201)

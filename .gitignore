@@ -87,3 +87,4 @@ docker-compose.override.yml
 build/
 build_new/
 build_test/
+worker_bin/biotope_hyper_worker

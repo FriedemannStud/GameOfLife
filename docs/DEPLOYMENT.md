@@ -75,7 +75,7 @@ MONGODB_DB=biotope_db
 ## Teil 3 – C-Binaries bauen (für den Matchmaker zwingend)
 
 Der `build/`-Ordner ist gitignored, ist nach `git pull` also leer. Der Matchmaker bricht
-ohne `build/biotope_hyper_worker` ab. Bauen:
+ohne seine Binary ab. Bauen:
 
 ```bash
 cd ~/GameOfLife
@@ -83,14 +83,15 @@ make build/biotope_hyper_worker
 make build/biotope_headless
 ```
 
-Prüfen, dass die Datei da ist:
+Der erste Befehl kopiert `biotope_hyper_worker` automatisch auch nach `worker_bin/`
+(wird vom Matchmaker-Container verwendet). Prüfen:
 
 ```bash
-ls -l build/biotope_hyper_worker
+ls -l build/biotope_hyper_worker worker_bin/biotope_hyper_worker
 ```
 
-> Du könntest auch `make` (alles) ausführen – das versucht aber zusätzlich die GUI zu
-> bauen und **scheitert ohne Raylib**. Für den Server reichen die zwei obigen Targets.
+> `make` (ohne Target) würde auch die GUI bauen und **scheitert ohne Raylib**.
+> Für den Server reichen die zwei obigen Targets.
 
 ---
 

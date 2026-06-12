@@ -18,6 +18,8 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    ports:
+      - "127.0.0.1:27018:27017"
     volumes:
       - mongo_data:/data/db
     healthcheck:
@@ -52,7 +54,7 @@ services:
     volumes:
       - ./backend:/app
       - ./biotope_results:/app/results
-      - ./build:/app/build
+      - ./worker_bin:/app/build
     working_dir: /app
     env_file:
       - .env

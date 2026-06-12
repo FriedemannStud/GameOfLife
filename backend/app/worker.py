@@ -163,7 +163,7 @@ async def execute_epoch(db):
         binary_path = next((p for p in possible_paths if os.path.exists(p)), None)
         
         if not binary_path:
-            logger.error(f"Binary not found. Checked: {possible_paths}. Did you run 'make build/biotope_hyper_worker'?")
+            logger.error(f"Binary not found. Checked: {possible_paths}. Did you run 'make' before starting docker-compose?")
             return
 
         process = await asyncio.create_subprocess_exec(

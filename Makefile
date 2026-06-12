@@ -45,6 +45,8 @@ OBJ_APP_HEADLESS = $(BUILD_DIR)/apps/headless/main_headless.o
 OBJ_APP_HYPER = $(BUILD_DIR)/apps/hyper/main_hyper.o
 
 # 6. Targets
+WORKER_BIN_DIR = worker_bin
+
 all: $(BIN_GUI) $(BIN_HEADLESS) $(BIN_HYPER)
 
 # Rules for binaries
@@ -56,6 +58,8 @@ $(BIN_HEADLESS): $(OBJ_APP_HEADLESS) $(OBJ_CORE) $(OBJ_IO) $(OBJ_VENDOR)
 
 $(BIN_HYPER): $(OBJ_APP_HYPER) $(OBJ_CORE) $(OBJ_IO) $(OBJ_VENDOR)
 	$(CC) $(OBJ_APP_HYPER) $(OBJ_CORE) $(OBJ_IO) $(OBJ_VENDOR) $(CFLAGS) -o $@ -lm -lpthread -fopenmp -lcurl
+	@mkdir -p $(WORKER_BIN_DIR)
+	cp $@ $(WORKER_BIN_DIR)/biotope_hyper_worker
 
 # Pattern rule for object files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
@@ -64,12 +68,14 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 
 # 7. Cleanup
 clean:
-	rm -rf $(BUILD_DIR)
+	rm -rf $(BUILD_DIR) $(WORKER_BIN_DIR)
 
 # 8. Help
 help:
 	@echo "Plattform: $(PLATFORM)"
 	@echo "Verfügbare Befehle:"
-	@echo "  make        - Kompiliert alle Targets (GUI, Headless, Hyper) in $(BUILD_DIR)/"
+	@echo "  make        - Kompiliert alle Targets in $(BUILD_DIR)/ und kopiert Worker-Binary nach $(WORKER_BIN_DIR)/"
 	@echo "  make clean  - Löscht das $(BUILD_DIR)/ Verzeichnis"
 	@echo "  make help   - Zeigt diese Hilfe an"
+	@echo ""
+	@echo "Wichtig: Immer 'make' vor 'docker-compose up' ausführen!"

@@ -57,10 +57,12 @@ KioskLayout compute_kiosk_layout(int screen_w, int screen_h, int match_count) {
     l.grid_cols = (int)ceilf(sqrtf((float)match_count));
     l.grid_rows = (match_count + l.grid_cols - 1) / l.grid_cols;
 
-    // Global chrome — fixed pixel heights (small enough for any ≥720p screen)
-    l.top_bar_h      = 44;
-    l.bottom_panel_h = 55;
-    l.pad            = 12;
+    // KI-Agent unterstützt: Scale all chrome, padding, and fonts with screen height (reference 1080p)
+    float s = (float)screen_h / 1080.0f;
+
+    l.top_bar_h      = (int)(44 * s); if (l.top_bar_h      < 28) l.top_bar_h      = 28;
+    l.bottom_panel_h = (int)(55 * s); if (l.bottom_panel_h < 34) l.bottom_panel_h = 34;
+    l.pad            = (int)(12 * s); if (l.pad             <  4) l.pad             =  4;
     l.separator_px   = 2;
 
     // Quadrant pixel size: fill available area after chrome and inter-quad padding.
@@ -75,17 +77,33 @@ KioskLayout compute_kiosk_layout(int screen_w, int screen_h, int match_count) {
     if (l.score_bar_h < 20) l.score_bar_h = 20;
 
     // KI-Agent unterstützt: Badge height for metric_reason label below name strip (ADR-0022 Phase B)
-    // Compute badge first (based on fixed 26 px name row), then expand header_h.
-    l.badge_h = (int)(26 * 0.85f);
-    if (l.badge_h < 16) l.badge_h = 16;
-    l.header_h = 26 + l.badge_h;  // combined: name row + badge row
+    // Name row scales with screen_h; badge is 85% of name row.
+    int name_row_h = (int)(26 * s);
+    if (name_row_h < 16) name_row_h = 16;
+    l.badge_h  = (int)(name_row_h * 0.85f);
+    if (l.badge_h < 12) l.badge_h = 12;
+    l.header_h = name_row_h + l.badge_h;
 
     // KI-Agent unterstützt: Proportional thumbnail cell — visible from standing distance (ADR-0022 Phase B)
     // Divisor 40 → thumbnails occupy ~20% of quad height (8 cells × quad_h/40 = quad_h/5).
     l.seed_cell_px = l.quad_h / 40;
     if (l.seed_cell_px < 7) l.seed_cell_px = 7;
 
-    l.font_badge = 12;
+    l.font_badge      = (int)(20 * s); if (l.font_badge      <  8) l.font_badge      =  8;
+    l.font_title      = (int)(50 * s); if (l.font_title      < 14) l.font_title      = 14;
+    l.font_header     = (int)(30 * s); if (l.font_header     < 10) l.font_header     = 10;
+    l.font_small      = (int)(20 * s); if (l.font_small      <  8) l.font_small      =  8;
+    l.font_cta        = (int)(30 * s); if (l.font_cta        < 10) l.font_cta        = 10;
+    l.font_name       = (int)(30 * s); if (l.font_name       <  8) l.font_name       =  8;
+    l.font_vs         = (int)(20 * s); if (l.font_vs         <  7) l.font_vs         =  7;
+    l.font_topbar     = (int)(50 * s); if (l.font_topbar     < 10) l.font_topbar     = 10;
+    l.font_topbar_cta = (int)(20 * s); if (l.font_topbar_cta <  8) l.font_topbar_cta =  8;
+
+    l.lb_title_y = l.top_bar_h + (int)(36 * s);
+    if (l.lb_title_y < l.top_bar_h + 4) l.lb_title_y = l.top_bar_h + 4;
+    l.lb_table_y = l.lb_title_y + l.font_title + (int)(50 * s);
+
+    l.progress_bar_w = (int)(240 * s); if (l.progress_bar_w < 80) l.progress_bar_w = 80;
 
     return l;
 }
@@ -1288,15 +1306,15 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
     DrawRectangle(0, footer_y, screen_w, layout.bottom_panel_h, THEME_HUD);
 
     DrawText("GLOBAL LEADERBOARD",
-             screen_w / 2 - MeasureText("GLOBAL LEADERBOARD", 30) / 2,
-             80, 30, THEME_BLUE);
+             screen_w / 2 - MeasureText("GLOBAL LEADERBOARD", layout.font_title) / 2,
+             layout.lb_title_y, layout.font_title, THEME_BLUE);
 
-    int startY = 160;
+    int startY = layout.lb_table_y;
 
     // KI-Agent unterstützt: Clip-to-fit — footer panel is always protected (ADR-0022)
     // rowHeight targets ~10 visible rows; clamp ensures readability.
     // show_count is capped so all drawn rows + optional "+N more" line fit above footer_y.
-    int entries_area_h = footer_y - (startY + 40);
+    int entries_area_h = footer_y - (startY + layout.font_header + 20);
     int rowHeight      = entries_area_h / 10;
     if (rowHeight < 28) rowHeight = 28;
 
@@ -1324,18 +1342,19 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
     int col_endurance = table_x + (int)(table_w * 0.80f);
 
     // B.6: Column headers
-    DrawText("RANK",      col_rank,      startY, 20, THEME_HINT);
-    DrawText("CONFIG",    col_icon,      startY, 20, THEME_HINT);
-    DrawText("PLAYER",    col_player,    startY, 20, THEME_HINT);
-    DrawText("WIN RATE",  col_winrate,   startY, 20, THEME_HINT);
-    DrawText("W / D / L", col_wdl,       startY, 20, THEME_HINT);
-    DrawText("ENDURANCE", col_endurance, startY, 20, THEME_HINT);
+    DrawText("RANK",      col_rank,      startY, layout.font_header, THEME_HINT);
+    DrawText("CONFIG",    col_icon,      startY, layout.font_header, THEME_HINT);
+    DrawText("PLAYER",    col_player,    startY, layout.font_header, THEME_HINT);
+    DrawText("WIN RATE",  col_winrate,   startY, layout.font_header, THEME_HINT);
+    DrawText("W / D / L", col_wdl,       startY, layout.font_header, THEME_HINT);
+    DrawText("ENDURANCE", col_endurance, startY, layout.font_header, THEME_HINT);
 
-    DrawLine(table_x, startY + 25, table_x + table_w, startY + 25, THEME_GRID);
+    DrawLine(table_x, startY + layout.font_header + 5,
+             table_x + table_w, startY + layout.font_header + 5, THEME_GRID);
 
     if (total_entries > 0) {
         for (int i = 0; i < show_count; i++) {
-            int y = startY + 40 + i * rowHeight;
+            int y = startY + layout.font_header + 20 + i * rowHeight;
             char rankBuf[8];
             char winBuf[16];
             char wdlBuf[16];
@@ -1362,7 +1381,7 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
                 DrawRectangle(table_x, y - 4, table_w, rowHeight, row_bg);
             }
 
-            DrawText(rankBuf,                          col_rank,      y, 20, rankCol);
+            DrawText(rankBuf,                          col_rank,      y, layout.font_header, rankCol);
 
             // KI-Agent unterstützt: 8x8 start-config icon between rank and name (ADR-0025)
             // Single colour (no red/blue split) — a start config has no team assignment yet.
@@ -1385,28 +1404,28 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
                 }
             }
 
-            DrawText(ctrl->cached_lb.entries[i].name,  col_player,    y, 20, THEME_TEXT);
-            DrawText(winBuf,                           col_winrate,   y, 20, THEME_ACCENT);
-            DrawText(wdlBuf,                           col_wdl,       y, 20, THEME_TEXT);
-            DrawText(asgBuf,                           col_endurance, y, 20, THEME_HINT);
+            DrawText(ctrl->cached_lb.entries[i].name,  col_player,    y, layout.font_header, THEME_TEXT);
+            DrawText(winBuf,                           col_winrate,   y, layout.font_header, THEME_ACCENT);
+            DrawText(wdlBuf,                           col_wdl,       y, layout.font_header, THEME_TEXT);
+            DrawText(asgBuf,                           col_endurance, y, layout.font_header, THEME_HINT);
         }
 
         // "+N more" indicator — only shown when entries were clipped
         if (hidden_count > 0) {
             char more_buf[32];
             sprintf(more_buf, "+ %d more", hidden_count);
-            int more_y = startY + 40 + show_count * rowHeight + 4;
-            DrawText(more_buf, col_rank, more_y, 16, THEME_HINT);
+            int more_y = startY + layout.font_header + 20 + show_count * rowHeight + 4;
+            DrawText(more_buf, col_rank, more_y, layout.font_small, THEME_HINT);
         }
     } else {
         DrawText("LOADING DATA...",
-                 screen_w / 2 - MeasureText("LOADING DATA...", 20) / 2,
-                 startY + 60, 20, THEME_HINT);
+                 screen_w / 2 - MeasureText("LOADING DATA...", layout.font_header) / 2,
+                 startY + layout.font_header * 3, layout.font_header, THEME_HINT);
     }
 
     // B.3: Progress bar anchored to footer panel (ADR-0022)
     {
-        int bar_w = 240;
+        int bar_w = layout.progress_bar_w;
         int bar_x = screen_w / 2 - bar_w / 2;
         int bar_y = footer_y + layout.bottom_panel_h - 14;
         float progress = ctrl->state_timer / 15.0f;
@@ -1416,8 +1435,9 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
     }
 
     DrawText("PRESS [P] TO PLAY",
-             screen_w / 2 - MeasureText("PRESS [P] TO PLAY", 20) / 2,
-             footer_y + 8, 20, THEME_ACCENT);
+             screen_w / 2 - MeasureText("PRESS [P] TO PLAY", layout.font_cta) / 2,
+             footer_y + (layout.bottom_panel_h - layout.font_cta) / 2,
+             layout.font_cta, THEME_ACCENT);
 }
 
 // KI-Agent unterstützt: Dedicated multicam render function extracted from draw_current_state (ADR-0022)
@@ -1477,11 +1497,11 @@ static void draw_kiosk_multicam(KioskController *ctrl, int screen_w, int screen_
 
         const char *name_red  = ctrl->sims[i].participant_red;
         const char *name_blue = ctrl->sims[i].participant_blue;
-        DrawText(name_red, rx + 6, ry + 5, 16, THEME_RED);
-        int vs_x   = rx + 6 + MeasureText(name_red, 16) + 5;
-        DrawText("vs", vs_x, ry + 7, 13, THEME_HINT);
-        int blue_x = vs_x + MeasureText("vs", 13) + 5;
-        DrawText(name_blue, blue_x, ry + 5, 16, THEME_BLUE);
+        DrawText(name_red, rx + 6, ry + 5, layout.font_name, THEME_RED);
+        int vs_x   = rx + 6 + MeasureText(name_red, layout.font_name) + 5;
+        DrawText("vs", vs_x, ry + 7, layout.font_vs, THEME_HINT);
+        int blue_x = vs_x + MeasureText("vs", layout.font_vs) + 5;
+        DrawText(name_blue, blue_x, ry + 5, layout.font_name, THEME_BLUE);
 
         // B.10: metric_reason centred in badge strip (ADR-0022)
         const char *reason = ctrl->cached_highlights.matches[render_slot].metric_reason;
@@ -1575,16 +1595,19 @@ static void draw_kiosk_multicam(KioskController *ctrl, int screen_w, int screen_
 
     // B.8: Screen title — professional name replaces internal codename (ADR-0022)
     DrawRectangle(0, 0, screen_w, layout.top_bar_h, THEME_HUD);
-    DrawText("LIVE BATTLES", 20, 10, 20, THEME_BLUE);
-
-    // B.2.3: CTA text reflects keyboard interaction model (ADR-0022)
-    DrawText("[1-4] WATCH MATCH  |  [P] PLAY",
-             screen_w - MeasureText("[1-4] WATCH MATCH  |  [P] PLAY", 16) - 20,
-             12, 16, THEME_ACCENT);
+    {
+        int bar_text_y = (layout.top_bar_h - layout.font_topbar) / 2;
+        DrawText("LIVE BATTLES", 20, bar_text_y, layout.font_topbar, THEME_BLUE);
+        int cta_text_y = (layout.top_bar_h - layout.font_topbar_cta) / 2;
+        // B.2.3: CTA text reflects keyboard interaction model (ADR-0022)
+        DrawText("[1-4] WATCH MATCH  |  [P] PLAY",
+                 screen_w - MeasureText("[1-4] WATCH MATCH  |  [P] PLAY", layout.font_topbar_cta) - 20,
+                 cta_text_y, layout.font_topbar_cta, THEME_ACCENT);
+    }
 
     // Progress bar anchored to footer panel (ADR-0021 / ADR-0022)
     {
-        int bar_w  = 240;
+        int bar_w  = layout.progress_bar_w;
         int bar_x  = screen_w / 2 - bar_w / 2;
         int bar_y2 = footer_y + layout.bottom_panel_h - 14;
         float progress = ctrl->state_timer / 30.0f;
@@ -1594,6 +1617,7 @@ static void draw_kiosk_multicam(KioskController *ctrl, int screen_w, int screen_
     }
 
     DrawText("PRESS [P] TO PLAY",
-             screen_w / 2 - MeasureText("PRESS [P] TO PLAY", 20) / 2,
-             footer_y + 8, 20, THEME_ACCENT);
+             screen_w / 2 - MeasureText("PRESS [P] TO PLAY", layout.font_cta) / 2,
+             footer_y + (layout.bottom_panel_h - layout.font_cta) / 2,
+             layout.font_cta, THEME_ACCENT);
 }

@@ -63,11 +63,25 @@ typedef struct {
     int badge_h;         // metric-reason badge height (used from Phase B onward)
     int seed_cell_px;    // pixel size of each cell in the 8x8 seed thumbnail
 
-    int font_badge;      // metric reason badge font size
+    // KI-Agent unterstützt: Scaled fonts — proportional to screen_h (reference 1080p)
+    int font_badge;       // metric reason badge
+    int font_title;       // leaderboard section title
+    int font_header;      // column headers + table rows
+    int font_small;       // secondary labels ("+N more", "LOADING DATA...")
+    int font_cta;         // footer call-to-action text
+    int font_name;        // player names in multicam header
+    int font_vs;          // "vs" separator in multicam header
+    int font_topbar;      // top bar primary label
+    int font_topbar_cta;  // top bar key-hint label
 
     // Global chrome areas
-    int top_bar_h;       // global top bar height
-    int bottom_panel_h;  // footer panel height (holds CTA + progress bar)
+    int top_bar_h;        // global top bar height
+    int bottom_panel_h;   // footer panel height (holds CTA + progress bar)
+
+    // Leaderboard layout — Y positions follow chrome + font heights
+    int lb_title_y;       // Y of the "GLOBAL LEADERBOARD" title
+    int lb_table_y;       // Y of the column header row
+    int progress_bar_w;   // width of the countdown progress bar
 } KioskLayout;
 
 // Pure function: derives all pixel values from screen size and match count.

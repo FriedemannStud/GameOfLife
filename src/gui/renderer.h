@@ -61,7 +61,8 @@ typedef struct {
     int header_h;        // name strip height at top of each quadrant
     int score_bar_h;     // score bar height at bottom of each quadrant
     int badge_h;         // metric-reason badge height (used from Phase B onward)
-    int seed_cell_px;    // pixel size of each cell in the 8x8 seed thumbnail
+    int seed_cell_px;     // pixel size of each cell in the 8x8 seed thumbnail (multicam)
+    int lb_icon_cell_px;  // pixel size of each cell in the 8x8 seed thumbnail (leaderboard)
 
     // KI-Agent unterstützt: Scaled fonts — proportional to screen_h (reference 1080p)
     int font_badge;       // metric reason badge

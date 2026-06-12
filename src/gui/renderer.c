@@ -89,12 +89,16 @@ KioskLayout compute_kiosk_layout(int screen_w, int screen_h, int match_count) {
     l.seed_cell_px = l.quad_h / 40;
     if (l.seed_cell_px < 7) l.seed_cell_px = 7;
 
-    l.font_badge      = (int)(20 * s); if (l.font_badge      <  8) l.font_badge      =  8;
+    // KI-Agent unterstützt: Leaderboard icon cell scales with screen_h (reference: 3 px @ 1080p)
+    l.lb_icon_cell_px = (int)(6 * s);
+    if (l.lb_icon_cell_px < 1) l.lb_icon_cell_px = 1;
+
+    l.font_badge      = (int)(30 * s); if (l.font_badge      <  8) l.font_badge      =  8;
     l.font_title      = (int)(50 * s); if (l.font_title      < 14) l.font_title      = 14;
-    l.font_header     = (int)(30 * s); if (l.font_header     < 10) l.font_header     = 10;
+    l.font_header     = (int)(40 * s); if (l.font_header     < 10) l.font_header     = 10;
     l.font_small      = (int)(20 * s); if (l.font_small      <  8) l.font_small      =  8;
     l.font_cta        = (int)(30 * s); if (l.font_cta        < 10) l.font_cta        = 10;
-    l.font_name       = (int)(30 * s); if (l.font_name       <  8) l.font_name       =  8;
+    l.font_name       = (int)(40 * s); if (l.font_name       <  8) l.font_name       =  8;
     l.font_vs         = (int)(20 * s); if (l.font_vs         <  7) l.font_vs         =  7;
     l.font_topbar     = (int)(50 * s); if (l.font_topbar     < 10) l.font_topbar     = 10;
     l.font_topbar_cta = (int)(20 * s); if (l.font_topbar_cta <  8) l.font_topbar_cta =  8;
@@ -1385,13 +1389,10 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
 
             // KI-Agent unterstützt: 8x8 start-config icon between rank and name (ADR-0025)
             // Single colour (no red/blue split) — a start config has no team assignment yet.
-            // Icon size is coupled to rowHeight so it never collides with text or the footer.
+            // Cell size from layout.lb_icon_cell_px — scales with screen_h like seed_cell_px.
             {
-                int icon_px = rowHeight - 8;
-                if (icon_px > 24) icon_px = 24;
-                int cell_px = icon_px / 8;
-                if (cell_px < 1) cell_px = 1;
-                int icon_y  = y + (20 - 8 * cell_px) / 2;
+                int cell_px = layout.lb_icon_cell_px;
+                int icon_y  = y + (layout.font_header - 8 * cell_px) / 2;
                 DrawRectangle(col_icon - 1, icon_y - 1,
                               8 * cell_px + 2, 8 * cell_px + 2, Fade(BLACK, 0.55f));
                 for (int tr = 0; tr < 8; tr++) {
@@ -1490,10 +1491,8 @@ static void draw_kiosk_multicam(KioskController *ctrl, int screen_w, int screen_
         int qw = layout.quad_w;
         int qh = layout.quad_h;
 
-        // B.10: Two-row header — name strip + badge strip (ADR-0022)
-        DrawRectangle(rx, ry, qw, layout.header_h - layout.badge_h, Fade(THEME_HUD, 0.88f));
-        DrawRectangle(rx, ry + layout.header_h - layout.badge_h,
-                      qw, layout.badge_h, Fade(THEME_HUD, 0.70f));
+        // Header: single name strip spanning full header_h (badge moved to top bar)
+        DrawRectangle(rx, ry, qw, layout.header_h, Fade(THEME_HUD, 0.88f));
 
         const char *name_red  = ctrl->sims[i].participant_red;
         const char *name_blue = ctrl->sims[i].participant_blue;
@@ -1502,17 +1501,6 @@ static void draw_kiosk_multicam(KioskController *ctrl, int screen_w, int screen_
         DrawText("vs", vs_x, ry + 7, layout.font_vs, THEME_HINT);
         int blue_x = vs_x + MeasureText("vs", layout.font_vs) + 5;
         DrawText(name_blue, blue_x, ry + 5, layout.font_name, THEME_BLUE);
-
-        // B.10: metric_reason centred in badge strip (ADR-0022)
-        const char *reason = ctrl->cached_highlights.matches[render_slot].metric_reason;
-        if (strlen(reason) > 0) {
-            int rw = MeasureText(reason, layout.font_badge);
-            DrawText(reason,
-                     rx + (qw - rw) / 2,
-                     ry + layout.header_h - layout.badge_h
-                         + (layout.badge_h - layout.font_badge) / 2,
-                     layout.font_badge, THEME_ACCENT);
-        }
 
         // B.11: 8x8 seed thumbnails — cell size from layout.seed_cell_px (ADR-0022)
         // KI-Agent unterstützt: Side-by-side thumbnails correcting overlap bug (ADR-0021 bugfix)
@@ -1593,12 +1581,25 @@ static void draw_kiosk_multicam(KioskController *ctrl, int screen_w, int screen_
         }
     }
 
-    // B.8: Screen title — professional name replaces internal codename (ADR-0022)
+    // B.8: Screen title — metric_reason left of title; key hints right (ADR-0022)
     DrawRectangle(0, 0, screen_w, layout.top_bar_h, THEME_HUD);
     {
-        int bar_text_y = (layout.top_bar_h - layout.font_topbar) / 2;
-        DrawText("LIVE BATTLES", 20, bar_text_y, layout.font_topbar, THEME_BLUE);
-        int cta_text_y = (layout.top_bar_h - layout.font_topbar_cta) / 2;
+        int bar_text_y   = (layout.top_bar_h - layout.font_topbar) / 2;
+        int badge_text_y = (layout.top_bar_h - layout.font_badge) / 2;
+        int cta_text_y   = (layout.top_bar_h - layout.font_topbar_cta) / 2;
+
+        // metric_reason of first highlight shown left of title
+        int render_slot_0 = (ctrl->highlight_pool_size > 0)
+            ? ctrl->highlight_pool_index % ctrl->highlight_pool_size
+            : 0;
+        const char *header_reason = ctrl->cached_highlights.matches[render_slot_0].metric_reason;
+        int title_x = 20;
+        if (strlen(header_reason) > 0) {
+            DrawText(header_reason, 20, badge_text_y, layout.font_badge, THEME_ACCENT);
+            title_x = 20 + MeasureText(header_reason, layout.font_badge) + 14;
+        }
+        DrawText("LIVE BATTLES", title_x, bar_text_y, layout.font_topbar, THEME_BLUE);
+
         // B.2.3: CTA text reflects keyboard interaction model (ADR-0022)
         DrawText("[1-4] WATCH MATCH  |  [P] PLAY",
                  screen_w - MeasureText("[1-4] WATCH MATCH  |  [P] PLAY", layout.font_topbar_cta) - 20,

@@ -74,8 +74,8 @@ This document breaks down the implementation of the GLSL Shader Pipeline and the
 
 *Goal: Finalize the "Living Petri Dish" look by removing sharp pixel edges and cleaning up memory.*
 
-- [-] **Step 3.1: Fragment Shader Smoothing (Optional/Bonus)**
-    - [ ] **Action:** In `biotope_base.fs`, instead of a hard `if (state > 0.9)`, implement a smoothstep or distance-based blending function by sampling neighboring pixels in `texture0` to create a "Metaball" or connected fluid look. (Keep it performant).
+- [x] **Step 3.1: Fragment Shader Smoothing (Optional/Bonus — bewusst übersprungen)**
+    - [~] **Action:** Bewusst nicht umgesetzt — User entschied sich für Performance-Priorität. Die bestehenden Trails sind ausreichend.
     - [x] **Verification:** User chose to skip this to prioritize performance. Current "Trails" are sufficient.
 
 - [x] **Step 3.2: Memory Leak Check**

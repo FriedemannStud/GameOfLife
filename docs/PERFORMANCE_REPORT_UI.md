@@ -1,5 +1,7 @@
 # Performance Analysis: Visual Upgrade "Digital Lab"
 
+> **Note:** This analysis refers to the then-monolithic `gui.c`. As part of ADR-0015/ADR-0016 (May 2026), `gui.c` was split into `renderer.c` and `app_state_manager.c`. The conclusions regarding rendering performance (texture upload instead of individual cell draws) are still valid and implemented in the current `renderer.c`.
+
 **Date:** 2026-01-09
 **Target:** Raylib Implementation in `gui.c`
 

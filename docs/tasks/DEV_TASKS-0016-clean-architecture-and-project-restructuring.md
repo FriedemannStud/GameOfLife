@@ -1,5 +1,7 @@
 # DEV_TASKS-0016: Clean Architecture and Project Restructuring
 
+> **Status: ABGESCHLOSSEN** — ADR-0016 wurde am 23.05.2026 implementiert. Die Zielstruktur (`src/core/`, `src/gui/`, `src/io/`, `src/apps/`, `src/vendor/`, `build/`) ist im Repository vorhanden. Die Checkboxen wurden während der Implementierung nicht verfolgt.
+
 This task plan details the step-by-step execution of the physical project restructuring as defined in **ADR-0016** and **DEV_SPEC-0016**.
 
 **Developer:** Please follow these steps precisely. The plan is broken into phases and small steps to allow for interruptions and ensure stability. After each "Verification" step, report the outcome. This iterative process is crucial for maintaining quality.

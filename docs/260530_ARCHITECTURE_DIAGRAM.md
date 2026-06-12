@@ -142,3 +142,5 @@ RenCtx -- "DrawTextureRec (ADR‑0018)" --> GPU
 ---
 
 *Document generated on **2026‑05‑30** – updated from the initial draft (27 May 2026) with refined styling, explicit legends, and clearer flow descriptions.*
+
+> **Note (as of 2026-06-12):** All components marked as "Planned" (blue) in the diagram are implemented and in operation (ADR-0017 through ADR-0026). The current code corresponds to the "Core" category.

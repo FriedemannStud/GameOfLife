@@ -1,5 +1,7 @@
 # DEV_TASKS-0020: Surgical Code Recovery and Logical State Separation
 
+> **Status: ABGESCHLOSSEN** — ADR-0020 wurde implementiert (zwischen ADR-0019 und ADR-0021). Verifiziert durch Code-Analyse: `SessionOrigin`, `reset_simulation_context()`, `cleanup_interactive_session()`, session-origin-aware Navigation und `[P]`/`[K]`-Shortcuts sind alle im Source-Code vorhanden. Die Checkboxen wurden während der Implementierung nicht verfolgt.
+
 This task plan implements the restoration of the interactive single-player flow and the logical separation between Kiosk mode and Interactive mode. The plan is derived from ADR-0020, DEV_SPEC-0020, and DEV_TECH_DESIGN-0020.
 
 **Developer:** Please follow these steps precisely. The plan is broken into phases and small steps to allow for interruptions and ensure stability. After each "Verification" step, report the outcome. This iterative process is crucial for maintaining quality.

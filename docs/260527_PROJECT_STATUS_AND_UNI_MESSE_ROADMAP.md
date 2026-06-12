@@ -1,5 +1,8 @@
 # Project Status and Uni-Messe Architecture Roadmap
 
+> **Historical snapshot — as of 27 May 2026.**
+> All components described as "planned" or "missing" in this document (kiosk mode, KioskController, network_io, leaderboard API, multicam) have since been fully implemented (ADR-0017 through ADR-0026). The roadmap in Section 5 is complete.
+
 ## 1. Executive Summary
 
 The "Game of Life - Biotope" project encompasses two distinct play concepts designed to cater to both individual exploration and competitive group dynamics.

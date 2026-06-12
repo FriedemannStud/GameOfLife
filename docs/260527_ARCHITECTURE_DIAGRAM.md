@@ -1,5 +1,8 @@
 # Architecture Diagrams (Uni-Messe)
 
+> **Historical snapshot — as of 27 May 2026.**
+> The components marked as "Planned" (blue) — `network_io.c`, `KioskController`, `SimulationContext ×4`, `RenderContext ×4`, API endpoints — are now fully implemented. Current diagram: [260530_ARCHITECTURE_DIAGRAM.md](260530_ARCHITECTURE_DIAGRAM.md).
+
 This document visualizes the system architecture for the "Game of Life - Biotope" project. It covers both the local Singleplayer experience and the distributed Multiplayer Tournament mode.
 
 ## 1. Singleplayer Architecture

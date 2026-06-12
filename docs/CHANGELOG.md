@@ -1,164 +1,136 @@
-2026-06-08 — Deployment-Anleitung für Server-Betrieb
+2026-06-08 — Deployment Guide for Server Operation
 
-- `docs/DEPLOYMENT.md` (neu): Schritt-für-Schritt-Anleitung, um den Stack auf einem
-  Server (VM, SSH) zu starten. Trennung headless Server-Stack (Mongo, Backend, Editor,
-  Matchmaker via `docker compose`) vs. grafische Anzeige (`build/biotope`, braucht Display).
-- Dokumentiert: nur `build/biotope_hyper_worker` + `build/biotope_headless` sind für den
-  Matchmaker nötig (keine Raylib-Abhängigkeit), `.env` muss auf dem Server neu angelegt
-  werden (gitignored), Passwort identisch in `MONGO_PASSWORD` und `MONGODB_URI`.
-- Drei Wege für die Anzeige beschrieben; empfohlen: Weg C (lokale GUI + SSH-Tunnel
-  `-L 8000:localhost:8000`), da die GUI fest `http://localhost:8000` anspricht.
-- `README.md`: Verweis auf die neue Deployment-Anleitung im Intro-Block ergänzt.
+- `docs/DEPLOYMENT.md` (new): Step-by-step guide to starting the stack on a server (VM, SSH). Separation between headless server stack (Mongo, backend, editor, matchmaker via `docker compose`) and graphical display (`build/biotope`, requires a display).
+- Documented: only `build/biotope_hyper_worker` + `build/biotope_headless` are required for the matchmaker (no Raylib dependency), `.env` must be recreated on the server (gitignored), password must be identical in `MONGO_PASSWORD` and `MONGODB_URI`.
+- Three display options described; recommended: Option C (local GUI + SSH tunnel `-L 8000:localhost:8000`), since the GUI hardcodes `http://localhost:8000`.
+- `README.md`: reference to the new deployment guide added in the intro block.
 
 2026-06-01 — ADR-0025: Per-Config Leaderboard + 8x8 Start-Config Icon
 
-- `backend/app/grid_utils.py` (neu): `cells_to_grid()` — sparse `[x,y]` → dichtes 64-int Grid
-  (`index = y*8 + x`), defensiv gegen leere/fehlerhafte/out-of-bounds Zellen.
-- `backend/app/main.py`: `get_leaderboard` liest jetzt per-Konfiguration aus `submissions`
-  (`status=active`, `matches_played>0`) statt aggregiert per-Nickname aus `players`. Behebt die
-  Last-Write-Wins-Verzerrung (schwächste Submission überschrieb die Anzeige). Pro Eintrag neues
-  Feld `seed` (8x8 Startkonfiguration).
-- `src/io/network_io.h`: `int seed[GRID_SIZE_8X8]` zu `LeaderboardEntry` hinzugefügt.
-- `src/io/network_io.c`: Leaderboard-Parser liest `seed`-Array (Default 0, 64er-Guard).
-- `src/gui/renderer.c`: `draw_kiosk_leaderboard` zeigt eine CONFIG-Icon-Spalte zwischen RANK und
-  PLAYER; Spalten-Layout neu verteilt; 8x8-Icon einfarbig (`THEME_ACCENT`), Größe an `rowHeight`
-  gekoppelt.
-- Effekt: Jede Konfiguration ist eine eigene Leaderboard-Zeile mit eigenem Icon und korrekten
-  Stats; gleicher Spielername kann mehrfach erscheinen und wird durch das Icon unterscheidbar.
+- `backend/app/grid_utils.py` (new): `cells_to_grid()` — sparse `[x,y]` → dense 64-int grid (`index = y*8 + x`), defensive against empty/malformed/out-of-bounds cells.
+- `backend/app/main.py`: `get_leaderboard` now reads per-configuration from `submissions` (`status=active`, `matches_played>0`) instead of aggregated per-nickname from `players`. Fixes the last-write-wins distortion (weakest submission overwrote the display). New field `seed` (8x8 start configuration) per entry.
+- `src/io/network_io.h`: `int seed[GRID_SIZE_8X8]` added to `LeaderboardEntry`.
+- `src/io/network_io.c`: leaderboard parser reads `seed` array (default 0, 64-element bound guard).
+- `src/gui/renderer.c`: `draw_kiosk_leaderboard` shows a CONFIG icon column between RANK and PLAYER; column layout redistributed; 8x8 icon monochrome (`THEME_ACCENT`), size coupled to `rowHeight`.
+- Effect: each configuration is its own leaderboard row with its own icon and correct stats; the same player name can appear multiple times and is distinguishable by the icon.
 
 2026-06-01 — ADR-0024: Client-Side Highlight Rotation (Round-Robin) + Replay Bugfixes
 
 - `src/io/network_io.h`: `MatchHighlight matches[4]` → `matches[10]` (pool capacity).
-- `src/io/network_io.c`: Parse-Schleife `i < 4` → `i < 10`.
-- `src/gui/app_state_manager.h`: `highlight_pool_index`, `highlight_pool_size` zu
-  `KioskController` hinzugefügt; `restore_main_game_context` deklariert;
-  `update_app_state`-Signatur um `RenderContext *r_ctx` erweitert.
-- `src/gui/app_state_manager.c`: Statische Hilfsfunktion `load_kiosk_sims_from_pool()`
-  extrahiert; Pool-Index rotiert bei MULTICAM→LB-Wechsel um `match_count`; bei
-  LB→MULTICAM-Wechsel werden Sims aus dem neuen Pool-Fenster geladen.
-  `highlight_pool_index` wird nur beim ersten Datenabruf (pool_size==0) zurückgesetzt,
-  nicht bei jedem Refresh — das war der Root-Cause des Rotations-Bugs.
-- `src/core/config.h`: `DEFAULT_GRID_ROWS` / `DEFAULT_GRID_COLS` (50) hinzugefügt.
-- Replay-Fix: KEY_1..4 startet Vollbild-Replay jetzt auf korrektem 8×16-Grid
-  (identisch zum Turnier). `restore_main_game_context()` stellt 50×50 beim Verlassen
-  wieder her. `r_ctx` wird korrekt neu initialisiert.
-- Renderer-Fix: Spielernamen im Replay-Header sichtbar (ersetzt "SIMULATION ACTIVE").
-- `src/gui/renderer.c`: `draw_current_state` um `SimulationContext *sim_ctx` erweitert;
-  Bonus-Fix: Thumbnails und `metric_reason`-Badge nutzen `render_slot`-Formel.
-- Effekt: Der Kiosk zeigt bei jedem 30s-Zyklus andere Matches (Round-Robin über bis zu
-  10 Highlights). Vollbild-Replay zeigt korrekte Partie auf korrektem Spielfeld.
+- `src/io/network_io.c`: parse loop `i < 4` → `i < 10`.
+- `src/gui/app_state_manager.h`: `highlight_pool_index`, `highlight_pool_size` added to `KioskController`; `restore_main_game_context` declared; `update_app_state` signature extended with `RenderContext *r_ctx`.
+- `src/gui/app_state_manager.c`: static helper `load_kiosk_sims_from_pool()` extracted; pool index rotates by `match_count` on MULTICAM→LB transition; on LB→MULTICAM transition sims are loaded from the new pool window. `highlight_pool_index` is only reset on the first data fetch (pool_size==0), not on every refresh — this was the root cause of the rotation bug.
+- `src/core/config.h`: `DEFAULT_GRID_ROWS` / `DEFAULT_GRID_COLS` (50) added.
+- Replay fix: KEY_1..4 now starts fullscreen replay on the correct 8×16 grid (identical to the tournament). `restore_main_game_context()` restores 50×50 on exit. `r_ctx` is correctly re-initialised.
+- Renderer fix: player names visible in replay header (replaces "SIMULATION ACTIVE").
+- `src/gui/renderer.c`: `draw_current_state` extended with `SimulationContext *sim_ctx`; bonus fix: thumbnails and `metric_reason` badge use `render_slot` formula.
+- Effect: kiosk shows different matches on each 30 s cycle (round-robin over up to 10 highlights). Fullscreen replay shows the correct match on the correct board.
 
 2026-05-31 — ADR-0023: Oscillator Filtering & Kiosk World Alignment
 
-- Kiosk-Simulationswelt von 50×50 auf 8×16 umgestellt (app_state_manager.h/.c),
-  identisch mit run_isolated_match() im Hyper-Worker. Leaderboard-Ergebnis und
-  Kiosk-Anzeige verwenden jetzt dieselbe Arena.
-- Seed-Platzierung im Kiosk korrigiert: Rot links (wie im Hyper-Worker), Blau rechts.
-- Oscillator-Filterung in backend/app/worker.py implementiert (ADR-0023):
-  _step_numpy(), is_oscillating_match(), filter_highlights_by_oscillation().
-  Oszillierende Muster (Periode 2–5) werden in epoch_highlights ans Ende verschoben;
-  nicht-oszillierende Matches erscheinen zuerst. Soft Fallback bei 0 sauberen Kandidaten.
-- numpy>=1.24.0 zu backend/requirements.txt hinzugefügt.
-- 13 Unit-Tests in backend/tests/test_oscillator_detection.py, alle grün.
-- End-to-End verifiziert: Worker erkennt und loggt Oszillatoren, MongoDB enthält
-  korrekt aufgelöste Nicknames und 10 geordnete Highlights.
+- Kiosk simulation world changed from 50×50 to 8×16 (app_state_manager.h/.c), identical to run_isolated_match() in the hyper-worker. Leaderboard result and kiosk display now use the same arena.
+- Seed placement in kiosk corrected: Red on the left (like the hyper-worker), Blue on the right.
+- Oscillator filtering implemented in backend/app/worker.py (ADR-0023): _step_numpy(), is_oscillating_match(), filter_highlights_by_oscillation(). Oscillating patterns (period 2–5) are moved to the end of epoch_highlights; non-oscillating matches appear first. Soft fallback when 0 clean candidates are found.
+- numpy>=1.24.0 added to backend/requirements.txt.
+- 13 unit tests in backend/tests/test_oscillator_detection.py, all passing.
+- End-to-end verified: worker detects and logs oscillators, MongoDB contains correctly resolved nicknames and 10 ordered highlights.
 
-26.12.2025: GitHub Account eingerichtet, GitHub Repository eingerichtet, Dockerfile angelegt, docker-compose angelegt, DEV Container angelegt, C-Umgebung angelegt, Hello Skript angelegt und getestet.
+26.12.2025: GitHub account set up, GitHub repository set up, Dockerfile created, docker-compose created, dev container created, C environment set up, hello script created and tested.
 
-28.12.2025: README.md erstellt
+28.12.2025: README.md created.
 
-05.01.2026: Initialisierung der Matrix erstellt, Erste Version der Ausgabe der aktuellen Matrix (World) in Entwicklungsumgebung erstellt.
+05.01.2026: Matrix initialisation created, first version of current matrix (World) output in development environment created.
 
-07.01.2026: Berechnung von zellen in update_generation() modelliert. Untere-linke Ecke und untere-rechte Ecke noch nicht modelliert. - README.md um Beschreibung der Gestalt des Spielfelds ergänzt.
+07.01.2026: Cell calculation in update_generation() modelled. Bottom-left and bottom-right corners not yet modelled. README.md extended with description of the grid layout.
 
-08.01.2026: Berechnung von zellen in update_generation() fertiggestellt. - Spielfeldgröße und Verzögerung der Anzeige als Komandozeilenparameter integriert.
+08.01.2026: Cell calculation in update_generation() completed. Grid size and display delay integrated as command-line parameters.
 
-09.01.2026: Neuen Branch (biotop) für getrennte Versionsverwaltung von "manueller" Programmierung und "Vibe-Coding" erstellt. Vibe-Coding Konzept für erweiterte Funktionalität "Interaktives Spielkonzept Rot vs Blau" erstellt. Interaktives Spielkonzept Rot vs Blau mittels Nutzung von Gemini-CLI-Agent programmiert. Nach Programmierung der Spiele-Logik Refactoring des UI durchgeführt.
+09.01.2026: New branch (biotop) created for separate version management of "manual" programming and "vibe-coding". Vibe-coding concept for extended functionality "Interactive Red vs Blue game concept" created. Interactive Red vs Blue game concept implemented using Gemini-CLI-Agent. After implementing the game logic, UI refactoring performed.
 
-10.01.2026: Feintuning des UI.
+10.01.2026: UI fine-tuning.
 
 16.01.2026:
-feat(gui): Tastenwiederholung für Konfigurationsparameter implementiert - Hilfsfunktion `IsActionTriggered` zur Verarbeitung von initialem Tastendruck und kontinuierlicher Wiederholung hinzugefügt. - Kontinuierliche Eingabeverarbeitung für Grid Size, Delay, Max Rounds und Max Population aktiviert. - Initialverzögerung auf 500ms und Wiederholungsintervall auf 50ms für flüssige Wertänderungen eingestellt.
+feat(gui): Key repeat for configuration parameters implemented — Helper function `IsActionTriggered` added for handling initial key press and continuous repeat. Continuous input processing activated for Grid Size, Delay, Max Rounds, and Max Population. Initial delay set to 500 ms and repeat interval to 50 ms for smooth value changes.
 
-feat(gui): Drag-to-Paint Funktion im Editor-Modus hinzugefügt - Ermöglicht das Aktivieren oder Deaktivieren mehrerer Zellen durch Ziehen mit gedrückter Maustaste. - Status (Platzieren oder Löschen) wird beim ersten Klicken automatisch erkannt. - Überprüfung der Team-Hemisphären und Populationslimits bleibt beim Ziehen aktiv.
+feat(gui): Drag-to-Paint function added in editor mode — Enables activating or deactivating multiple cells by dragging with the mouse button held. Status (placing or deleting) is automatically detected on first click. Team hemisphere and population limit checks remain active while dragging.
 
-perf(gui): Rendering-Flaschenhals durch texturbasiertes Zeichnen behoben -`DrawGridAndCells` auf Textur-Rendering umgestellt, um VcXsrv/X11-Lag zu minimieren - Ersetzt tausende `DrawRectangle`-Aufrufe durch ein einzelnes Textur-Update pro Frame. - Implementiert Ressourcen-Management (Lazy Init) für Textur- und Pixel-Buffer.- Nutzt Point-Filtering für pixelgenaue Darstellung bei der Skalierung.
+perf(gui): Rendering bottleneck fixed via texture-based drawing — `DrawGridAndCells` switched to texture rendering to minimise VcXsrv/X11 lag. Replaces thousands of `DrawRectangle` calls with a single texture update per frame. Implements resource management (lazy init) for texture and pixel buffer. Uses point filtering for pixel-accurate display when scaling.
 
 17.01.2026:
-feat ADR-0003-integrated-simulation-protocol: Implementierung des integrierten Simulations-Protokoll- und Replay-Systems - Einführung des Protokoll-Formats v2 (enthält Zeitstempel, Rundenanzahl und Delay) - Implementierung einer "Save-on-Start"-Logik: Jede Simulation wird beim Start automatisch in 'biotope_results/' archiviert - Neuer In-App Datei-Browser (STATE_LOAD) zum Durchsuchen und Laden vergangener Simulationen - Erweiterung der Protokolle um Ergebnis-Daten (Gewinner, Endstand) nach Abschluss einer Simulation - Integration einer Metadaten-Vorschau im Browser (Datum, Gittergröße, Ergebnis) - Sicherstellung der Abwärtskompatibilität für bestehende .bio-Dateien - Entfernung des nun redundanten Markdown-Exports (export_stats_md), da Ergebnisse direkt im Protokoll gespeichert werden - Optimierung der UI-Layouts zur Vermeidung von Textüberlappungen im Archiv-Modus
+feat ADR-0003-integrated-simulation-protocol: Implementation of the integrated simulation protocol and replay system — Introduction of protocol format v2 (includes timestamp, round count, and delay). Implementation of "save-on-start" logic: every simulation is automatically archived in 'biotope_results/' on start. New in-app file browser (STATE_LOAD) for browsing and loading past simulations. Extension of protocols with result data (winner, final score) after simulation completion. Integration of metadata preview in the browser (date, grid size, result). Backwards compatibility ensured for existing .bio files. Removal of now-redundant Markdown export (export_stats_md), as results are stored directly in the protocol. Optimisation of UI layouts to avoid text overlap in archive mode.
 
 05.05.2026 (Anniversary Edition):
-feat ADR-0005: Frictionless WASM Onboarding - Portierung der gesamten C-Anwendung nach WebAssembly mittels Emscripten. - Einführung einer `UpdateDrawFrame`-basierten Main-Loop für Browser-Kompatibilität. - Implementierung von persistentem Speicher via IndexedDB (FS.syncfs) zur Sicherung von .bio-Protokollen im Browser. - Hinzufügen von Phase-basiertem Onboarding (Tutorial/Puzzle-State).
+feat ADR-0005: Frictionless WASM Onboarding — Porting the entire C application to WebAssembly via Emscripten. Introduction of an `UpdateDrawFrame`-based main loop for browser compatibility. Implementation of persistent storage via IndexedDB (FS.syncfs) for saving .bio protocols in the browser. Addition of phase-based onboarding (Tutorial/Puzzle state).
 
-feat ADR-0006: GPU Aesthetic Overhaul - Migration des Renderings von CPU-basierten Pixel-Arrays auf eine GPU-Shader-Pipeline. - Implementierung von temporalen Trails ("Fossils") mittels Ping-Pong-Framebuffer-Technik. - Unterstützung für GLSL 330 (Desktop) und GLSL 100 (Web/WASM). - Effizienter Transfer des Gitterzustands als 1-Byte-Grayscale-Textur zur Minimierung der Bus-Bandbreite. - Vollständiges Ressourcen-Management und VRAM-Cleanup integriert.
+feat ADR-0006: GPU Aesthetic Overhaul — Migration of rendering from CPU-based pixel arrays to a GPU shader pipeline. Implementation of temporal trails ("Fossils") via ping-pong framebuffer technique. Support for GLSL 330 (desktop) and GLSL 100 (Web/WASM). Efficient transfer of the grid state as a 1-byte grayscale texture to minimise bus bandwidth. Complete resource management and VRAM cleanup integrated.
 
 06.05.2026:
-feat ADR-0007: Competitive 1v1 USP Focus - Implementierung des "Catalyst Strike": Einmalige 10x10 Vernichtungsaktion pro Team pro Match. - Einführung der "Ignition Sequence": Dramatischer 3-Sekunden-Countdown vor Simulationsstart. - Blind-Draft Phase: Turn-based Editor (Rot vs. Blau) mit versteckter Gegnerseite. - Dynamische Telemetrie: Automatisch skalierende Populationsgraphen basierend auf dem Peak-Wert. - Navbar-Scoreboard: Zentrierte Echtzeit-Statistiken für bessere competitive Übersicht.
+feat ADR-0007: Competitive 1v1 USP Focus — Implementation of the "Catalyst Strike": a one-time 10x10 destruction action per team per match. Introduction of the "Ignition Sequence": a dramatic 3-second countdown before simulation start. Blind-Draft Phase: turn-based editor (Red vs. Blue) with the opponent's side hidden. Dynamic telemetry: automatically scaling population graphs based on peak value. Navbar scoreboard: centred real-time statistics for better competitive overview.
 
-feat ADR-0008: Epic Scale Tournament Architecture - Erweiterung der Gitterlimits auf 5000x5000 für native Desktop-Builds. - Implementierung einer "Active Chunk" Heuristik zur drastischen Performance-Steigerung bei großen Spielfeldern (Überspringen toter Sektoren). - Neuer `STATE_OBSERVER` (Observer-Modus) mit spezialisierten Broadcast-Tools. - Integration einer 2D-Kamera (Raylib `Camera2D`) für stufenlosen Zoom und freies Panning. - Optimierte Randomisierungs-Logik: Gleichmäßige 3%-Verteilung über die gesamte Hemisphäre.
+feat ADR-0008: Epic Scale Tournament Architecture — Extension of grid limits to 5000x5000 for native desktop builds. Implementation of an "Active Chunk" heuristic for dramatic performance improvement on large grids (skipping dead sectors). New `STATE_OBSERVER` (observer mode) with specialised broadcast tools. Integration of a 2D camera (Raylib `Camera2D`) for smooth zoom and free panning. Optimised randomisation logic: uniform 3% distribution across the entire hemisphere.
 
 20.05.2026:
-feat(gui): Enhanced Random Population Density - Increased the random start cell density from 3% to 37.5% per team for the [R]andom key in editor mode.
+feat(gui): Enhanced Random Population Density — Increased the random start cell density from 3% to 37.5% per team for the [R]andom key in editor mode.
 
-feat(wasm): Persistent Browser Storage (IDBFS) - Added automatic creation and mounting of the 'biotope_results/' directory to IndexedDB (IDBFS). - Ensured filesystem persistence so saved .bio files are retained after browser refreshes. - Added -lidbfs.js and -s FORCE_FILESYSTEM=1 to the WASM build flags.
+feat(wasm): Persistent Browser Storage (IDBFS) — Added automatic creation and mounting of the 'biotope_results/' directory to IndexedDB (IDBFS). Ensured filesystem persistence so saved .bio files are retained after browser refreshes. Added -lidbfs.js and -s FORCE_FILESYSTEM=1 to the WASM build flags.
 
-fix(load): Simulation Logic After Load - Resolved a critical bug where loaded configurations failed to simulate (black screen). - Fixed the 'load_grid' function to properly initialize and update the 'chunk_map' (spatial partitioning) for loaded cells.
+fix(load): Simulation Logic After Load — Resolved a critical bug where loaded configurations failed to simulate (black screen). Fixed the 'load_grid' function to properly initialise and update the 'chunk_map' (spatial partitioning) for loaded cells.
 
-perf(build): Robust Docker Build Environment - Renamed 'Makefile.web' to 'Makefile.wasm' to avoid GNU Make naming conflicts with legacy 'tangle' rules. - Implemented automatic 'emcc' path detection in 'Makefile.wasm' to ensure the compiler is found even in non-interactive Docker shells.
+perf(build): Robust Docker Build Environment — Renamed 'Makefile.web' to 'Makefile.wasm' to avoid GNU Make naming conflicts with legacy 'tangle' rules. Implemented automatic 'emcc' path detection in 'Makefile.wasm' to ensure the compiler is found even in non-interactive Docker shells.
 
 21.05.2026:
-feat ADR-0009: Multiplayer JSON Ecosystem (Hard Cut) - Vollständiger Austausch des veralteten `.bio` Textformats durch ein web-kompatibles `.json` Format für die Client-Server-Kommunikation. - Spezifikation von Ligen (Einsteiger, Rookie, Champions) mit individuellen Bounding-Boxen. - Einführung relativer Koordinaten zur Entkopplung von Mustern und Spielfeldpositionen. - Integration der quelloffenen `cJSON` Bibliothek in die C-Codebasis und Anpassung der Build-Systeme. - Komplettes Refactoring von `file_io.c` (`save_grid`, `load_grid`) zur Vermeidung von Format-Fragmentierung (Single Source of Truth).
+feat ADR-0009: Multiplayer JSON Ecosystem (Hard Cut) — Complete replacement of the obsolete `.bio` text format with a web-compatible `.json` format for client-server communication. Specification of leagues (Beginner, Rookie, Champions) with individual bounding boxes. Introduction of relative coordinates to decouple patterns from grid positions. Integration of the open-source `cJSON` library into the C codebase and adaptation of build systems. Complete refactoring of `file_io.c` (`save_grid`, `load_grid`) to prevent format fragmentation (single source of truth).
 
 22.05.2026:
-feat ADR-0010: Headless Simulation Worker - Implementierung eines CLI-basierten C-Workers (`biotope_headless`) zur automatisierten Match-Simulation auf Servern. - Entkopplung der Simulationslogik von der GUI (Raylib). - Unterstützung für rich metadata (`player_id`, `nickname`) und flexible Zellformate. - Generierung strukturierter Ergebnis-JSONs für das Backend-Matchmaking.
+feat ADR-0010: Headless Simulation Worker — Implementation of a CLI-based C worker (`biotope_headless`) for automated match simulation on servers. Decoupling of simulation logic from the GUI (Raylib). Support for rich metadata (`player_id`, `nickname`) and flexible cell formats. Generation of structured result JSONs for backend matchmaking.
 
-feat ADR-0011: REST API & Server-Side Validation - Entwicklung eines robusten Backends mittels Python/FastAPI. - Implementierung des `POST /api/v1/submit_config` Endpunkts für Spieler-Einreichungen. - Einführung einer strikten serverseitigen Validierung (Fair Play): Max. 38% Biomasse (24 Zellen) und 8x8 Bounding-Box. - Automatisierte API-Dokumentation via Swagger/OpenAPI.
+feat ADR-0011: REST API & Server-Side Validation — Development of a robust backend using Python/FastAPI. Implementation of the `POST /api/v1/submit_config` endpoint for player submissions. Introduction of strict server-side validation (fair play): max. 38% biomass (24 cells) and 8x8 bounding box. Automated API documentation via Swagger/OpenAPI.
 
 22.05.2026 (Evening):
-feat ADR-0012: Automated Matchmaking & Elo System - Vollständige Integration von MongoDB Atlas als persistenter Datenspeicher für Spieler, Muster und Matches. - Implementierung des "Proximity Swiss" Algorithmus zur fairen Paarung von Gegnern basierend auf ihrem Elo-Rating. - Entwicklung eines autonomen Hintergrund-Workers (`matchmaker`), der Simulationen via `biotope_headless` orchestriert. - Einführung eines dynamischen Elo-Ranking-Systems mit variablem K-Faktor für schnelle Konvergenz. - Containerisierung des Matchmakers als dedizierter Docker-Service mit automatisierter Abhängigkeitsverwaltung.
+feat ADR-0012: Automated Matchmaking & Elo System — Full integration of MongoDB Atlas as persistent storage for players, patterns, and matches. Implementation of the "Proximity Swiss" algorithm for fair opponent pairing based on Elo rating. Development of an autonomous background worker (`matchmaker`) that orchestrates simulations via `biotope_headless`. Introduction of a dynamic Elo ranking system with variable K-factor for fast convergence. Containerisation of the matchmaker as a dedicated Docker service with automated dependency management.
 
-feat ADR-0013: Mobile-First Web Draft Editor - Implementierung eines eigenständigen Web-Editors (`editor.html`) für die Erstellung und Übermittlung von Zell-Konfigurationen via Smartphone. - Optimiertes Touch-Interface mit 8x8 Grid und Echtzeit-Biomasse-Validierung (max. 24 Zellen). - Persistente Spieler-Identität (UUID) mittels Browser LocalStorage. - Integration in die Haupt-App (`gui.c`) über einen direkten Link-Button ("MOBILE EDITOR"). - Konfiguration von CORS im FastAPI-Backend zur Ermöglichung von Cross-Origin Submissions von Mobilgeräten.
+feat ADR-0013: Mobile-First Web Draft Editor — Implementation of a standalone web editor (`editor.html`) for creating and submitting cell configurations via smartphone. Optimised touch interface with 8x8 grid and real-time biomass validation (max. 24 cells). Persistent player identity (UUID) via browser LocalStorage. Integration into the main app (`gui.c`) via a direct link button ("MOBILE EDITOR"). CORS configuration in the FastAPI backend to allow cross-origin submissions from mobile devices.
 
 23.05.2026:
-feat ADR-0015: Architectural Consolidation and Modularization - Complete refactoring of the C codebase to eliminate monolithic structures and circular dependencies. - Separated `gui.c` into specialized modules: `renderer.c` (Raylib presentation) and `app_state_manager.c` (core logic and state machine). - Centralized magic numbers and parameters into a new `config.h`. - Consolidated all core data structures (`World`, `GameConfig`, `Team`, `AppState`) into a pure C header `core_types.h`. - Migrated all I/O and JSON parsing routines out of entry points and strictly into `file_io.c` with robust boundary checks. - Implemented dedicated C-based State of the Art `DEV_TEST` suites for every refactoring phase, including an end-to-end golden snapshot integration test to guarantee zero regressions.
+feat ADR-0015: Architectural Consolidation and Modularization — Complete refactoring of the C codebase to eliminate monolithic structures and circular dependencies. Separated `gui.c` into specialised modules: `renderer.c` (Raylib presentation) and `app_state_manager.c` (core logic and state machine). Centralised magic numbers and parameters into a new `config.h`. Consolidated all core data structures (`World`, `GameConfig`, `Team`, `AppState`) into a pure C header `core_types.h`. Migrated all I/O and JSON parsing routines out of entry points and strictly into `file_io.c` with robust boundary checks. Implemented dedicated C-based state-of-the-art `DEV_TEST` suites for every refactoring phase, including an end-to-end golden snapshot integration test to guarantee zero regressions.
 
 24.05.2026:
-refactor(gui): UI Clean-up and Mobile Editor Discovery - Removed redundant manual save button ([S] key) from Editor mode as auto-save is performed on simulation start. - Removed non-functional 'MOBILE EDITOR' button from the main simulation HUD. - Implemented a new 'Mobile Editor Discovery' section in the Tutorial screen (STATE_PUZZLE) featuring a QR-code placeholder and short-link (biotope.io/editor). - Updated test checklists and debugging reports to reflect the streamlined UI architecture.
-fix(gui): Ignition Countdown State Leak - Resolved an issue where the ignition countdown would only display '1' in subsequent simulation runs. - Fixed by ensuring `ignitionStartTime` is reset to `0.0` when returning to `STATE_CONFIG` from either `STATE_FINISHED` or `STATE_GAME_OVER`.
-feat(gui): Independent Pause and Observer Modes - Introduced a global `is_paused` flag in `GameConfig` to decouple simulation state from camera state. - Assigned `[LEERTASTE]` to toggle simulation pause across all active modes with clean visual feedback in the dynamic footer. - Updated `[O]` to toggle the Observer (free-camera) mode independently of the simulation's run state. - Removed redundant green status messages that overlapped with the scoreboard in the header. - Implemented a dynamic 'Status-First' footer showing "PAUSED" vs "RUNNING" and context-aware controls. - Ensured `is_paused` state and camera state are reset when returning to the configuration screen.
-fix(gui): Observer Camera State Leak - Resolved an issue where camera zoom and pan settings persisted across different simulation runs. - Fixed by ensuring the `observer_camera` is reset to default values when returning to the configuration screen.
-refactor(gameplay): Catalyst Feature Removal - Completely removed the 'Catalyst' mechanic (`apply_catalyst`) from the simulation logic and UI. - This change eliminates redundant interactions, prevents UI clutter (overlapping texts in the scoreboard), and simplifies the codebase without affecting the core competitive loop.
+refactor(gui): UI Clean-up and Mobile Editor Discovery — Removed redundant manual save button ([S] key) from editor mode as auto-save is performed on simulation start. Removed non-functional 'MOBILE EDITOR' button from the main simulation HUD. Implemented a new 'Mobile Editor Discovery' section in the tutorial screen (STATE_PUZZLE) featuring a QR-code placeholder and short-link (biotope.io/editor). Updated test checklists and debugging reports to reflect the streamlined UI architecture.
+fix(gui): Ignition Countdown State Leak — Resolved an issue where the ignition countdown would only display '1' in subsequent simulation runs. Fixed by ensuring `ignitionStartTime` is reset to `0.0` when returning to `STATE_CONFIG` from either `STATE_FINISHED` or `STATE_GAME_OVER`.
+feat(gui): Independent Pause and Observer Modes — Introduced a global `is_paused` flag in `GameConfig` to decouple simulation state from camera state. Assigned `[SPACE]` to toggle simulation pause across all active modes with clean visual feedback in the dynamic footer. Updated `[O]` to toggle the observer (free-camera) mode independently of the simulation's run state. Removed redundant green status messages that overlapped with the scoreboard in the header. Implemented a dynamic 'Status-First' footer showing "PAUSED" vs "RUNNING" and context-aware controls. Ensured `is_paused` state and camera state are reset when returning to the configuration screen.
+fix(gui): Observer Camera State Leak — Resolved an issue where camera zoom and pan settings persisted across different simulation runs. Fixed by ensuring the `observer_camera` is reset to default values when returning to the configuration screen.
+refactor(gameplay): Catalyst Feature Removal — Completely removed the 'Catalyst' mechanic (`apply_catalyst`) from the simulation logic and UI. This change eliminates redundant interactions, prevents UI clutter (overlapping texts in the scoreboard), and simplifies the codebase without affecting the core competitive loop.
 
 28.05.2026:
-feat ADR-0017: C-Networking and API Integration - Implementierung einer asynchronen Netzwerkschicht in C mittels `libcurl` und `pthread` zur Anbindung des Backends. - Einführung von `network_io.c` zur Kapselung aller HTTP-Aufrufe gemäß Clean Architecture. - Implementierung von Hintergrund-Threads für Leaderboard- und Highlight-Fetching zur Vermeidung von UI-Stottern (60 FPS Garantie). - Erweiterung der Hyper-Workers um die Metrik "Aktivitäts-Summe" (Summe aller Zelländerungen) zur Identifikation visuell dynamischer Highlights. - Optimierung des Speicherbedarfs: Interne Speicherung von 8x8 Highlight-Seeds als `uint64_t` Bitboards. - Backend-Update: Vollständige Unterstützung für MongoDB Atlas mit konfigurierbaren Credentials via `.env` und automatischem Verbindungs-Check beim Startup. - Integration von Test-Triggern (`[L]` für Leaderboard, `[H]` für Highlights) zur Verifizierung der Datenübertragung.
+feat ADR-0017: C-Networking and API Integration — Implementation of an asynchronous network layer in C using `libcurl` and `pthread` to connect to the backend. Introduction of `network_io.c` to encapsulate all HTTP calls per clean architecture. Implementation of background threads for leaderboard and highlight fetching to prevent UI stutter (60 FPS guarantee). Extension of the hyper-worker with the metric "activity sum" (sum of all cell changes) for identifying visually dynamic highlights. Memory optimisation: internal storage of 8x8 highlight seeds as `uint64_t` bitboards. Backend update: full support for MongoDB Atlas with configurable credentials via `.env` and automatic connection check on startup. Integration of test triggers (`[L]` for leaderboard, `[H]` for highlights) to verify data transfer.
 
 feat ADR-0018: Multicam Render Context Architecture
 - Refactored core simulation and renderer logic to decouple from global state, introducing `SimulationContext` and `RenderContext`.
 - Enabled simultaneous multi-viewport rendering and parallel simulations.
 - Implemented `BeginScissorMode` clipping to prevent quadrant rendering bleed.
-- Added a 2x2 Splitscreen "Wusel-Multicam" PoC (Kiosk Mode) triggered via the `[K]` key.
+- Added a 2x2 splitscreen "Wusel-Multicam" PoC (Kiosk Mode) triggered via the `[K]` key.
 - Verified memory safety (0 definitely lost leaks from our new logic) and successful texture management.
 
 feat ADR-0019: Kiosk Mode State Machine and UI
-- Implementierung der `STATE_KIOSK_MODE` State Machine für autonomen Ablauf der App.
-- Hinzufügen von Leaderboard Rendering und 2x2 Multicam Splitscreen Rendering inklusive nahtlosem Wechsel alle 15/30 Sekunden.
-- Click-to-Replay Funktion eingebaut: Bei Klick auf einen Multicam-Quadranten startet ein Replay der Simulation im Vollbild (inklusive Ignition Countdown).
-- Global Failsafe Inactivity Timer: Rückkehr zum Kiosk Mode nach 60 Sekunden Inaktivität aus jeglichen Menüs oder Replays heraus.
-- Speichersicherheit beim Beenden von Simulationen und Kiosk-Übergängen (Fixing von Segfaults und Memory Leaks bei World-Allokationen).
+- Implementation of the `STATE_KIOSK_MODE` state machine for autonomous app operation.
+- Added leaderboard rendering and 2x2 multicam splitscreen rendering including seamless switching every 15/30 seconds.
+- Click-to-Replay functionality added: clicking a multicam quadrant starts a full-screen replay of the simulation (including ignition countdown).
+- Global failsafe inactivity timer: returns to kiosk mode after 60 seconds of inactivity from any menu or replay.
+- Memory safety on simulation teardown and kiosk transitions (fixing segfaults and memory leaks on world allocations).
 
 31.05.2026:
 feat ADR-0021: Kiosk Mode Engagement Enhancement
-- P1: Spielernamen pro Multicam-Quadrant — `MatchHighlight.participant_red/blue` wird jetzt nach `SimulationContext.participant_red/blue` kopiert (vorher verworfen) und als farbiger Name-Header (`THEME_RED` / `THEME_BLUE`) über jedem Quadrant gerendert.
-- P2: Live-Populationsbalken pro Quadrant — `KioskController` erweitert um `quad_red_pop[4]` / `quad_blue_pop[4]`; die bisher verworfenen `dummy_red/dummy_blue`-Ausgaben von `update_generation_ctx` werden jetzt persistent gespeichert und als proportionaler Rot/Blau-Balken am unteren Rand jedes Quadranten gerendert.
-- P3: Metric-Reason-Label — `MatchHighlight.metric_reason` (z.B. "LONGEST MATCH") wird rechts-bündig im Header-Strip jedes Quadranten angezeigt.
-- P4: 8×8-Startmuster-Thumbnail — Zeigt das ursprüngliche Einsaat-Muster als kleines farbiges Raster in der oberen linken Ecke jedes Quadranten, um den Kontrast zwischen einfacher Eingabe und komplexem Ergebnis sichtbar zu machen.
-- P5: QR-Code-Platzhalter + CTA auf dem Leaderboard-Screen — Stilisierter QR-Code und "Submit YOUR strategy!" Einladungstext für Messegäste.
-- P6: Visueller Fortschrittsbalken ersetzt den Text-Timer "SWITCHING IN X SECONDS" in beiden Kiosk-Substates.
+- P1: Player names per multicam quadrant — `MatchHighlight.participant_red/blue` is now copied to `SimulationContext.participant_red/blue` (previously discarded) and rendered as a colour-coded name header (`THEME_RED` / `THEME_BLUE`) above each quadrant.
+- P2: Live population bar per quadrant — `KioskController` extended with `quad_red_pop[4]` / `quad_blue_pop[4]`; the previously discarded `dummy_red/dummy_blue` outputs of `update_generation_ctx` are now persistently stored and rendered as a proportional red/blue bar at the bottom of each quadrant.
+- P3: Metric-reason label — `MatchHighlight.metric_reason` (e.g. "LONGEST MATCH") is displayed right-aligned in the header strip of each quadrant.
+- P4: 8×8 start pattern thumbnail — shows the original seed pattern as a small colour grid in the upper-left corner of each quadrant, making the contrast between simple input and complex output visible.
+- P5: QR code placeholder + CTA on the leaderboard screen — stylised QR code and "Submit YOUR strategy!" invitation text for exhibition visitors.
+- P6: Visual progress bar replaces the text timer "SWITCHING IN X SECONDS" in both kiosk substates.
 
 feat ADR-0022: Kiosk UI Architecture Refactor & UX Enhancement (Phase B)
-- Architektur: Render-Blöcke aus monolithischem switch extrahiert in `draw_kiosk_leaderboard()` und `draw_kiosk_multicam()`.
-- Skalierung: `viewport_bounds` wird jetzt jedes Frame aus `compute_kiosk_layout()` neu berechnet — Quadranten skalieren korrekt bei Fenstergrößenänderung und Vollbild.
-- Interaktion: Maus-Click-Trigger entfernt; Tasten `[1]`–`[4]` starten Replay des gewählten Matches vom Startzustand (Seed), nicht vom laufenden Zustand.
-- Leaderboard: Footer-Panel (feste Leiste hinter CTA + Fortschrittsbalken), proportionales Spalten-Layout (80 % Bildschirmbreite, 10 % Margin), Clip-to-fit mit `+N more`-Indikator, Top-3-Zeilenhighlights, Spalte "STAMINA" → "ENDURANCE", QR-Panel entfernt.
-- Multicam: Titel "WUSEL-MULTICAM KIOSK MODE" → "LIVE BATTLES", proportionale Score-Bar (≥ 20 px), Quadrant-Separator-Linien, metric_reason als zentrierter Badge unter Spielernamen, Thumbnail-Zellgröße proportional (≈ 20 % Quadranthöhe), Footer-Panel.
-- Cleanup (Boy Scout Rule): Ungenutzte KioskLayout-Felder `font_cta`, `font_name`, `font_score` entfernt.
+- Architecture: render blocks extracted from monolithic switch into `draw_kiosk_leaderboard()` and `draw_kiosk_multicam()`.
+- Scaling: `viewport_bounds` is now recalculated every frame from `compute_kiosk_layout()` — quadrants scale correctly on window resize and fullscreen.
+- Interaction: mouse click trigger removed; keys `[1]`–`[4]` start replay of the selected match from the initial state (seed), not from the running state.
+- Leaderboard: footer panel (fixed bar behind CTA + progress bar), proportional column layout (80% screen width, 10% margin), clip-to-fit with `+N more` indicator, top-3 row highlights, column "STAMINA" → "ENDURANCE", QR panel removed.
+- Multicam: title "WUSEL-MULTICAM KIOSK MODE" → "LIVE BATTLES", proportional score bar (≥ 20 px), quadrant separator lines, metric_reason as centred badge below player names, thumbnail cell size proportional (≈ 20% quadrant height), footer panel.
+- Cleanup (Boy Scout Rule): unused KioskLayout fields `font_cta`, `font_name`, `font_score` removed.

@@ -1,92 +1,100 @@
-# 🚀 Start-Routine: Biotope Game of Life
+# Start Routine: Biotope Game of Life
 
-Diese Anleitung hilft dir, das Projekt schnell zu starten und wieder in den Workflow zu finden, auch wenn du längere Zeit nicht daran gearbeitet hast.
+This guide helps you start the project quickly and get back into the workflow, even after a longer break.
 
 ---
 
-## 1. Das Projekt bauen (Kompilieren)
+## 1. Building the Project (Compilation)
 
-Bevor du die App starten kannst, musst du den Quellcode in ein ausführbares Programm verwandeln.
+Before you can start the app, you need to compile the source code into executable programs.
 
-### 💻 Lokal (Native App für Linux/Windows)
-Wenn du direkt auf deinem Rechner (mit installierter Raylib) arbeitest:
+### Local (Native App for Linux/Windows)
+When working directly on your machine (with Raylib installed):
 
-#### Linux-Voraussetzungen (Einmalige Einrichtung)
-Sollte `raylib.h` beim Kompilieren nicht gefunden werden, fehlen die System-Bibliotheken. Installiere sie mit:
+#### Linux Prerequisites (One-Time Setup)
+If `raylib.h` is not found during compilation, the system libraries are missing. Install them with:
 ```bash
 sudo apt update
-sudo apt install libraylib-dev  # Falls im Repo vorhanden
-# ODER (Manuell bauen, falls obiges nicht geht):
+sudo apt install libraylib-dev  # if available in the repo
+# OR (build manually if the above does not work):
 sudo apt install make git cmake libasound2-dev libx11-dev libxrandr-dev libxi-dev libgl1-mesa-dev libglu1-mesa-dev libxcursor-dev libxinerama-dev libwayland-dev libxkbcommon-dev
 ```
-*Hinweis: Wenn du Raylib manuell baust, folge den Instruktionen auf [raylib.com](https://www.raylib.com).*
+*Note: If you build Raylib manually, follow the instructions at [raylib.com](https://www.raylib.com).*
 
-1. Öffne ein Terminal im Hauptverzeichnis des Projekts.
-2. Führe diesen Befehl aus:
+1. Open a terminal in the project root directory.
+2. Run this command:
    ```bash
    make clean && make
    ```
-   *Tipp: `make clean` sorgt dafür, dass keine alten Reste den Build stören.*
+   *Tip: `make clean` ensures no old artefacts interfere with the build.*
 
-### 🌐 Für den Browser (Web/WASM)
-Wenn du die Web-Version erstellen möchtest:
-1. Führe diesen Befehl aus:
+### For the Browser (Web/WASM)
+To build the web version:
+1. Run this command:
    ```bash
-   make -f Makefile.web
+   make -f Makefile.wasm
    ```
 
 ---
 
-## 2. Die App starten
+## 2. Starting the App
 
-### 🚀 Native App ausführen
-Nach dem erfolgreichen Kompilieren kannst du das Programm starten:
+### Running the Native App
+After successful compilation, you can start the program:
 - **Linux:** 
   ```bash
-  ./biotope
+  ./build/biotope
   ```
-- **Windows:** Doppelklick auf `biotope.exe` oder im Terminal:
+- **Windows:** Double-click `biotope.exe` or in the terminal:
   ```bash
-  biotope.exe
+  build\biotope.exe
   ```
 
-### 🌐 Web-Version im Browser anschauen
-Die Web-Dateien (`biotope.html`) können nicht einfach per Doppelklick geöffnet werden. Du benötigst einen kleinen Web-Server:
-1. Starte einen einfachen Server (z.B. mit Python):
+`make` produces three binaries in the `build/` folder:
+
+| Binary | Description |
+|--------|-------------|
+| `build/biotope` | Interactive GUI (Raylib, requires display) |
+| `build/biotope_headless` | Single match CLI: `./build/biotope_headless <red.json> <blue.json> [out.json]` |
+| `build/biotope_hyper_worker` | Batch tournament CLI (for the matchmaker worker) |
+
+### Viewing the Web Version in the Browser
+The web files cannot simply be opened by double-clicking. You need a small web server:
+1. Start a simple server (e.g. with Python):
    ```bash
    python3 -m http.server 8080
    ```
-2. Öffne deinen Browser und gib diese Adresse ein:
+2. Open your browser and enter this address:
    [http://localhost:8080/biotope.html](http://localhost:8080/biotope.html)
 
 ---
 
-## 3. Arbeiten mit Docker (Sorglos-Paket)
+## 3. Working with Docker
 
-Wenn du keine Bibliotheken (wie Raylib oder Emscripten) lokal installieren möchtest, kannst du die vorbereitete Docker-Umgebung nutzen.
+If you prefer not to install libraries (like Raylib or Emscripten) locally, you can use the prepared Docker environment.
 
-1. **Container starten:**
+1. **Start the container:**
    ```bash
    docker-compose up -d
    ```
-2. **In die Entwicklungsumgebung wechseln:**
+2. **Enter the development environment:**
    ```bash
    docker-compose exec c-dev bash
    ```
-3. **Innerhalb von Docker bauen:**
-   Jetzt bist du "im" System und kannst einfach `make` oder `make -f Makefile.wasm` nutzen.
+3. **Build inside Docker:**
+   You are now inside the system and can simply use `make` or `make -f Makefile.wasm`.
 
 ---
 
-## 🛠️ Kurzer Check beim Wiedereinstieg
+## Quick Check When Returning to the Project
 
-Wenn du nach einer Pause zurückkehrst, empfiehlt sich dieser kurze Workflow:
+When returning after a break, this quick workflow is recommended:
 
-1. **Status prüfen:** `git status` (Was habe ich zuletzt geändert?)
-2. **Aufgabenliste ansehen:** Schau in `docs/tasks/`, welche Punkte noch offen sind (Checkboxen `- [ ]`).
-3. **Logbuch lesen:** In `docs/CHANGELOG.md` siehst du, was zuletzt erfolgreich abgeschlossen wurde.
-4. **Bauen & Starten:** Nutze die Befehle oben, um sicherzustellen, dass die aktuelle Version stabil läuft.
+1. **Check status:** `git status` (What did I last change?)
+2. **Check the task list:** Look in `docs/tasks/` for any open items (checkboxes `- [ ]`).
+3. **Read the log:** In `docs/CHANGELOG.md` you can see what was last successfully completed.
+4. **Build & start:** Use the commands above to ensure the current version runs stably.
 
 ---
 
-*Viel Erfolg beim Weiterforschen im Biotope!* 🧬
+*Good luck exploring Biotope further!*

@@ -1347,7 +1347,6 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
 
     // B.6: Column headers
     DrawText("RANK",      col_rank,      startY, layout.font_header, THEME_HINT);
-    DrawText("CONFIG",    col_icon,      startY, layout.font_header, THEME_HINT);
     DrawText("PLAYER",    col_player,    startY, layout.font_header, THEME_HINT);
     DrawText("WIN RATE",  col_winrate,   startY, layout.font_header, THEME_HINT);
     DrawText("W / D / L", col_wdl,       startY, layout.font_header, THEME_HINT);

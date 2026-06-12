@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from datetime import datetime
 
 # KI-Agent unterstützt: Extended Pydantic models for MongoDB persistence and Matchmaking
@@ -29,12 +29,28 @@ class Config(BaseModel):
     )
 
 
-class Submission(BaseModel):
+class Auth(BaseModel):
+    # KI-Agent unterstützt: Top-level secret carrier (ADR-0027); never persisted.
+    recovery_code: Optional[str] = Field(
+        None, description="Recovery code, only sent during a reclaim"
+    )
+
+
+class SubmissionBase(BaseModel):
     metadata: Metadata
     config: Config
 
 
-class DBSubmission(Submission):
+class Submission(SubmissionBase):
+    # KI-Agent unterstützt: API payload — `auth` is structurally isolated from the
+    # persisted document. Defaults to empty so the existing metadata/config payload
+    # stays valid.
+    auth: Auth = Field(default_factory=Auth)
+
+
+class DBSubmission(SubmissionBase):
+    # KI-Agent unterstützt: Persisted shape inherits only metadata + config from
+    # SubmissionBase, so no model_dump() path can leak the recovery code (FR-7).
     status: str = Field(
         "active", description="Matchmaking status: active, in_match, retired"
     )
@@ -48,6 +64,13 @@ class DBSubmission(Submission):
 class Player(BaseModel):
     player_id: str = Field(..., description="Unique ID of the player")
     nickname: str = Field(..., description="Player's display name")
+    # KI-Agent unterstützt: Name-claiming identity + hashed recovery code (ADR-0027)
+    nickname_normalized: str = Field(
+        ..., description="Normalized name (trim+lowercase); unique ownership key"
+    )
+    recovery_code_hash: Optional[str] = Field(
+        None, description="SHA-256 hash of the recovery code; never the plaintext"
+    )
     elo_rating: int = Field(1200, description="Aggregate Elo rating of the player")
     matches_played: int = Field(
         0, description="Total number of matches played by the player"

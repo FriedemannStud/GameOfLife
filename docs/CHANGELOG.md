@@ -1,3 +1,15 @@
+2026-06-12 — ADR-0027: Name-Claiming with Server-Generated Recovery Code
+
+- `backend/app/auth_utils.py` (new): pure helpers `normalize_nickname()` (trim+lowercase+collapse whitespace), `generate_recovery_code()` (Crockford Base32, e.g. `BIOTOP-7F3A`), `hash_recovery_code()` (SHA-256). Unit-tested in `backend/tests/test_auth_utils.py`.
+- `backend/app/models.py`: new `Auth` model + `Submission.auth` (top-level, optional, default empty). `DBSubmission` now inherits a `SubmissionBase` (metadata+config only) so the recovery code can never leak into the `submissions` collection. `Player` gains `nickname_normalized` and `recovery_code_hash`.
+- `backend/app/main.py`: `submit_config` rewritten as name-claiming with two-factor ownership (silent `player_id` OR recovery code). First claim issues a code; same-device returns are silent; a different device is blocked unless it presents the code (then `player_id` is re-bound). Startup hook creates a unique index on `players.nickname_normalized`. Exception handling fixed so `409`/`403`/`400` no longer collapse into `500`.
+- Error contract: `201` (+ `recovery_code` on first claim, `reclaimed: true` on reclaim), `409 {"error":"name_taken"}`, `403 {"error":"invalid_recovery_code"}`, `400` (domain rule). Concurrent claims race on the unique index → `DuplicateKeyError` → `409`.
+- `backend/scripts/reset_db.py` (new): destructive clean-slate reset (clears `players` + `submissions`, ensures the unique index) for pre-fair setup.
+- `web/editor/editor.html`: sends the `auth` block; branches on the response matrix; reveals a recovery-code input on `409`; shows a screenshot-friendly recovery card overlay with a `<canvas>`-rendered "save as PNG" download (graceful degradation if unavailable).
+- Tests: `backend/tests/test_name_claiming.py` (new) — end-to-end claim → silent → block → wrong code → reclaim, asserting no plaintext code is ever persisted. Existing validator/ranking tests still pass.
+- C application unchanged (`network_io.c` is GET-only; never POSTs submissions).
+- Known follow-up (DEV_SPEC-0027 B-13): clearer `409` hint for first-time visitors who pick an already-taken name (they have no recovery code).
+
 2026-06-08 — Deployment Guide for Server Operation
 
 - `docs/DEPLOYMENT.md` (new): Step-by-step guide to starting the stack on a server (VM, SSH). Separation between headless server stack (Mongo, backend, editor, matchmaker via `docker compose`) and graphical display (`build/biotope`, requires a display).

@@ -2,10 +2,16 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from datetime import datetime
+from pymongo.errors import DuplicateKeyError
 from .models import Submission, DBSubmission, Player
 from .validators import validate_biotope_rules
 from .database import get_db
 from .grid_utils import cells_to_grid
+from .auth_utils import (
+    normalize_nickname,
+    generate_recovery_code,
+    hash_recovery_code,
+)
 
 # KI-Agent unterstützt: Biotope Backend with MongoDB integration for Matchmaking
 
@@ -26,6 +32,9 @@ async def startup_db_client():
     from .database import check_connection
     if await check_connection():
         print("Successfully connected to MongoDB Atlas!")
+        # KI-Agent unterstützt: Unique index is the authoritative ownership guard
+        # for normalized names, including under concurrent claims (ADR-0027).
+        await get_db().players.create_index("nickname_normalized", unique=True)
     else:
         print("CRITICAL: Could not connect to MongoDB Atlas. Check your .env file.")
 
@@ -38,47 +47,86 @@ async def root():
 app.mount("/editor", StaticFiles(directory="web/editor"), name="editor")
 
 
+# KI-Agent unterstützt: Persist metadata + config only — the `auth` block (recovery
+# code) is structurally excluded so no model_dump() path leaks it (ADR-0027, FR-7).
+async def _persist_submission(db, submission: Submission) -> str:
+    db_submission = DBSubmission(metadata=submission.metadata, config=submission.config)
+    result = await db.submissions.insert_one(db_submission.model_dump())
+    return str(result.inserted_id)
+
+
 @app.post("/api/v1/submit_config", status_code=201)
 async def submit_config(submission: Submission):
+    # KI-Agent unterstützt: Name-claiming with recovery code (ADR-0027). Ownership of a
+    # normalized name is proven by either the silent player_id or the recovery code;
+    # first claim wins, later devices reclaim via re-binding (password-reset semantics).
     try:
-        # 1. Validate Business Rules (Fair Play)
+        # 1. Validate Business Rules (Fair Play) -> 400 on ValueError
         validate_biotope_rules(submission)
 
-        # 2. Get DB connection
         db = get_db()
+        norm = normalize_nickname(submission.metadata.nickname)
+        player = await db.players.find_one({"nickname_normalized": norm})
 
-        # 3. Upsert Player (Ensure player exists)
-        player_data = Player(
-            player_id=submission.metadata.player_id,
-            nickname=submission.metadata.nickname,
-        )
-        # KI-Agent unterstützt: Keyed by nickname for test phase; swap to player_id once email auth is added
+        # 2a. Free name -> CLAIM: bind name to this device, issue a recovery code.
+        if player is None:
+            code = generate_recovery_code()
+            new_player = Player(
+                player_id=submission.metadata.player_id,
+                nickname=submission.metadata.nickname,
+                nickname_normalized=norm,
+                recovery_code_hash=hash_recovery_code(code),
+            )
+            doc = new_player.model_dump()
+            doc["win_rate"] = 0.0
+            try:
+                await db.players.insert_one(doc)
+            except DuplicateKeyError:
+                # Lost a concurrent claim race -> treat as taken by someone else.
+                raise HTTPException(status_code=409, detail={"error": "name_taken"})
+            submission_id = await _persist_submission(db, submission)
+            return {
+                "status": "success",
+                "submission_id": submission_id,
+                "timestamp": datetime.utcnow().isoformat(),
+                "recovery_code": code,
+            }
+
+        # 2b. Silent owner -> same device, zero friction.
+        if player["player_id"] == submission.metadata.player_id:
+            submission_id = await _persist_submission(db, submission)
+            return {
+                "status": "success",
+                "submission_id": submission_id,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+
+        # 2c. Taken by someone else -> require the recovery code.
+        code = submission.auth.recovery_code if submission.auth else None
+        if not code:
+            raise HTTPException(status_code=409, detail={"error": "name_taken"})
+        if hash_recovery_code(code) != player.get("recovery_code_hash"):
+            raise HTTPException(
+                status_code=403, detail={"error": "invalid_recovery_code"}
+            )
+
+        # RECLAIM -> re-bind the name to the requesting device.
         await db.players.update_one(
-            {"nickname": player_data.nickname},
-            {
-                "$set": {"player_id": player_data.player_id},
-                "$setOnInsert": {
-                    "nickname": player_data.nickname,
-                    "elo_rating": 1200,
-                    "matches_played": 0,
-                    "win_rate": 0.0,
-                    "created_at": datetime.utcnow(),
-                },
-            },
-            upsert=True,
+            {"_id": player["_id"]},
+            {"$set": {"player_id": submission.metadata.player_id}},
         )
-
-        # 4. Insert Submission
-        db_submission = DBSubmission(**submission.model_dump())
-        result = await db.submissions.insert_one(db_submission.model_dump())
-
+        submission_id = await _persist_submission(db, submission)
         return {
             "status": "success",
-            "submission_id": str(result.inserted_id),
+            "submission_id": submission_id,
             "timestamp": datetime.utcnow().isoformat(),
+            "reclaimed": True,
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        # Let the deterministic 409/403/400 contract propagate unchanged.
+        raise
     except Exception:
         # In a real app, log the error 'e'
         raise HTTPException(status_code=500, detail="Internal server error")

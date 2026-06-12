@@ -168,6 +168,64 @@
         }
         .error { color: #e74c3c; }
         .success { color: #2ecc71; }
+
+        /* KI-Agent unterstützt: Reclaim input + recovery-card overlay (ADR-0027) */
+        #recovery-group { display: none; }
+        #recovery-hint { color: var(--accent); font-weight: bold; }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.65);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .overlay.visible { display: flex; }
+
+        .overlay-box {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            max-width: 360px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .recovery-card {
+            background: var(--wiai-blue);
+            color: white;
+            border-radius: 10px;
+            padding: 24px 18px;
+            margin-bottom: 20px;
+            border: 3px solid var(--wiai-yellow);
+        }
+        .rc-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--wiai-yellow);
+        }
+        .rc-species {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin: 10px 0 18px;
+            word-break: break-word;
+        }
+        .rc-code {
+            font-family: 'Courier New', monospace;
+            font-size: 2rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 6px;
+            padding: 10px;
+        }
+        .rc-date { font-size: 0.75rem; opacity: 0.8; margin-top: 14px; }
+        .rc-note { font-size: 0.8rem; margin-top: 16px; line-height: 1.4; }
     </style>
 </head>
 <body>
@@ -198,6 +256,14 @@
             <input type="text" id="nickname" placeholder="Name deiner Spezies" maxlength="20">
         </div>
 
+        <!-- KI-Agent unterstützt: Reclaim input, revealed on 409 name_taken (ADR-0027) -->
+        <div class="input-group" id="recovery-group">
+            <input type="text" id="recovery-input" placeholder="Recovery-Code (z.B. BIOTOP-7F3A)" maxlength="20">
+            <p class="counter-info" id="recovery-hint">
+                Dieser Name ist bereits vergeben. Gib deinen Recovery-Code ein, um ihn zurückzuholen.
+            </p>
+        </div>
+
         <div class="controls">
             <button id="btn-submit" class="btn-submit" disabled>Ab in die Arena</button>
         </div>
@@ -210,7 +276,27 @@
     </div>
 
     <hr>
-    
+
+</div>
+
+<!-- KI-Agent unterstützt: Recovery-code card overlay shown on first claim (ADR-0027) -->
+<div id="recovery-overlay" class="overlay">
+    <div class="overlay-box">
+        <div id="recovery-card" class="recovery-card">
+            <div class="rc-title">Biotop · Recovery-Code</div>
+            <div class="rc-species" id="rc-species"></div>
+            <div class="rc-code" id="rc-code"></div>
+            <div class="rc-date" id="rc-date"></div>
+            <div class="rc-note">
+                Bewahre diesen Code auf! Nur damit kannst du deine Spezies auf einem
+                anderen Gerät zurückholen.
+            </div>
+        </div>
+        <div class="controls">
+            <button id="btn-save-png" class="btn-submit">Als Bild speichern</button>
+            <button id="btn-close-overlay" class="btn-clear">Verstanden</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -238,6 +324,10 @@
     const submitBtn = document.getElementById('btn-submit');
     const toggleBtn = document.getElementById('btn-toggle');
     const nicknameInput = document.getElementById('nickname');
+    // KI-Agent unterstützt: Name-claiming UI elements (ADR-0027)
+    const recoveryGroup = document.getElementById('recovery-group');
+    const recoveryInput = document.getElementById('recovery-input');
+    const recoveryOverlay = document.getElementById('recovery-overlay');
 
     // Init Grid UI
     function createGrid() {
@@ -341,7 +431,7 @@
         setTimeout(() => { statusEl.innerText = ""; }, 3000);
     }
 
-    // Backend Integration targeting the PHP Bridge
+    // KI-Agent unterstützt: Submit with name-claiming + reclaim flow (ADR-0027)
     submitBtn.onclick = async () => {
         const cells = [];
         const snap = initialGrid || grid;
@@ -351,17 +441,25 @@
             }
         }
 
+        // The recovery code is only sent when the reclaim input is visible and filled;
+        // it lives in a dedicated top-level `auth` block, never inside metadata.
+        const reclaimCode = recoveryGroup.style.display === 'block'
+            ? (recoveryInput.value.trim() || null)
+            : null;
+
+        const speciesName = nicknameInput.value.trim();
         const payload = {
             metadata: {
                 player_id: playerId,
-                nickname: nicknameInput.value.trim(),
+                nickname: speciesName,
                 league: "einsteiger"
             },
             config: {
                 bounding_box_x: 8,
                 bounding_box_y: 8,
                 cells: cells
-            }
+            },
+            auth: { recovery_code: reclaimCode }
         };
 
         submitBtn.disabled = true;
@@ -373,19 +471,111 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload)
             });
-            if(res.ok) {
-                showStatus("Erfolgreich eingereicht!", "success");
+            const data = await res.json().catch(() => ({}));
+
+            if(res.status === 201) {
+                if(data.recovery_code) {
+                    // First claim: present the code on the recovery card.
+                    showRecoveryOverlay(speciesName, data.recovery_code);
+                    showStatus("Spezies eingereicht!", "success");
+                } else if(data.reclaimed) {
+                    showStatus("Spezies zurückgeholt!", "success");
+                    hideRecoveryGroup();
+                } else {
+                    showStatus("Erfolgreich eingereicht!", "success");
+                }
                 fetchGlobalCount();
+                updateUI();
+            } else if(res.status === 409) {
+                // Name taken by someone else -> reveal the reclaim input.
+                showRecoveryGroup();
+                showStatus("Name vergeben — Recovery-Code eingeben.", "error");
+                submitBtn.disabled = false;
+            } else if(res.status === 403) {
+                // Wrong code -> keep the input, prompt to retry.
+                showStatus("Code falsch — bitte erneut.", "error");
+                submitBtn.disabled = false;
             } else {
-                const errData = await res.json();
-                showStatus("Fehler: " + (errData.error || "Serverfehler"), "error");
+                const detail = data.detail;
+                const msg = typeof detail === 'string' ? detail
+                    : (detail && detail.error) || "Serverfehler";
+                showStatus("Fehler: " + msg, "error");
                 submitBtn.disabled = false;
             }
         } catch(e) {
-            showStatus("Brücke (submit.php) nicht erreichbar.", "error");
+            showStatus("Server nicht erreichbar.", "error");
             submitBtn.disabled = false;
         }
     };
+
+    // KI-Agent unterstützt: Reveal/hide the reclaim input group (ADR-0027)
+    function showRecoveryGroup() {
+        recoveryGroup.style.display = 'block';
+        recoveryInput.focus();
+    }
+    function hideRecoveryGroup() {
+        recoveryGroup.style.display = 'none';
+        recoveryInput.value = '';
+    }
+
+    // KI-Agent unterstützt: Show the recovery-code card overlay (ADR-0027)
+    function showRecoveryOverlay(species, code) {
+        document.getElementById('rc-species').innerText = species;
+        document.getElementById('rc-code').innerText = code;
+        document.getElementById('rc-date').innerText =
+            new Date().toLocaleDateString('de-DE');
+        recoveryOverlay.classList.add('visible');
+        hideRecoveryGroup();
+    }
+
+    document.getElementById('btn-close-overlay').onclick = () => {
+        recoveryOverlay.classList.remove('visible');
+    };
+
+    // KI-Agent unterstützt: Render the recovery card to a PNG download (ADR-0027).
+    // Graceful degradation: hide the button if <canvas>/toBlob is unavailable.
+    const savePngBtn = document.getElementById('btn-save-png');
+    (function setupPngExport() {
+        const canvas = document.createElement('canvas');
+        if(!canvas.getContext || !canvas.toBlob) {
+            savePngBtn.style.display = 'none';
+            return;
+        }
+        savePngBtn.onclick = () => {
+            const species = document.getElementById('rc-species').innerText;
+            const code = document.getElementById('rc-code').innerText;
+            const date = document.getElementById('rc-date').innerText;
+            const W = 600, H = 360;
+            canvas.width = W; canvas.height = H;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#004a99';
+            ctx.fillRect(0, 0, W, H);
+            ctx.strokeStyle = '#ffcc00';
+            ctx.lineWidth = 8;
+            ctx.strokeRect(16, 16, W - 32, H - 32);
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#ffcc00';
+            ctx.font = 'bold 22px Arial';
+            ctx.fillText('BIOTOP · RECOVERY-CODE', W / 2, 80);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 30px Arial';
+            ctx.fillText(species, W / 2, 150);
+            ctx.font = 'bold 54px "Courier New", monospace';
+            ctx.fillText(code, W / 2, 230);
+            ctx.font = '18px Arial';
+            ctx.fillText(date, W / 2, 290);
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'biotop-recovery-' + code + '.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+        };
+    })();
 
     async function fetchGlobalCount() {
         try {

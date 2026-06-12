@@ -164,7 +164,7 @@ recovery code in the web editor, as described in **ADR-0027**.
 | B-10 | Own/Recover Name | Frontend: reclaim input field flow | Should |
 | B-11 | Own/Recover Name | Frontend: "save as PNG" download of the card | Could |
 | B-12 | Own/Recover Name | Backend unit + integration tests for claim/reclaim/uniqueness | Must |
-| B-13 | Own/Recover Name | Frontend: clarifying `409` hint for first-time visitors with a name collision (no recovery code) — distinguish "not your name, pick another" from "your name, enter code" | Won't (this increment) |
+| B-13 | Own/Recover Name | Frontend: clarifying `409` hint for first-time visitors with a name collision (no recovery code) — distinguish "not your name, pick another" from "your name, enter code" | Should (done 2026-06-12) |
 
 ---
 

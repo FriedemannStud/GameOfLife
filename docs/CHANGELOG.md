@@ -8,7 +8,7 @@
 - `web/editor/editor.html`: sends the `auth` block; branches on the response matrix; reveals a recovery-code input on `409`; shows a screenshot-friendly recovery card overlay with a `<canvas>`-rendered "save as PNG" download (graceful degradation if unavailable).
 - Tests: `backend/tests/test_name_claiming.py` (new) — end-to-end claim → silent → block → wrong code → reclaim, asserting no plaintext code is ever persisted. Existing validator/ranking tests still pass.
 - C application unchanged (`network_io.c` is GET-only; never POSTs submissions).
-- Known follow-up (DEV_SPEC-0027 B-13): clearer `409` hint for first-time visitors who pick an already-taken name (they have no recovery code).
+- B-13 (DEV_SPEC-0027): on `409` the editor now shows a two-case hint — "not your species → pick another name" vs. "submitted before on another device → enter your recovery code" — so an unaware first-time visitor who picks a taken name is no longer confused by a code prompt.
 
 2026-06-08 — Deployment Guide for Server Operation
 

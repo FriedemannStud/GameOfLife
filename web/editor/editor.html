@@ -260,7 +260,10 @@
         <div class="input-group" id="recovery-group">
             <input type="text" id="recovery-input" placeholder="Recovery-Code (z.B. BIOTOP-7F3A)" maxlength="20">
             <p class="counter-info" id="recovery-hint">
-                Dieser Name ist bereits vergeben. Gib deinen Recovery-Code ein, um ihn zurückzuholen.
+                Dieser Name ist bereits vergeben.<br>
+                <strong>Ist das nicht deine Spezies?</strong> Wähle bitte oben einen anderen Namen.<br>
+                <strong>Hast du diesen Namen schon einmal auf einem anderen Gerät eingereicht?</strong>
+                Dann gib hier deinen Recovery-Code ein, um die Spezies zurückzuholen.
             </p>
         </div>
 
@@ -487,9 +490,10 @@
                 fetchGlobalCount();
                 updateUI();
             } else if(res.status === 409) {
-                // Name taken by someone else -> reveal the reclaim input.
+                // Name taken by someone else -> reveal the reclaim input. The hint
+                // covers both the unaware first-timer and the returning owner (B-13).
                 showRecoveryGroup();
-                showStatus("Name vergeben — Recovery-Code eingeben.", "error");
+                showStatus("Name bereits vergeben — siehe Hinweis.", "error");
                 submitBtn.disabled = false;
             } else if(res.status === 403) {
                 // Wrong code -> keep the input, prompt to retry.

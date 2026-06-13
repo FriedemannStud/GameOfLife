@@ -187,13 +187,13 @@ void restore_main_game_context(GameConfig *config, RenderContext *r_ctx) {
 
 void update_global_input(AppState* current_app_state, SimulationContext *sim,
                          GameConfig *config, RenderContext *r_ctx) {
-    if (IsKeyPressed(KEY_NULL) || IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || 
+    if (IsKeyPressed(KEY_NULL) || IsMouseButtonPressed(MOUSE_LEFT_BUTTON) ||
         IsMouseButtonPressed(MOUSE_RIGHT_BUTTON) || GetMouseDelta().x != 0 || GetMouseDelta().y != 0) {
         time_since_last_input = 0.0;
     } else {
         time_since_last_input += GetFrameTime();
     }
-    
+
     if (time_since_last_input > 60.0 && *current_app_state != STATE_KIOSK_MODE) {
         // KI-Agent unterstützt: Clean up interactive session before forced kiosk return (ADR-0020)
         restore_main_game_context(config, r_ctx);  // no-op if not a kiosk replay
@@ -263,9 +263,9 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
             interactive_time_accumulator += delta_time;
             if (interactive_time_accumulator >= config->delay_ms / 1000.0f) {
                 interactive_time_accumulator = 0.0f;
-                
+
                 update_generation_ctx(sim_ctx, &config->current_red_pop, &config->current_blue_pop);
-                
+
                 // Record Telemetry
                 if (config->history_count < config->max_rounds) {
                     config->history_red_pop[config->history_count] = config->current_red_pop;
@@ -274,7 +274,7 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
                 }
 
                 config->current_round++;
-                
+
                 if (config->current_round >= config->max_rounds ||
                     config->current_red_pop == 0 ||
                     config->current_blue_pop == 0) {
@@ -282,7 +282,7 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
                 }
             }
             break;
-            
+
         case STATE_KIOSK_MODE:
             if (!kiosk_ctrl.initialized) {
                 // KI-Agent unterstützt: Replaced inline geometry with init_kiosk_controller (ADR-0022)
@@ -290,9 +290,9 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
                                       GetScreenWidth(), GetScreenHeight());
                 reset_kiosk_timers();
             }
-            
+
             kiosk_ctrl.state_timer += delta_time;
-            
+
             if (kiosk_ctrl.current_sub_state == KIOSK_SUB_LEADERBOARD) {
                 if (kiosk_ctrl.state_timer > 15.0f) {
                     kiosk_ctrl.current_sub_state = KIOSK_SUB_MULTICAM;
@@ -312,7 +312,7 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
                                               &kiosk_ctrl.quad_blue_pop[i]);
                     }
                 }
-                
+
                 if (kiosk_ctrl.state_timer > 30.0f) {
                     // KI-Agent unterstützt: Advance round-robin index before switching away (ADR-0024)
                     if (kiosk_ctrl.highlight_pool_size > 0) {
@@ -324,7 +324,7 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
                     kiosk_ctrl.state_timer = 0.0f;
                     network_fetch_leaderboard_async();
                 }
-                
+
                 // KI-Agent unterstützt: Keyboard match selection replaces mouse click (ADR-0022)
                 // KEY_ONE + i maps to keys 1, 2, 3, 4 ... (Raylib digit key constants are sequential).
                 for (int i = 0; i < kiosk_ctrl.match_count; i++) {
@@ -397,7 +397,7 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
                 }
             }
             break;
-            
+
         default:
             break;
     }

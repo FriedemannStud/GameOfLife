@@ -28,7 +28,7 @@ typedef enum {
     STATE_LOAD,     // For browsing protocol archive
     STATE_RUNNING,
     STATE_OBSERVER,
-    STATE_FINISHED, 
+    STATE_FINISHED,
     STATE_GAME_OVER,
     STATE_KIOSK_MODE
 } AppState;
@@ -122,10 +122,10 @@ typedef struct {
     World *world_b;
     World *current_world;
     World *next_world;
-    
+
     char participant_red[64];
     char participant_blue[64];
-    
+
     bool is_active;
 } SimulationContext;
 

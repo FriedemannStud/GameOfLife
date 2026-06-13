@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
     }
 
     printf("Successfully parsed %d competitors. Max Generations: %d\n", competitor_count, max_generations);
-    
+
     RankingScore *scores = calloc(competitor_count, sizeof(RankingScore));
     for (int i = 0; i < competitor_count; i++) {
         strncpy(scores[i].player_id, competitors[i].player_id, 63);
@@ -128,7 +128,7 @@ int main(int argc, char *argv[]) {
         for (int h = 0; h < 10; h++) {
             HighlightEntry *entry = &thread_highlights[t * 10 + h];
             if (entry->score == 0) continue;
-            
+
             if (final_h_count < 10 || entry->score > final_highlights[9].score) {
                 int pos = (final_h_count < 10) ? final_h_count : 9;
                 while (pos > 0 && entry->score > final_highlights[pos-1].score) {

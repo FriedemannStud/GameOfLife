@@ -17,9 +17,7 @@ db = client[DB_NAME]
 
 # Collections
 submissions_col = db["submissions"]
-results_col = db["results"]
 players_col = db["players"]
-epoch_highlights_col = db["epoch_highlights"]
 
 
 async def check_connection():

@@ -13,7 +13,7 @@ World* create_world(int rows, int cols) {
     w->rows = rows;
     w->cols = cols;
     // PADDED GRID: (rows + 2) * (cols + 2)
-    w->grid = calloc((rows + 2) * (cols + 2), sizeof(int)); 
+    w->grid = calloc((rows + 2) * (cols + 2), sizeof(int));
 
     // CHUNKING (Epic Scale)
     w->chunk_rows = (rows + CHUNK_SIZE - 1) / CHUNK_SIZE;
@@ -35,13 +35,13 @@ void free_world(World *w) {
 // KI-Agent unterstützt
 void init_world(World *current_gen, int rows, int cols) {
     int stride = cols + 2;
-    
+
     // Nested loops to skip the ghost borders (start at 1, end at rows/cols)
     for (int r = 1; r <= rows; r++) {
         for (int c = 1; c <= cols; c++) {
             int i = r * stride + c;
-            
-            int val = rand() % 100; 
+
+            int val = rand() % 100;
             if (val < 10) {
                 current_gen->grid[i] = TEAM_RED;
                 activate_chunk_at(current_gen, r - 1, c - 1);
@@ -90,7 +90,7 @@ static bool is_chunk_or_neighbors_active(World *w, int cr, int cc) {
             else if (ncr >= w->chunk_rows) ncr = 0;
             if (ncc < 0) ncc = w->chunk_cols - 1;
             else if (ncc >= w->chunk_cols) ncc = 0;
-            
+
             if (w->chunk_map[ncr * w->chunk_cols + ncc]) return true;
         }
     }
@@ -138,7 +138,7 @@ int update_generation(World *current_gen, World *next_gen, int rows, int cols, i
             for (int r = start_r; r <= end_r; r++) {
                 for (int c = start_c; c <= end_c; c++) {
                     int i = r * stride + c;
-                    
+
                     int red_neighbors = 0;
                     int blue_neighbors = 0;
 
@@ -165,11 +165,11 @@ int update_generation(World *current_gen, World *next_gen, int rows, int cols, i
                             new_state = (red_neighbors > blue_neighbors) ? TEAM_RED : TEAM_BLUE;
                         }
                     }
-                    
+
                     if (new_state != current_cell) total_activity++;
 
                     next_gen->grid[i] = new_state;
-                    
+
                     if (new_state != DEAD) {
                         chunk_has_life = true;
                         if (new_state == TEAM_RED) total_red++;
@@ -330,14 +330,14 @@ void reset_simulation_context(SimulationContext *ctx, int rows, int cols) {
 // KI-Agent unterstützt: Advance the simulation state on the context
 int update_generation_ctx(SimulationContext *ctx, int *red_pop, int *blue_pop) {
     if (!ctx || !ctx->current_world || !ctx->next_world) return 0;
-    
+
     int activity = update_generation(ctx->current_world, ctx->next_world, ctx->rows, ctx->cols, red_pop, blue_pop);
-    
+
     // Swap front and back double buffers
     World *temp = ctx->current_world;
     ctx->current_world = ctx->next_world;
     ctx->next_world = temp;
-    
+
     ctx->current_generation++;
     return activity;
 }

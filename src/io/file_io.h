@@ -10,13 +10,13 @@ typedef struct {
     char filename[MAX_FILENAME_LENGTH]; // e.g., "run_20260117_120000.bio"
     char filepath[MAX_PATH_LENGTH]; // Full relative path
     time_t timestamp;   // For sorting
-    
+
     // Preview Data
     int rows;
     int cols;
     int max_rounds;
     int max_population;
-    
+
     // Result Data (Optional)
     int has_results;    // 1 if simulation finished and results are appended
     int winner;         // 0=Draw, 1=Red, 2=Blue
@@ -30,8 +30,6 @@ int save_grid(const char *filename, World *w, GameConfig *c);
 int load_grid(const char *filename, World *w, GameConfig *c);
 // KI-Agent unterstützt
 void append_protocol_result(const char *filename, GameConfig *c, int winner);
-// KI-Agent unterstützt
-void export_stats_md(const char *filename, GameConfig *c, int winner);
 
 // KI-Agent unterstützt: JSON I/O
 bool load_config_from_json(const char* filepath, GameConfig* config);

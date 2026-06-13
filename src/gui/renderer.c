@@ -33,7 +33,7 @@ static int selectedFileIndex = 0;
 static char currentProtocolFilename[256] = "";
 
 // --- Theme Colors (Digital Lab) ---
-// KI-Agent unterstützt: Sci-Fi / Retro Colors 
+// KI-Agent unterstützt: Sci-Fi / Retro Colors
 const Color THEME_BG = { 20, 24, 32, 255 };        // Deep Dark Blue/Grey //Datentyp color = von Raylib zur Verfügung gestellt.
 const Color THEME_HUD = { 10, 12, 16, 230 };       // Semi-transparent Black
 const Color THEME_GRID = { 40, 44, 52, 255 };      // Faint Grid Lines
@@ -43,6 +43,29 @@ const Color THEME_TEXT = { 220, 220, 220, 255 };   // Off-White
 const Color THEME_HINT = { 130, 140, 160, 255 };   // Muted Grey-Blue for hints (Arrows, +/-)
 const Color THEME_ACCENT = { 180, 190, 210, 255 }; // Call to action / Secondary Header
 const Color THEME_HIGHLIGHT = { 255, 255, 255, 40 }; // Selection Glow
+
+// KI-Agent unterstützt: 1080p reference values for kiosk layout scaling (ADR-0022).
+// All sizes are in pixels at 1080p; multiply by s = screen_h/REF_H to scale.
+#define KIOSK_REF_H              1080
+#define KIOSK_TOP_BAR_H_REF        44
+#define KIOSK_BOTTOM_PANEL_H_REF   55
+#define KIOSK_PAD_REF              12
+#define KIOSK_NAME_ROW_H_REF       26
+#define KIOSK_LB_ICON_CELL_REF      6
+#define KIOSK_FONT_BADGE_REF       30
+#define KIOSK_FONT_TITLE_REF       50
+#define KIOSK_FONT_HEADER_REF      40
+#define KIOSK_FONT_SMALL_REF       20
+#define KIOSK_FONT_CTA_REF         30
+#define KIOSK_FONT_NAME_REF        40
+#define KIOSK_FONT_VS_REF          20
+#define KIOSK_FONT_TOPBAR_REF      50
+#define KIOSK_FONT_TOPBAR_CTA_REF  20
+#define KIOSK_LB_TITLE_Y_OFFSET    36
+#define KIOSK_LB_TABLE_Y_OFFSET    50
+#define KIOSK_PROGRESS_BAR_W_REF  240
+#define KIOSK_SCORE_BAR_DIVISOR    18
+#define KIOSK_SEED_CELL_DIVISOR    40
 
 // KI-Agent unterstützt: Single source of truth for all kiosk pixel geometry (ADR-0022)
 // Pure function — no drawing, no Raylib calls, safe to call at any time.
@@ -58,11 +81,11 @@ KioskLayout compute_kiosk_layout(int screen_w, int screen_h, int match_count) {
     l.grid_rows = (match_count + l.grid_cols - 1) / l.grid_cols;
 
     // KI-Agent unterstützt: Scale all chrome, padding, and fonts with screen height (reference 1080p)
-    float s = (float)screen_h / 1080.0f;
+    float s = (float)screen_h / KIOSK_REF_H;
 
-    l.top_bar_h      = (int)(44 * s); if (l.top_bar_h      < 28) l.top_bar_h      = 28;
-    l.bottom_panel_h = (int)(55 * s); if (l.bottom_panel_h < 34) l.bottom_panel_h = 34;
-    l.pad            = (int)(12 * s); if (l.pad             <  4) l.pad             =  4;
+    l.top_bar_h      = (int)(KIOSK_TOP_BAR_H_REF      * s); if (l.top_bar_h      < 28) l.top_bar_h      = 28;
+    l.bottom_panel_h = (int)(KIOSK_BOTTOM_PANEL_H_REF * s); if (l.bottom_panel_h < 34) l.bottom_panel_h = 34;
+    l.pad            = (int)(KIOSK_PAD_REF             * s); if (l.pad             <  4) l.pad             =  4;
     l.separator_px   = 2;
 
     // Quadrant pixel size: fill available area after chrome and inter-quad padding.
@@ -73,41 +96,41 @@ KioskLayout compute_kiosk_layout(int screen_w, int screen_h, int match_count) {
                           - l.pad * (l.grid_rows - 1)) / l.grid_rows;
 
     // KI-Agent unterstützt: Proportional score bar — readable from 80 cm (ADR-0022 Phase B)
-    l.score_bar_h = l.quad_h / 18;
+    l.score_bar_h = l.quad_h / KIOSK_SCORE_BAR_DIVISOR;
     if (l.score_bar_h < 20) l.score_bar_h = 20;
 
     // KI-Agent unterstützt: Badge height for metric_reason label below name strip (ADR-0022 Phase B)
     // Name row scales with screen_h; badge is 85% of name row.
-    int name_row_h = (int)(26 * s);
+    int name_row_h = (int)(KIOSK_NAME_ROW_H_REF * s);
     if (name_row_h < 16) name_row_h = 16;
     l.badge_h  = (int)(name_row_h * 0.85f);
     if (l.badge_h < 12) l.badge_h = 12;
     l.header_h = name_row_h + l.badge_h;
 
     // KI-Agent unterstützt: Proportional thumbnail cell — visible from standing distance (ADR-0022 Phase B)
-    // Divisor 40 → thumbnails occupy ~20% of quad height (8 cells × quad_h/40 = quad_h/5).
-    l.seed_cell_px = l.quad_h / 40;
+    // KIOSK_SEED_CELL_DIVISOR=40 → thumbnails occupy ~20% of quad height (8 cells × quad_h/40 = quad_h/5).
+    l.seed_cell_px = l.quad_h / KIOSK_SEED_CELL_DIVISOR;
     if (l.seed_cell_px < 7) l.seed_cell_px = 7;
 
     // KI-Agent unterstützt: Leaderboard icon cell scales with screen_h (reference: 3 px @ 1080p)
-    l.lb_icon_cell_px = (int)(6 * s);
+    l.lb_icon_cell_px = (int)(KIOSK_LB_ICON_CELL_REF * s);
     if (l.lb_icon_cell_px < 1) l.lb_icon_cell_px = 1;
 
-    l.font_badge      = (int)(30 * s); if (l.font_badge      <  8) l.font_badge      =  8;
-    l.font_title      = (int)(50 * s); if (l.font_title      < 14) l.font_title      = 14;
-    l.font_header     = (int)(40 * s); if (l.font_header     < 10) l.font_header     = 10;
-    l.font_small      = (int)(20 * s); if (l.font_small      <  8) l.font_small      =  8;
-    l.font_cta        = (int)(30 * s); if (l.font_cta        < 10) l.font_cta        = 10;
-    l.font_name       = (int)(40 * s); if (l.font_name       <  8) l.font_name       =  8;
-    l.font_vs         = (int)(20 * s); if (l.font_vs         <  7) l.font_vs         =  7;
-    l.font_topbar     = (int)(50 * s); if (l.font_topbar     < 10) l.font_topbar     = 10;
-    l.font_topbar_cta = (int)(20 * s); if (l.font_topbar_cta <  8) l.font_topbar_cta =  8;
+    l.font_badge      = (int)(KIOSK_FONT_BADGE_REF      * s); if (l.font_badge      <  8) l.font_badge      =  8;
+    l.font_title      = (int)(KIOSK_FONT_TITLE_REF      * s); if (l.font_title      < 14) l.font_title      = 14;
+    l.font_header     = (int)(KIOSK_FONT_HEADER_REF     * s); if (l.font_header     < 10) l.font_header     = 10;
+    l.font_small      = (int)(KIOSK_FONT_SMALL_REF      * s); if (l.font_small      <  8) l.font_small      =  8;
+    l.font_cta        = (int)(KIOSK_FONT_CTA_REF        * s); if (l.font_cta        < 10) l.font_cta        = 10;
+    l.font_name       = (int)(KIOSK_FONT_NAME_REF       * s); if (l.font_name       <  8) l.font_name       =  8;
+    l.font_vs         = (int)(KIOSK_FONT_VS_REF         * s); if (l.font_vs         <  7) l.font_vs         =  7;
+    l.font_topbar     = (int)(KIOSK_FONT_TOPBAR_REF     * s); if (l.font_topbar     < 10) l.font_topbar     = 10;
+    l.font_topbar_cta = (int)(KIOSK_FONT_TOPBAR_CTA_REF * s); if (l.font_topbar_cta <  8) l.font_topbar_cta =  8;
 
-    l.lb_title_y = l.top_bar_h + (int)(36 * s);
+    l.lb_title_y = l.top_bar_h + (int)(KIOSK_LB_TITLE_Y_OFFSET * s);
     if (l.lb_title_y < l.top_bar_h + 4) l.lb_title_y = l.top_bar_h + 4;
-    l.lb_table_y = l.lb_title_y + l.font_title + (int)(50 * s);
+    l.lb_table_y = l.lb_title_y + l.font_title + (int)(KIOSK_LB_TABLE_Y_OFFSET * s);
 
-    l.progress_bar_w = (int)(240 * s); if (l.progress_bar_w < 80) l.progress_bar_w = 80;
+    l.progress_bar_w = (int)(KIOSK_PROGRESS_BAR_W_REF * s); if (l.progress_bar_w < 80) l.progress_bar_w = 80;
 
     return l;
 }
@@ -125,38 +148,38 @@ void init_render_context(RenderContext *ctx, int cols, int rows, Rectangle bound
     ctx->tex_h = rows;
     ctx->last_draw_w = bounds.width;
     ctx->last_draw_h = bounds.height;
-    
+
     ctx->pixel_buffer = (unsigned char*)malloc(cols * rows * sizeof(unsigned char));
     if (ctx->pixel_buffer) {
         memset(ctx->pixel_buffer, 0, cols * rows * sizeof(unsigned char));
     }
-    
+
     Image img = GenImageColor(cols, rows, BLANK);
     ImageFormat(&img, PIXELFORMAT_UNCOMPRESSED_GRAYSCALE);
     ctx->grid_texture = LoadTextureFromImage(img);
     UnloadImage(img);
     SetTextureFilter(ctx->grid_texture, TEXTURE_FILTER_POINT);
-    
+
     ctx->ping_pong_target[0] = LoadRenderTexture(bounds.width, bounds.height);
     ctx->ping_pong_target[1] = LoadRenderTexture(bounds.width, bounds.height);
     ctx->ping_pong_index = 0;
-    
+
     // Theme Colors
     ctx->col_background = (Color){ 20, 24, 32, 255 };
     ctx->col_team_red = (Color){ 255, 60, 100, 255 };
     ctx->col_team_blue = (Color){ 0, 220, 255, 255 };
-    
+
     BeginTextureMode(ctx->ping_pong_target[0]);
     ClearBackground(ctx->col_background);
     EndTextureMode();
     BeginTextureMode(ctx->ping_pong_target[1]);
     ClearBackground(ctx->col_background);
     EndTextureMode();
-    
+
     ctx->loc_prev_frame = GetShaderLocation(biotopeShader, "previousFrame");
     ctx->loc_fade_rate = GetShaderLocation(biotopeShader, "fadeRate");
     ctx->use_metaballs = false;
-    
+
     ctx->camera.zoom = 1.0f;
     ctx->camera.target = (Vector2){ 0, 0 };
     ctx->camera.offset = (Vector2){ 0, 0 };
@@ -217,10 +240,10 @@ void DrawGridAndCellsCtx(RenderContext *r_ctx, const GameConfig *config, const W
     int drawHeight = r_ctx->viewport_bounds.height;
     int startX = r_ctx->viewport_bounds.x;
     int startY = r_ctx->viewport_bounds.y;
-    
+
     float cellW = (float)drawWidth / world_cols;
     float cellH = (float)drawHeight / world_rows;
-    
+
     // --- 1. Resource Management ---
     if (world_cols != r_ctx->tex_w || world_rows != r_ctx->tex_h || drawWidth != r_ctx->last_draw_w || drawHeight != r_ctx->last_draw_h) {
         // Cleanup old resources
@@ -228,26 +251,26 @@ void DrawGridAndCellsCtx(RenderContext *r_ctx, const GameConfig *config, const W
         if (r_ctx->pixel_buffer) free(r_ctx->pixel_buffer);
         if (r_ctx->ping_pong_target[0].id > 0) UnloadRenderTexture(r_ctx->ping_pong_target[0]);
         if (r_ctx->ping_pong_target[1].id > 0) UnloadRenderTexture(r_ctx->ping_pong_target[1]);
-        
+
         // Update dimensions
         r_ctx->tex_w = world_cols;
         r_ctx->tex_h = world_rows;
         r_ctx->last_draw_w = drawWidth;
         r_ctx->last_draw_h = drawHeight;
-        
+
         // Allocate new resources
         r_ctx->pixel_buffer = (unsigned char*)malloc(r_ctx->tex_w * r_ctx->tex_h * sizeof(unsigned char));
         if (r_ctx->pixel_buffer) {
             memset(r_ctx->pixel_buffer, 0, r_ctx->tex_w * r_ctx->tex_h * sizeof(unsigned char));
         }
-        
+
         Image img = GenImageColor(r_ctx->tex_w, r_ctx->tex_h, BLANK);
         ImageFormat(&img, PIXELFORMAT_UNCOMPRESSED_GRAYSCALE);
-        
+
         r_ctx->grid_texture = LoadTextureFromImage(img);
         UnloadImage(img);
-        
-        SetTextureFilter(r_ctx->grid_texture, TEXTURE_FILTER_POINT); 
+
+        SetTextureFilter(r_ctx->grid_texture, TEXTURE_FILTER_POINT);
 
         // Init Ping-Pong Targets
         r_ctx->ping_pong_target[0] = LoadRenderTexture(drawWidth, drawHeight);
@@ -265,7 +288,7 @@ void DrawGridAndCellsCtx(RenderContext *r_ctx, const GameConfig *config, const W
         r_ctx->loc_prev_frame = GetShaderLocation(biotopeShader, "previousFrame");
         r_ctx->loc_fade_rate = GetShaderLocation(biotopeShader, "fadeRate");
     }
-    
+
     // --- 2. Update Pixel Data (CPU side) ---
     int stride = world_cols + 2;
     for (int r = 1; r <= world_rows; r++) {
@@ -278,40 +301,40 @@ void DrawGridAndCellsCtx(RenderContext *r_ctx, const GameConfig *config, const W
             } else if (gui_world->grid[gridIdx] == TEAM_RED) {
                 r_ctx->pixel_buffer[pixelIdx] = 255;
             } else {
-                r_ctx->pixel_buffer[pixelIdx] = 0; 
+                r_ctx->pixel_buffer[pixelIdx] = 0;
             }
         }
     }
-    
+
     // --- 3. Upload to GPU & Draw ---
     UpdateTexture(r_ctx->grid_texture, r_ctx->pixel_buffer);
-    
+
     Rectangle source = { 0.0f, 0.0f, (float)r_ctx->tex_w, (float)r_ctx->tex_h };
     Rectangle fboDest = { 0.0f, 0.0f, (float)drawWidth, (float)drawHeight };
     Vector2 origin = { 0.0f, 0.0f };
-    
+
     BeginTextureMode(r_ctx->ping_pong_target[r_ctx->ping_pong_index]);
         BeginShaderMode(biotopeShader);
-        
+
         // Bind previous frame
         SetShaderValueTexture(biotopeShader, r_ctx->loc_prev_frame, r_ctx->ping_pong_target[1 - r_ctx->ping_pong_index].texture);
-        
+
         // Set uniforms
         float fade = 0.95f;
         SetShaderValue(biotopeShader, r_ctx->loc_fade_rate, &fade, SHADER_UNIFORM_FLOAT);
-        
+
         DrawTexturePro(r_ctx->grid_texture, source, fboDest, origin, 0.0f, WHITE);
-        
+
         EndShaderMode();
     EndTextureMode();
 
     // Draw the current FBO to the screen
     Rectangle screenSource = { 0.0f, 0.0f, (float)drawWidth, -(float)drawHeight };
     Rectangle screenDest = { (float)startX, (float)startY, (float)drawWidth, (float)drawHeight };
-    
+
     // Wrap rendering in Scissor Mode to prevent quadrant bleeding during pan/zoom
     BeginScissorMode(startX, startY, drawWidth, drawHeight);
-    
+
     // Applying Camera2D for Observer Mode
     BeginMode2D(r_ctx->camera);
         DrawTexturePro(r_ctx->ping_pong_target[r_ctx->ping_pong_index].texture, screenSource, screenDest, origin, 0.0f, WHITE);
@@ -325,14 +348,14 @@ void DrawGridAndCellsCtx(RenderContext *r_ctx, const GameConfig *config, const W
         for (int i = 0; i <= world_cols; i++) DrawLine(startX + i * cellW, startY, startX + i * cellW, startY + drawHeight, THEME_GRID);
         for (int i = 0; i <= world_rows; i++) DrawLine(startX, startY + i * cellH, startX + drawWidth, startY + i * cellH, THEME_GRID);
     }
-    
+
     // 5. Draw Hemisphere Separator
     int midCol = world_cols / 2;
     int midX = startX + midCol * cellW;
     BeginMode2D(r_ctx->camera);
         DrawLine(midX, startY, midX, startY + drawHeight, Fade(THEME_TEXT, 0.3f));
     EndMode2D();
-    
+
     EndScissorMode();
 }
 
@@ -344,7 +367,7 @@ void DrawGridAndCells(const GameConfig *config, const World *gui_world, int scre
     const int margin = 20;
     int drawWidth = screenWidth - (margin * 2);
     int drawHeight = screenHeight - headerHeight - footerHeight - margin;
-    
+
     default_render_ctx.viewport_bounds = (Rectangle){ margin, headerHeight, drawWidth, drawHeight };
     DrawGridAndCellsCtx(&default_render_ctx, config, gui_world, drawGridLines);
 }
@@ -352,14 +375,14 @@ void DrawGridAndCells(const GameConfig *config, const World *gui_world, int scre
 // KI-Agent unterstützt: Pattern Definitions
 typedef struct { int r; int c; } Point;
 
-void PlacePattern(World *w, GameConfig *c, int startR, int startC, int type) {  
+void PlacePattern(World *w, GameConfig *c, int startR, int startC, int type) {
     // Platziert vordefinierte Muster auf World "w"
     // startR, startC = Startposition für Muster kommt von Mauspos
     // type = welches Muster platziert werden soll
     int team;
     int midCol = c->cols / 2; // Mittellinie
     int *current_pop;
-    
+
     // Determine Team based on Mouse Cursor (Start Position)
     if (startC < midCol) {
         team = TEAM_BLUE;
@@ -396,7 +419,7 @@ void PlacePattern(World *w, GameConfig *c, int startR, int startC, int type) {
         // Calculate Wrap-around Coordinates
         int r = (startR + cells[i].r) % c->rows;
         int col = (startC + cells[i].c) % c->cols;
-        
+
         // Handle negative modulo (if logic ever allows negative offsets)
         if (r < 0) r += c->rows;
         if (col < 0) col += c->cols;
@@ -423,7 +446,7 @@ bool IsActionTriggered(int key) {
     static int activeKey = -1;
     static float timer = 0.0f;
     const float INITIAL_DELAY = 0.5f;
-    const float REPEAT_INTERVAL = 0.05f; 
+    const float REPEAT_INTERVAL = 0.05f;
 
     if (IsKeyPressed(key)) { // Raylib Input-Steuerung: TRUE, wenn Taste 1 x gedrückt
         activeKey = key;
@@ -435,7 +458,7 @@ bool IsActionTriggered(int key) {
         if (activeKey == key) {
             timer += GetFrameTime();
             if (timer >= INITIAL_DELAY + REPEAT_INTERVAL) {
-                timer = INITIAL_DELAY; 
+                timer = INITIAL_DELAY;
                 return true;
             }
         }
@@ -495,9 +518,9 @@ void init_renderer(int window_width, int window_height, const char* title) {
 void close_renderer(void) {
     // Shader & Texture Cleanup
     if (biotopeShader.id > 0) UnloadShader(biotopeShader);
-    
+
     free_render_context(&default_render_ctx);
-    
+
     CloseWindow();
 }
 
@@ -506,9 +529,9 @@ AppState process_ui_events(AppState state, GameConfig* config, SimulationContext
     World* gui_world = sim_ctx->current_world;
     int screenWidth = GetScreenWidth();
     int screenHeight = GetScreenHeight();
-        screenWidth = GetScreenWidth(); // Raylib Fenstersteuerung: Gibt Fensterbreite zurück 
-        screenHeight = GetScreenHeight(); // Raylib Fenstersteuerung: Gibt Fensterhöhe zurück 
-        
+        screenWidth = GetScreenWidth(); // Raylib Fenstersteuerung: Gibt Fensterbreite zurück
+        screenHeight = GetScreenHeight(); // Raylib Fenstersteuerung: Gibt Fensterhöhe zurück
+
         // Timer for status message
         if (statusTimer > 0) {
             statusTimer -= GetFrameTime();
@@ -536,10 +559,10 @@ AppState process_ui_events(AppState state, GameConfig* config, SimulationContext
         }
 
         // KI-Agent unterstützt: Web Editor Link (Phase 4.1)
-        
-        
+
+
         // --- Logic per State ---
-        switch (state) {                 // Zustandsmaschine - Wert von State gibt Code-Block-Ausführung vor 
+        switch (state) {                 // Zustandsmaschine - Wert von State gibt Code-Block-Ausführung vor
             case STATE_PUZZLE:
                 if (IsKeyPressed(KEY_ENTER)) {
                     state = STATE_CONFIG;
@@ -551,15 +574,15 @@ AppState process_ui_events(AppState state, GameConfig* config, SimulationContext
                 if (IsActionTriggered(KEY_LEFT) && config->cols > 10) config->cols -= 10;
                 if (IsActionTriggered(KEY_UP) && config->rows < MAX_GRID_SIZE) config->rows += 10;
                 if (IsActionTriggered(KEY_DOWN) && config->rows > 10) config->rows -= 10;
-                
+
                 // Extra Clamp for Presets or other logic
                 if (config->cols > MAX_GRID_SIZE) config->cols = MAX_GRID_SIZE;
                 if (config->rows > MAX_GRID_SIZE) config->rows = MAX_GRID_SIZE;
-                
+
                 // Interaction: Change Delay (incl. German Layout)
-                if (IsActionTriggered(KEY_KP_ADD) || IsActionTriggered(KEY_EQUAL) || IsActionTriggered(KEY_RIGHT_BRACKET)) 
+                if (IsActionTriggered(KEY_KP_ADD) || IsActionTriggered(KEY_EQUAL) || IsActionTriggered(KEY_RIGHT_BRACKET))
                     config->delay_ms += 50;
-                if ((IsActionTriggered(KEY_KP_SUBTRACT) || IsActionTriggered(KEY_MINUS) || IsActionTriggered(KEY_SLASH)) && config->delay_ms > 0) 
+                if ((IsActionTriggered(KEY_KP_SUBTRACT) || IsActionTriggered(KEY_MINUS) || IsActionTriggered(KEY_SLASH)) && config->delay_ms > 0)
                     config->delay_ms -= 50;
 
                 // Interaction: Change Max Rounds
@@ -577,7 +600,7 @@ AppState process_ui_events(AppState state, GameConfig* config, SimulationContext
                 }
                 if (IsActionTriggered(KEY_DELETE) && config->max_population > 10) config->max_population -= 10;
 
-                // Presets 
+                // Presets
                 if (IsActionTriggered(KEY_ONE)) { // CONWAY'S CHESS
                     config->cols = 16;
                     config->rows = 8;
@@ -606,11 +629,11 @@ AppState process_ui_events(AppState state, GameConfig* config, SimulationContext
                     reset_simulation_context(sim_ctx, config->rows, config->cols);
                     gui_world = sim_ctx->current_world;
                     if (session_origin) *session_origin = ORIGIN_INTERACTIVE;
-                    
+
                     config->current_blue_pop = 0;
                     config->current_red_pop = 0;
                     config->current_round = 0;
-                    
+
                     state = STATE_EDIT_RED;
                 }
                 if (IsKeyPressed(KEY_K)) {
@@ -633,18 +656,18 @@ AppState process_ui_events(AppState state, GameConfig* config, SimulationContext
                     float cellW = (float)drawWidth / config->cols;
                     float cellH = (float)drawHeight / config->rows;
                     int midCol = config->cols / 2;
-                    
+
                     static int editAction = 0; // 0:Idle, 1:Place, 2:Remove
                     if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) editAction = 0;
 
                     if (mousePos.x >= startX && mousePos.x < startX + drawWidth &&
                         mousePos.y >= startY && mousePos.y < startY + drawHeight) {
-                        
+
                         int col = (int)((mousePos.x - startX) / cellW);
                         int row = (int)((mousePos.y - startY) / cellH);
                         int stride = config->cols + 2;
                         int index = (row + 1) * stride + (col + 1);
-                        
+
                         bool isCorrectSide = (state == STATE_EDIT_RED) ? (col >= midCol) : (col < midCol);
 
                         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && isCorrectSide) {
@@ -675,7 +698,7 @@ AppState process_ui_events(AppState state, GameConfig* config, SimulationContext
                                 }
                             }
                         }
-                        
+
                         if (isCorrectSide) {
                             if (IsKeyPressed(KEY_G)) PlacePattern(gui_world, config, row, col, 1);
                             if (IsKeyPressed(KEY_T)) PlacePattern(gui_world, config, row, col, 2);
@@ -683,13 +706,13 @@ AppState process_ui_events(AppState state, GameConfig* config, SimulationContext
                         }
                     }
                 }
-                
+
                 if (IsKeyPressed(KEY_L)) {
                     fileCount = list_protocol_files("biotope_results", &fileList);
                     selectedFileIndex = 0;
                     state = STATE_LOAD;
                 }
-                
+
                 if (IsKeyPressed(KEY_R)) {
                     // Randomize only current player's side
                     int stride = config->cols + 2;
@@ -727,7 +750,7 @@ AppState process_ui_events(AppState state, GameConfig* config, SimulationContext
 
                     // Safety: limit attempts
                     int attempts = 0;
-                    int maxAttempts = targetPop * 10; 
+                    int maxAttempts = targetPop * 10;
                     while (*currentPop < targetPop && attempts < maxAttempts) {
                         int r = rand() % config->rows;
                         int c = startCol + (rand() % sideWidth);
@@ -740,7 +763,7 @@ AppState process_ui_events(AppState state, GameConfig* config, SimulationContext
                         attempts++;
                     }
                 }
-                
+
                 if (IsKeyPressed(KEY_ENTER)) {
                     if (state == STATE_EDIT_RED) {
                         state = STATE_EDIT_BLUE;
@@ -765,13 +788,13 @@ AppState process_ui_events(AppState state, GameConfig* config, SimulationContext
             case STATE_LOAD:   // Alte Spielkonfigurationen laden
                 if (IsKeyPressed(KEY_UP) && selectedFileIndex > 0) selectedFileIndex--;
                 if (IsKeyPressed(KEY_DOWN) && selectedFileIndex < fileCount - 1) selectedFileIndex++;
-                
+
                 if (IsKeyPressed(KEY_ENTER) && fileCount > 0) {
                     // KI-Agent unterstützt: Load via SimulationContext (ADR-0020 Phase 3.3)
                     if (load_grid(fileList[selectedFileIndex].filepath, sim_ctx->current_world, config)) {
                         strcpy(statusMsg, "Protocol Loaded!");
                         statusTimer = 2.0f;
-                        
+
                         // Rebuild swap world via context
                         if (sim_ctx->world_b) free_world(sim_ctx->world_b);
                         sim_ctx->world_b = create_world(config->rows, config->cols);
@@ -782,14 +805,14 @@ AppState process_ui_events(AppState state, GameConfig* config, SimulationContext
                     fileList = NULL;
                     state = STATE_EDIT_RED;
                 }
-                
+
                 if (IsKeyPressed(KEY_Q) || IsKeyPressed(KEY_ESCAPE)) {
                     if (fileList) free(fileList);
                     fileList = NULL;
-                    state = STATE_EDIT_RED;   
+                    state = STATE_EDIT_RED;
                 }
                 break;
-            
+
             case STATE_RUNNING:  // Hier zurücklehnen und zuschauen
                 if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_Q)) {
                     // KI-Agent unterstützt: Session-origin-aware routing (ADR-0020 Phase 5)
@@ -850,7 +873,7 @@ AppState process_ui_events(AppState state, GameConfig* config, SimulationContext
                 }
 
                 // --- Camera Controls ---
-                
+
                 // Pan: Right Click + Drag
                 if (IsMouseButtonDown(MOUSE_RIGHT_BUTTON)) {
                     Vector2 delta = GetMouseDelta();
@@ -881,14 +904,14 @@ AppState process_ui_events(AppState state, GameConfig* config, SimulationContext
                 }
 
                 break;
-                
+
             case STATE_FINISHED:
                 if (IsKeyPressed(KEY_ENTER)) {
                      state = STATE_GAME_OVER;
                      int winner = 0;
                      if (config->current_red_pop > config->current_blue_pop) winner = TEAM_RED;
                      else if (config->current_blue_pop > config->current_red_pop) winner = TEAM_BLUE;
-                     
+
                      // Append to Protocol
                      if (strlen(currentProtocolFilename) > 0) {
                         append_protocol_result(currentProtocolFilename, config, winner);
@@ -978,30 +1001,30 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                 break;
             case STATE_CONFIG:
                 DrawText("BIOTOPE CONFIGURATION", 20, 15, 30, THEME_TEXT);
-                
+
                 char buf[64];
                 sprintf(buf, "GRID SIZE:  %03d x %03d", config->rows, config->cols);
                 DrawText(buf, 40, 100, 20, THEME_BLUE);
                 DrawText("(Arrows)", 300, 100, 18, THEME_HINT);
-                
+
                 sprintf(buf, "DELAY:      %04d ms", config->delay_ms);
                 DrawText(buf, 40, 140, 20, THEME_RED);
                 DrawText("(+/-)", 300, 140, 18, THEME_HINT);
-                
+
                 sprintf(buf, "MAX ROUNDS: %04d", config->max_rounds);
                 DrawText(buf, 40, 180, 20, THEME_BLUE);
                 DrawText("(PageUp/PageDown)", 300, 180, 18, THEME_HINT);
-                
+
                 sprintf(buf, "MAX INIT POP:    %04d", config->max_population);
                 DrawText(buf, 40, 220, 20, THEME_RED);
                 DrawText("(Insert/Delete)", 300, 220, 18, THEME_HINT);
 
 
-                
+
                 // KI-Agent unterstützt: Mission Protocol (Rules Display)
                 int rulesX = screenWidth / 2 + 40;
                 DrawLine(rulesX - 20, 100, rulesX - 20, 240, Fade(THEME_TEXT, 0.3f)); // Vertical Separator
-                
+
                 DrawText("CONWAY'S MISSION PROTOCOL", rulesX, 100, 20, THEME_ACCENT);
                 DrawText("- SURVIVAL: 2 or 3 neighbors", rulesX, 135, 20, THEME_TEXT);
                 DrawText("- BIRTH: 3 neighbors (Majority Rule of parents)", rulesX, 160, 20, THEME_TEXT);
@@ -1020,7 +1043,7 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
             case STATE_EDIT_RED:
             case STATE_EDIT_BLUE:
                 DrawText("EDITOR MODE", 20, 18, 24, THEME_BLUE);
-                
+
                 // Centered Scoreboard
                 char bluePopBuf[64], redPopBuf[64];
                 sprintf(bluePopBuf, "BLUE: %03d/%03d", config->current_blue_pop, config->max_population);
@@ -1032,8 +1055,8 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                 // Right-aligned Instruction
                 const char* inst = (state == STATE_EDIT_RED) ? "P1: RED SQUAD (RIGHT)" : "P2: BLUE SQUAD (LEFT)";
                 DrawText(inst, screenWidth - MeasureText(inst, 16) - 20, 24, 16, (state == STATE_EDIT_RED) ? THEME_RED : THEME_BLUE);
-                
-                
+
+
                 // Ghost Cursor (Visual Polish)
                 Vector2 mousePos = GetMousePosition();
                 {
@@ -1046,7 +1069,7 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                     int startY = headerHeight;
                     float cellW = (float)drawWidth / config->cols;
                     float cellH = (float)drawHeight / config->rows;
-                    
+
                     if (mousePos.x >= startX && mousePos.x < startX + drawWidth &&
                         mousePos.y >= startY && mousePos.y < startY + drawHeight) {
                         int col = (int)((mousePos.x - startX) / cellW);
@@ -1059,10 +1082,10 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                         }
                     }
                 }
-                
+
                 bool showLines = (config->rows <= 150 && config->cols <= 150);
                 r_ctx->viewport_bounds = (Rectangle){ 20, 60, (float)screenWidth - 40, (float)screenHeight - 120 };
-                DrawGridAndCellsCtx(r_ctx, config, gui_world, showLines); 
+                DrawGridAndCellsCtx(r_ctx, config, gui_world, showLines);
 
                 // KI-Agent unterstützt: Dynamic Status-First Footer
                 char footerBuf[256];
@@ -1100,7 +1123,7 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                     int startY = 100;
                     int itemHeight = 30;
                     int visibleItems = (screenHeight - 150) / itemHeight;
-                    
+
                     // Simple scrolling view
                     int scrollOffset = 0;
                     if (selectedFileIndex >= visibleItems) scrollOffset = selectedFileIndex - visibleItems + 1;
@@ -1118,12 +1141,12 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                     // Draw Preview Panel
                     int previewX = 460;
                     DrawLine(previewX - 20, 100, previewX - 20, screenHeight - 60, Fade(THEME_TEXT, 0.3f));
-                    
+
                     DrawText("PROTOCOL PREVIEW", previewX, 100, 20, THEME_ACCENT);
-                    
+
                     ProtocolInfo *sel = &fileList[selectedFileIndex];
                     char infoBuf[128];
-                    
+
                     if (sel->timestamp > 0) {
                         struct tm *t = localtime(&sel->timestamp);
                         strftime(infoBuf, sizeof(infoBuf), "DATE: %d.%m.%Y %H:%M:%S", t);
@@ -1131,24 +1154,24 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                     } else {
                         DrawText("DATE: LEGACY FORMAT", previewX, 140, 20, THEME_HINT);
                     }
-                    
+
                     sprintf(infoBuf, "GRID: %d x %d", sel->rows, sel->cols);
                     DrawText(infoBuf, previewX, 170, 20, THEME_TEXT);
-                    
+
                     sprintf(infoBuf, "MAX ROUNDS: %d", sel->max_rounds);
                     DrawText(infoBuf, previewX, 200, 20, THEME_TEXT);
-                    
+
                     sprintf(infoBuf, "MAX POPULATION: %d", sel->max_population);
                     DrawText(infoBuf, previewX, 230, 20, THEME_TEXT);
-                    
+
                     if (sel->has_results) {
                         DrawLine(previewX - 10, 260, previewX + 250, 260, Fade(THEME_TEXT, 0.3f));
                         DrawText("RESULTS:", previewX, 270, 20, THEME_ACCENT);
-                        
+
                         if (sel->winner == 1) DrawText("WINNER: RED", previewX, 300, 20, THEME_RED);
                         else if (sel->winner == 2) DrawText("WINNER: BLUE", previewX, 300, 20, THEME_BLUE);
                         else DrawText("WINNER: DRAW", previewX, 300, 20, THEME_HINT);
-                        
+
                         char scoreBuf[64];
                         sprintf(scoreBuf, "R:%d  B:%d", sel->final_red, sel->final_blue);
                         DrawText(scoreBuf, previewX, 330, 20, THEME_TEXT);
@@ -1192,11 +1215,11 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                 sprintf(roundBuf, "CYCLE: %04d/%04d", config->current_round, config->max_rounds);
                 int roundW = MeasureText(roundBuf, 20);
                 DrawText(roundBuf, screenWidth - roundW - 20, 20, 20, THEME_TEXT);
-                
-                
+
+
                 r_ctx->viewport_bounds = (Rectangle){ 20, 60, (float)screenWidth - 40, (float)screenHeight - 120 };
                 DrawGridAndCellsCtx(r_ctx, config, gui_world, false); // false = No Grid Lines (Performance!)
-                
+
                 // KI-Agent unterstützt: Dynamic Status-First Footer for Running/Observer
                 char simFooter[256];
                 if (config->is_paused) {
@@ -1215,19 +1238,19 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                 }
                 DrawText(simFooter, 20, screenHeight - 28, 20, THEME_TEXT);
                 break;
-                
+
             case STATE_FINISHED:
                 DrawText("SIMULATION COMPLETED", 20, 18, 24, THEME_BLUE);
-                
+
                 r_ctx->viewport_bounds = (Rectangle){ 20, 60, (float)screenWidth - 40, (float)screenHeight - 120 };
                 DrawGridAndCellsCtx(r_ctx, config, gui_world, false);
-                
+
                 DrawText("[ENTER] VIEW RESULTS  |  [Q] MENU", 20, screenHeight - 30, 20, THEME_ACCENT);
                 break;
 
             case STATE_GAME_OVER:
                 DrawText("MISSION REPORT", screenWidth/2 - 100, 100, 30, THEME_TEXT);
-                
+
                 char resultBuf[128];
                 Color winnerColor = THEME_TEXT;
                 if (config->current_red_pop > config->current_blue_pop) {
@@ -1239,12 +1262,12 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                 } else {
                     sprintf(resultBuf, "RESULT: DRAW");
                 }
-                
+
                 DrawText(resultBuf, screenWidth/2 - MeasureText(resultBuf, 40)/2, 200, 40, winnerColor);
-                
+
                 sprintf(buf, "RED: %d  vs  BLUE: %d", config->current_red_pop, config->current_blue_pop);
                 DrawText(buf, screenWidth/2 - MeasureText(buf, 20)/2, 260, 20, GRAY);
-                
+
                 // --- Step 4.3: Telemetry Graph ---
                 int graphW = 400;
                 int graphH = 100;
@@ -1260,21 +1283,21 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
                         if (config->history_red_pop[i] > peakPop) peakPop = config->history_red_pop[i];
                         if (config->history_blue_pop[i] > peakPop) peakPop = config->history_blue_pop[i];
                     }
-                    
+
                     // Safety: Avoid division by zero and add 10% margin
                     float yMax = (peakPop > 0) ? (float)peakPop * 1.1f : (float)(config->rows * config->cols);
 
                     for (int i = 0; i < config->history_count - 1; i++) {
                         float x1 = graphX + ((float)i / config->max_rounds) * graphW;
                         float x2 = graphX + ((float)(i + 1) / config->max_rounds) * graphW;
-                        
+
                         // Scale Y using the dynamic peak
                         float y1_red = graphY + graphH - ((float)config->history_red_pop[i] / yMax) * graphH;
                         float y2_red = graphY + graphH - ((float)config->history_red_pop[i+1] / yMax) * graphH;
-                        
+
                         float y1_blue = graphY + graphH - ((float)config->history_blue_pop[i] / yMax) * graphH;
                         float y2_blue = graphY + graphH - ((float)config->history_blue_pop[i+1] / yMax) * graphH;
-                        
+
                         DrawLine(x1, y1_red, x2, y2_red, THEME_RED);
                         DrawLine(x1, y1_blue, x2, y2_blue, THEME_BLUE);
                     }

@@ -11,18 +11,18 @@ typedef struct {
     unsigned char* pixel_buffer; // CPU-side pixel buffer before GPU upload
     Rectangle viewport_bounds;
     Camera2D camera;
-    
+
     int tex_w;
     int tex_h;
     int last_draw_w;
     int last_draw_h;
-    
+
     RenderTexture2D ping_pong_target[2];
     int ping_pong_index;
     int loc_prev_frame;
     int loc_fade_rate;
     bool use_metaballs;
-    
+
     Color col_background;
     Color col_team_red;
     Color col_team_blue;

@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
 
     // Phase 4.1: Generate Output JSON via file_io
     const char *output_path = (argc >= 4) ? argv[3] : NULL;
-    save_headless_results(output_path, winner, 100, 
+    save_headless_results(output_path, winner, 100,
                           red_info.player_id, red_info.nickname, red_info.final_population,
                           blue_info.player_id, blue_info.nickname, blue_info.final_population);
 

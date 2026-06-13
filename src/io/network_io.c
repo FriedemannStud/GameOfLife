@@ -27,7 +27,7 @@ static size_t write_callback(void* contents, size_t size, size_t nmemb, void* us
     if (!ptr) {
         /* Out of memory! */
         fprintf(stderr, "Network: Out of memory (realloc failed)\n");
-        return 0; 
+        return 0;
     }
 
     mem->data = ptr;
@@ -48,7 +48,7 @@ static void* fetch_leaderboard_thread(void* arg) {
     if (curl_handle) {
         char url[256];
         snprintf(url, sizeof(url), "%s/api/leaderboard", BACKEND_URL);
-        
+
         curl_easy_setopt(curl_handle, CURLOPT_URL, url);
         curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_callback);
         curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void*)&chunk);
@@ -60,7 +60,7 @@ static void* fetch_leaderboard_thread(void* arg) {
         if (res == CURLE_OK) {
             long response_code;
             curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &response_code);
-            
+
             if (response_code == 200) {
                 cJSON* root = cJSON_Parse(chunk.data);
                 if (root) {
@@ -118,7 +118,7 @@ static void* fetch_leaderboard_thread(void* arg) {
 
         curl_easy_cleanup(curl_handle);
     }
-    
+
     free(chunk.data);
     return NULL;
 }
@@ -133,7 +133,7 @@ static void* fetch_highlights_thread(void* arg) {
     if (curl_handle) {
         char url[256];
         snprintf(url, sizeof(url), "%s/api/epoch/highlights", BACKEND_URL);
-        
+
         curl_easy_setopt(curl_handle, CURLOPT_URL, url);
         curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_callback);
         curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void*)&chunk);
@@ -169,14 +169,14 @@ static void* fetch_highlights_thread(void* arg) {
                             cJSON* blue_seed = cJSON_GetObjectItemCaseSensitive(item, "blue_seed");
                             cJSON* metric = cJSON_GetObjectItemCaseSensitive(item, "metric_type");
 
-                            if (cJSON_IsString(red_name) && cJSON_IsString(blue_name) && 
+                            if (cJSON_IsString(red_name) && cJSON_IsString(blue_name) &&
                                 cJSON_IsArray(red_seed) && cJSON_IsArray(blue_seed)) {
-                                
+
                                 strncpy(g_highlights.matches[i].participant_red, red_name->valuestring, MAX_NAME_LENGTH - 1);
                                 g_highlights.matches[i].participant_red[MAX_NAME_LENGTH - 1] = '\0';
                                 strncpy(g_highlights.matches[i].participant_blue, blue_name->valuestring, MAX_NAME_LENGTH - 1);
                                 g_highlights.matches[i].participant_blue[MAX_NAME_LENGTH - 1] = '\0';
-                                
+
                                 // KI-Agent unterstützt: Translate internal metric IDs to human-readable labels (ADR-0021)
                                 if (cJSON_IsString(metric)) {
                                     const char *raw = metric->valuestring;
@@ -215,19 +215,19 @@ static void* fetch_highlights_thread(void* arg) {
 
         curl_easy_cleanup(curl_handle);
     }
-    
+
     free(chunk.data);
     return NULL;
 }
 
 void network_init(void) {
     curl_global_init(CURL_GLOBAL_ALL);
-    
+
     pthread_mutex_lock(&g_network_mutex);
     g_leaderboard.is_ready = false;
     g_highlights.is_ready = false;
     pthread_mutex_unlock(&g_network_mutex);
-    
+
     printf("Network Module Initialized (libcurl)\n");
 }
 

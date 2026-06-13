@@ -38,7 +38,10 @@ services:
     working_dir: /app
     ports:
       - "8000:8000"
-    command: /bin/bash -c "pip install -r requirements.txt && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    # KI-Agent unterstützt: The Shoulder-Duel referee runs biotope_headless in this
+    # process (ADR-0028), so the backend needs the same C runtime libs as the
+    # matchmaker (libgomp1 for OpenMP, libcurl4 for the linked network layer).
+    command: /bin/bash -c "pip install -r requirements.txt && apt-get update && apt-get install -y libgomp1 libcurl4 && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     env_file:
       - .env
     # KI-Agent unterstützt: Environment variables for development

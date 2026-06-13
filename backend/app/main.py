@@ -12,6 +12,7 @@ from .auth_utils import (
     generate_recovery_code,
     hash_recovery_code,
 )
+from .duel_router import router as duel_router
 
 # KI-Agent unterstützt: Biotope Backend with MongoDB integration for Matchmaking
 
@@ -33,8 +34,20 @@ async def startup_db_client():
     if await check_connection():
         print("Successfully connected to MongoDB!")
         await _ensure_nickname_index(get_db().players)
+        await _ensure_duel_indexes(get_db())
     else:
         print("CRITICAL: Could not connect to MongoDB. Check your .env file.")
+
+
+# KI-Agent unterstützt: Shoulder-Duel indexes (ADR-0028). The TTL index on
+# `expires_at` (expireAfterSeconds=0) lets MongoDB reap ephemeral rooms without a
+# sweeper job; the unique `room_id` index backs the QR/room-code lookup. Per-player
+# `duels` indexes keep the "My Duels" aggregation fast.
+async def _ensure_duel_indexes(db):
+    await db.duel_rooms.create_index("expires_at", expireAfterSeconds=0)
+    await db.duel_rooms.create_index("room_id", unique=True)
+    await db.duels.create_index("red.player_id")
+    await db.duels.create_index("blue.player_id")
 
 
 # KI-Agent unterstützt: Partial unique index is the authoritative ownership guard
@@ -67,6 +80,16 @@ async def root():
 
 # KI-Agent unterstützt: Serve web editor as static files
 app.mount("/editor", StaticFiles(directory="web/editor"), name="editor")
+
+# KI-Agent unterstützt: Serve the Shoulder-Duel page and its self-hosted assets
+# (soundtrack) as static files (ADR-0028).
+app.mount("/duel", StaticFiles(directory="web/duel"), name="duel")
+app.mount("/assets", StaticFiles(directory="web/assets"), name="assets")
+# KI-Agent unterstützt: Vendored client libs (QR generator) for the duel page.
+app.mount("/vendor", StaticFiles(directory="web/vendor"), name="vendor")
+
+# KI-Agent unterstützt: Shoulder-Duel REST endpoints (ADR-0028)
+app.include_router(duel_router)
 
 
 # KI-Agent unterstützt: Persist metadata + config only — the `auth` block (recovery

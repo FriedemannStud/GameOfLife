@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Biotop — Shoulder Duel</title>
+    <!-- Shoulder-Duel Mode: on-demand 1:1 duel (ADR-0028) -->
+    <script src="/vendor/qrcode.js"></script>
+    <style>
+        :root {
+            --wiai-blue: #004a99;
+            --wiai-yellow: #ffcc00;
+            --team-red: #e74c3c;
+            --team-blue: #3498db;
+            --bg-dark: #11161d;
+            --panel: #1c242e;
+            --text-light: #f4f4f9;
+            --muted: #8b97a5;
+            --accent: #e67e22;
+            --cell-dead: #2b3540;
+            --cell-alive: #00f2ff;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #app {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 24px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        header h1 {
+            color: var(--wiai-yellow);
+            font-size: 1.6rem;
+            margin: 0;
+            letter-spacing: 1px;
+        }
+
+        header .subtitle {
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+
+        /* Screens: only one is visible at a time */
+        .screen {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+            justify-content: center;
+            gap: 18px;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 18px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            color: #fff;
+            background: var(--wiai-blue);
+            transition: transform 0.05s ease, filter 0.15s ease;
+        }
+
+        .btn:active { transform: scale(0.98); }
+        .btn:hover { filter: brightness(1.1); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .btn-primary { background: var(--accent); }
+        .btn-ghost {
+            background: transparent;
+            border: 2px solid var(--wiai-blue);
+            color: var(--text-light);
+        }
+        .btn-small {
+            padding: 12px;
+            font-size: 0.95rem;
+        }
+
+        .panel {
+            background: var(--panel);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .muted { color: var(--muted); font-size: 0.9rem; }
+        .status-line { min-height: 20px; font-size: 0.85rem; color: var(--accent); text-align: center; }
+
+        /* Lobby: QR + code */
+        #qr-box {
+            background: #fff;
+            padding: 12px;
+            border-radius: 12px;
+            display: inline-block;
+            margin: 0 auto;
+        }
+        #qr-box img { display: block; width: 200px; height: 200px; }
+        .room-code {
+            font-family: 'Courier New', monospace;
+            font-size: 2.4rem;
+            font-weight: bold;
+            letter-spacing: 4px;
+            color: var(--wiai-yellow);
+        }
+
+        /* VS header */
+        .vs-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            font-weight: bold;
+        }
+        /* Absolute framing: RED is always the left side, BLUE the right side, on
+           both phones (so it lines up with the red/blue population labels). */
+        .vs-bar .red { color: var(--team-red); }
+        .vs-bar .blue { color: var(--team-blue); }
+        .vs-bar .vs { color: var(--muted); font-size: 0.8rem; }
+
+        /* Config picker */
+        .config-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+        .config-card {
+            background: var(--panel);
+            border: 2px solid transparent;
+            border-radius: 10px;
+            padding: 8px;
+            cursor: pointer;
+            text-align: center;
+            width: 92px;
+        }
+        .config-card.selected { border-color: var(--wiai-yellow); }
+        .config-card .label {
+            font-size: 0.7rem;
+            color: var(--muted);
+            margin-top: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Mini seed grid (8x8) */
+        .seed {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 1px;
+            width: 72px;
+            height: 72px;
+            margin: 0 auto;
+            background: #0c1117;
+            border-radius: 4px;
+            padding: 2px;
+        }
+        .seed div { background: var(--cell-dead); border-radius: 1px; }
+        .seed div.on { background: var(--cell-alive); }
+
+        /* Editable quick-draw grid */
+        .draw-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 3px;
+            width: 100%;
+            max-width: 280px;
+            margin: 0 auto;
+            background: #0c1117;
+            border-radius: 8px;
+            padding: 6px;
+            aspect-ratio: 1 / 1;
+        }
+        .draw-grid div {
+            background: var(--cell-dead);
+            border-radius: 2px;
+            cursor: pointer;
+        }
+        .draw-grid div.on {
+            background: var(--cell-alive);
+            box-shadow: 0 0 6px var(--cell-alive);
+        }
+
+        /* Result screen */
+        .verdict {
+            text-align: center;
+            font-size: 3rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+        }
+        .verdict.win { color: #2ecc71; }
+        .verdict.lose { color: var(--team-red); }
+        .verdict.draw { color: var(--muted); }
+        .pop-bar {
+            display: flex;
+            justify-content: space-around;
+            font-weight: bold;
+        }
+        .pop-bar .red { color: var(--team-red); }
+        .pop-bar .blue { color: var(--team-blue); }
+
+        /* My Duels */
+        .hh-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 4px;
+            border-bottom: 1px solid #2b3540;
+        }
+        .hh-row .score { font-family: 'Courier New', monospace; font-weight: bold; }
+
+        footer {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+        footer a { color: var(--muted); }
+        .link-btn {
+            background: none;
+            border: none;
+            color: var(--muted);
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        input.code-input {
+            width: 100%;
+            padding: 14px;
+            font-size: 1.4rem;
+            text-align: center;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            border-radius: 10px;
+            border: 2px solid var(--wiai-blue);
+            background: var(--panel);
+            color: var(--text-light);
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <header>
+        <h1>SHOULDER DUEL</h1>
+        <div class="subtitle">Biotop · 1 vs 1</div>
+    </header>
+
+    <!-- Screen: Home -->
+    <section id="screen-home" class="screen active">
+        <button id="btn-start" class="btn btn-primary">Start Duel</button>
+        <button id="btn-scan" class="btn btn-ghost">Scan to Join</button>
+        <button id="btn-myduels-home" class="link-btn">My Duels</button>
+    </section>
+
+    <!-- Screen: Join (manual code entry) -->
+    <section id="screen-join" class="screen">
+        <div class="panel">
+            <p class="muted">Scan your opponent's QR with your phone camera,<br>or type the 4-character code:</p>
+            <input id="code-input" class="code-input" maxlength="4" placeholder="····" autocomplete="off">
+        </div>
+        <button id="btn-join" class="btn btn-primary">Join</button>
+        <button id="btn-join-back" class="btn btn-ghost btn-small">Back</button>
+    </section>
+
+    <!-- Screen: Lobby (creator waits) -->
+    <section id="screen-lobby" class="screen">
+        <div class="panel">
+            <p class="muted">Let your opponent scan this:</p>
+            <div id="qr-box"></div>
+            <p class="muted" style="margin-bottom:4px">or type the code</p>
+            <div class="room-code" id="lobby-code">····</div>
+        </div>
+        <div class="status-line" id="lobby-status">Waiting for opponent…</div>
+        <button id="btn-lobby-cancel" class="btn btn-ghost btn-small">Cancel</button>
+    </section>
+
+    <!-- Screen: Choice -->
+    <section id="screen-choice" class="screen">
+        <div class="vs-bar" id="choice-vs">
+            <span class="red" id="choice-red">Red</span>
+            <span class="vs">VS</span>
+            <span class="blue" id="choice-blue">Blue</span>
+        </div>
+        <div id="choice-controls">
+            <p class="muted" style="text-align:center">Pick one of your species…</p>
+            <div class="config-list" id="config-list"></div>
+            <p class="muted" style="text-align:center;margin-top:12px">…or quick-draw one (max 24 cells):</p>
+            <div class="draw-grid" id="draw-grid"></div>
+            <div class="status-line" id="choice-status"></div>
+            <button id="btn-lock" class="btn btn-primary">Lock in</button>
+        </div>
+        <div id="choice-waiting" style="display:none;text-align:center">
+            <p class="verdict draw">🔒</p>
+            <p class="muted">Locked in. Waiting for your opponent…</p>
+        </div>
+    </section>
+
+    <!-- Screen: Result -->
+    <section id="screen-result" class="screen">
+        <div class="verdict" id="verdict">—</div>
+        <div class="panel">
+            <div class="vs-bar" id="result-vs" style="margin-bottom:12px">
+                <span class="red" id="result-red">Red</span>
+                <span class="vs">VS</span>
+                <span class="blue" id="result-blue">Blue</span>
+            </div>
+            <div style="display:flex;justify-content:space-around;gap:12px">
+                <div class="seed" id="result-seed-red"></div>
+                <div class="seed" id="result-seed-blue"></div>
+            </div>
+            <p class="pop-bar" style="margin-bottom:0;margin-top:12px">
+                <span class="red">Red: <span id="pop-red">0</span></span>
+                <span class="blue">Blue: <span id="pop-blue">0</span></span>
+            </p>
+            <p class="muted" style="margin-bottom:0">after <span id="gen-count">100</span> generations</p>
+        </div>
+        <div class="status-line" id="result-status"></div>
+        <button id="btn-rematch" class="btn btn-primary">Rematch</button>
+        <button id="btn-myduels" class="btn btn-ghost btn-small">My Duels</button>
+        <button id="btn-result-home" class="btn btn-ghost btn-small">Back to Home</button>
+    </section>
+
+    <!-- Screen: My Duels -->
+    <section id="screen-duels" class="screen">
+        <h2 style="text-align:center;color:var(--wiai-yellow);margin:0">My Duels</h2>
+        <div class="panel" id="duels-summary">
+            <p class="verdict" id="tally" style="font-size:1.6rem">0 · 0 · 0</p>
+            <p class="muted" style="margin:0">Win · Loss · Draw</p>
+        </div>
+        <div id="best-weapon"></div>
+        <div id="hh-list"></div>
+        <div class="status-line" id="duels-status"></div>
+        <button id="btn-duels-back" class="btn btn-ghost btn-small">Back</button>
+    </section>
+
+    <footer>
+        <span id="player-tag"></span>
+    </footer>
+</div>
+
+<script>
+    // KI-Agent unterstützt: Shoulder-Duel frontend MVP (ADR-0028, DEV_TASKS Phase 5).
+    // A single-page, poll-driven flow whose screens mirror the server room status:
+    // home -> lobby/join -> choice -> result -> (rematch) -> my-duels.
+
+    const API = '';                 // same origin (served by the backend)
+    const POLL_MS = 1500;
+    const GRID_SIZE = 8;
+    const MAX_BIOMASS = 24;
+
+    // KI-Agent unterstützt: Silent identity (ADR-0027). Stable UUID per browser;
+    // a claimed nickname is reused if present, else a guest tag (FR-4 groundwork).
+    function generateUUID() {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+            const r = Math.random() * 16 | 0;
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+    }
+    let playerId = localStorage.getItem('biotope_player_id') || generateUUID();
+    localStorage.setItem('biotope_player_id', playerId);
+    const nickname = localStorage.getItem('biotope_nickname')
+        || ('Gast-' + playerId.slice(0, 4).toUpperCase());
+
+    // ---- Runtime state -----------------------------------------------------
+    let roomId = null;
+    let mySlot = null;              // 'red' | 'blue'
+    let pollTimer = null;
+    let currentScreen = 'home';
+    let configsLoaded = false;
+    let selectedConfigId = null;    // a chosen submission, or null for quick-draw
+    let drawGrid = [];              // 8x8 quick-draw state
+    let myConfigLabel = null;       // label of the locked choice (for My Duels)
+    let rematchRequested = false;
+
+    // ---- Helpers -----------------------------------------------------------
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        const el = document.getElementById('screen-' + id);
+        if (el) el.classList.add('active');
+        currentScreen = id;
+    }
+
+    async function api(method, path, body) {
+        const opts = { method, headers: { 'Content-Type': 'application/json' } };
+        if (body !== undefined) opts.body = JSON.stringify(body);
+        const res = await fetch(API + path, opts);
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* empty body */ }
+        return { ok: res.ok, status: res.status, data };
+    }
+
+    function errorMessage(data, fallback) {
+        const d = data && data.detail;
+        if (typeof d === 'string') return d;
+        if (d && d.error) return d.error;
+        return fallback;
+    }
+
+    // Render a flat 64-int seed array (y*8+x) into a mini grid element.
+    function renderSeed(el, seed) {
+        el.innerHTML = '';
+        for (let i = 0; i < 64; i++) {
+            const cell = document.createElement('div');
+            if (seed && seed[i]) cell.className = 'on';
+            el.appendChild(cell);
+        }
+    }
+
+    function opponentSlot() { return mySlot === 'red' ? 'blue' : 'red'; }
+
+    // ---- Polling -----------------------------------------------------------
+    function startPoll() {
+        stopPoll();
+        pollTimer = setInterval(poll, POLL_MS);
+        poll();
+    }
+    function stopPoll() {
+        if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    }
+
+    async function poll() {
+        if (!roomId) return;
+        const { ok, status, data } = await api('GET', '/api/v1/duel/rooms/' + roomId);
+        if (!ok) {
+            if (status === 404 || status === 410) {
+                stopPoll();
+                alert('This duel room is no longer available.');
+                leaveToHome();
+            }
+            return;
+        }
+        applyRoom(data);
+    }
+
+    // Drive the screen from the authoritative room status.
+    function applyRoom(room) {
+        const st = room.status;
+        if (st === 'waiting') {
+            if (currentScreen !== 'lobby') showScreen('lobby');
+            return;
+        }
+        if (st === 'choosing') {
+            if (currentScreen !== 'choice') enterChoice(room);
+            updateChoiceVs(room);
+            updateLockState(room);
+            return;
+        }
+        if (st === 'computing') {
+            document.getElementById('choice-status').textContent = 'Computing match…';
+            return;
+        }
+        if (st === 'result') {
+            if (currentScreen !== 'result') enterResult(room);
+            return;
+        }
+        if (st === 'expired') {
+            stopPoll();
+            alert('This duel room has expired.');
+            leaveToHome();
+        }
+    }
+
+    // ---- Home / Create / Join ---------------------------------------------
+    document.getElementById('btn-start').addEventListener('click', createRoom);
+    document.getElementById('btn-scan').addEventListener('click', () => {
+        document.getElementById('code-input').value = '';
+        showScreen('join');
+    });
+    document.getElementById('btn-myduels-home').addEventListener('click', openMyDuels);
+    document.getElementById('btn-join-back').addEventListener('click', () => showScreen('home'));
+    document.getElementById('btn-join').addEventListener('click', joinByCode);
+    document.getElementById('btn-lobby-cancel').addEventListener('click', () => {
+        stopPoll(); leaveToHome();
+    });
+
+    async function createRoom() {
+        const { ok, data } = await api('POST', '/api/v1/duel/rooms',
+            { player_id: playerId, nickname });
+        if (!ok) { alert('Could not create a room.'); return; }
+        roomId = data.room_id;
+        mySlot = 'red';
+        renderLobby(data.room_id, data.room_code);
+        showScreen('lobby');
+        startPoll();
+    }
+
+    function renderLobby(rid, code) {
+        const joinUrl = location.origin + '/duel/duel.html?join=' + encodeURIComponent(rid);
+        const box = document.getElementById('qr-box');
+        box.innerHTML = '';
+        try {
+            const qr = qrcode(0, 'M');
+            qr.addData(joinUrl);
+            qr.make();
+            box.innerHTML = qr.createImgTag(5, 8);
+            const img = box.querySelector('img');
+            if (img) { img.style.width = '200px'; img.style.height = '200px'; }
+        } catch (e) {
+            box.innerHTML = '<p style="color:#333">' + joinUrl + '</p>';
+        }
+        document.getElementById('lobby-code').textContent = code;
+    }
+
+    async function joinByCode() {
+        const code = document.getElementById('code-input').value.trim().toUpperCase();
+        if (code.length !== 4) { alert('Enter the 4-character code.'); return; }
+        const r = await api('GET', '/api/v1/duel/rooms/by-code/' + encodeURIComponent(code));
+        if (!r.ok) { alert('No active room with that code.'); return; }
+        await joinRoom(r.data.room_id);
+    }
+
+    async function joinRoom(rid) {
+        const { ok, status, data } = await api('POST',
+            '/api/v1/duel/rooms/' + rid + '/join',
+            { player_id: playerId, nickname });
+        if (!ok) {
+            const msg = status === 409 ? 'That room is already full.'
+                : status === 410 ? 'That room has expired.'
+                : status === 404 ? 'Room not found.'
+                : errorMessage(data, 'Could not join.');
+            alert(msg);
+            return;
+        }
+        roomId = rid;
+        mySlot = data.slot || 'blue';
+        startPoll();
+    }
+
+    // ---- Choice ------------------------------------------------------------
+    // Absolute framing: RED left, BLUE right on both phones; "(you)" marks my side.
+    function fillVsBar(redId, blueId, room) {
+        const red = room.red ? room.red.nickname : 'Red';
+        const blue = room.blue ? room.blue.nickname : 'Blue';
+        document.getElementById(redId).textContent = red + (mySlot === 'red' ? ' (you)' : '');
+        document.getElementById(blueId).textContent = blue + (mySlot === 'blue' ? ' (you)' : '');
+    }
+
+    function updateChoiceVs(room) {
+        fillVsBar('choice-red', 'choice-blue', room);
+    }
+
+    function updateLockState(room) {
+        const iLocked = room[mySlot] && room[mySlot].locked;
+        document.getElementById('choice-controls').style.display = iLocked ? 'none' : 'block';
+        document.getElementById('choice-waiting').style.display = iLocked ? 'block' : 'none';
+    }
+
+    async function enterChoice(room) {
+        showScreen('choice');
+        rematchRequested = false;
+        selectedConfigId = null;
+        myConfigLabel = null;
+        document.getElementById('choice-status').textContent = '';
+        buildDrawGrid();
+        await loadMyConfigs();
+        updateChoiceVs(room);
+    }
+
+    function buildDrawGrid() {
+        drawGrid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
+        const el = document.getElementById('draw-grid');
+        el.innerHTML = '';
+        for (let y = 0; y < GRID_SIZE; y++) {
+            for (let x = 0; x < GRID_SIZE; x++) {
+                const cell = document.createElement('div');
+                cell.addEventListener('click', () => toggleDrawCell(x, y, cell));
+                el.appendChild(cell);
+            }
+        }
+    }
+
+    function drawCount() {
+        return drawGrid.reduce((s, row) => s + row.reduce((a, b) => a + b, 0), 0);
+    }
+
+    function toggleDrawCell(x, y, cell) {
+        if (!drawGrid[y][x] && drawCount() >= MAX_BIOMASS) {
+            document.getElementById('choice-status').textContent =
+                'Max ' + MAX_BIOMASS + ' cells.';
+            return;
+        }
+        drawGrid[y][x] = drawGrid[y][x] ? 0 : 1;
+        cell.className = drawGrid[y][x] ? 'on' : '';
+        // Drawing clears a saved-config selection.
+        if (drawCount() > 0) clearConfigSelection();
+        document.getElementById('choice-status').textContent = '';
+    }
+
+    function clearConfigSelection() {
+        selectedConfigId = null;
+        document.querySelectorAll('.config-card').forEach(c => c.classList.remove('selected'));
+    }
+
+    async function loadMyConfigs() {
+        const list = document.getElementById('config-list');
+        list.innerHTML = '<span class="muted">…</span>';
+        const { ok, data } = await api('GET', '/api/v1/my_configs?player_id=' + encodeURIComponent(playerId));
+        list.innerHTML = '';
+        const configs = (ok && data.configs) ? data.configs : [];
+        if (configs.length === 0) {
+            list.innerHTML = '<span class="muted">No saved species — quick-draw below.</span>';
+            return;
+        }
+        configs.forEach(cfg => {
+            const card = document.createElement('div');
+            card.className = 'config-card';
+            const seed = document.createElement('div');
+            seed.className = 'seed';
+            renderSeed(seed, cfg.seed);
+            const label = document.createElement('div');
+            label.className = 'label';
+            label.textContent = cfg.nickname;
+            card.appendChild(seed);
+            card.appendChild(label);
+            card.addEventListener('click', () => selectConfig(cfg, card));
+            list.appendChild(card);
+        });
+    }
+
+    function selectConfig(cfg, card) {
+        selectedConfigId = cfg.config_id;
+        myConfigLabel = cfg.nickname;
+        document.querySelectorAll('.config-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        // Selecting a saved config clears the quick-draw grid.
+        buildDrawGrid();
+    }
+
+    document.getElementById('btn-lock').addEventListener('click', lockIn);
+
+    async function lockIn() {
+        let body;
+        if (selectedConfigId) {
+            body = { player_id: playerId, config_id: selectedConfigId };
+        } else if (drawCount() > 0) {
+            const cells = [];
+            for (let y = 0; y < GRID_SIZE; y++)
+                for (let x = 0; x < GRID_SIZE; x++)
+                    if (drawGrid[y][x]) cells.push([x, y]);
+            body = { player_id: playerId, config: { cells } };
+            myConfigLabel = 'Quick-draw';
+        } else {
+            document.getElementById('choice-status').textContent =
+                'Pick a species or draw one first.';
+            return;
+        }
+        document.getElementById('btn-lock').disabled = true;
+        const { ok, data } = await api('POST',
+            '/api/v1/duel/rooms/' + roomId + '/lock', body);
+        document.getElementById('btn-lock').disabled = false;
+        if (!ok) {
+            document.getElementById('choice-status').textContent =
+                errorMessage(data, 'Could not lock in.');
+            return;
+        }
+        // Optimistic: hide controls now; the poll confirms via room[slot].locked.
+        document.getElementById('choice-controls').style.display = 'none';
+        document.getElementById('choice-waiting').style.display = 'block';
+    }
+
+    // ---- Result ------------------------------------------------------------
+    function enterResult(room) {
+        showScreen('result');
+        rematchRequested = false;
+        document.getElementById('result-status').textContent = '';
+        document.getElementById('btn-rematch').disabled = false;
+
+        const r = room.result;
+        const myTeam = mySlot;
+        const verdict = document.getElementById('verdict');
+        if (r.winner === 'draw') {
+            verdict.textContent = 'DRAW';
+            verdict.className = 'verdict draw';
+        } else if (r.winner === myTeam) {
+            verdict.textContent = 'YOU WIN';
+            verdict.className = 'verdict win';
+        } else {
+            verdict.textContent = 'YOU LOSE';
+            verdict.className = 'verdict lose';
+        }
+
+        fillVsBar('result-red', 'result-blue', room);
+        renderSeed(document.getElementById('result-seed-red'), r.red_seed);
+        renderSeed(document.getElementById('result-seed-blue'), r.blue_seed);
+
+        document.getElementById('pop-red').textContent = r.red_population;
+        document.getElementById('pop-blue').textContent = r.blue_population;
+        document.getElementById('gen-count').textContent = r.generations;
+
+        recordDuel(room);
+    }
+
+    document.getElementById('btn-rematch').addEventListener('click', async () => {
+        if (rematchRequested) return;
+        rematchRequested = true;
+        document.getElementById('btn-rematch').disabled = true;
+        document.getElementById('result-status').textContent =
+            'Rematch requested — waiting for opponent…';
+        const { ok, data } = await api('POST',
+            '/api/v1/duel/rooms/' + roomId + '/rematch', { player_id: playerId });
+        if (!ok) {
+            rematchRequested = false;
+            document.getElementById('btn-rematch').disabled = false;
+            document.getElementById('result-status').textContent =
+                errorMessage(data, 'Could not request a rematch.');
+        }
+        // The poll picks up status -> choosing and re-enters the choice screen.
+    });
+
+    document.getElementById('btn-result-home').addEventListener('click', () => {
+        stopPoll(); leaveToHome();
+    });
+    document.getElementById('btn-myduels').addEventListener('click', openMyDuels);
+
+    function leaveToHome() {
+        roomId = null; mySlot = null; rematchRequested = false;
+        showScreen('home');
+    }
+
+    // ---- My Duels (local-first, server-reconciled) -------------------------
+    const LOCAL_KEY = 'biotope_duels';
+    const LOCAL_CAP = 200;
+
+    function loadLocalDuels() {
+        try { return JSON.parse(localStorage.getItem(LOCAL_KEY)) || []; }
+        catch (e) { return []; }
+    }
+
+    function recordDuel(room) {
+        const r = room.result;
+        // Dedup key: a room can host several matches (rematch); computed_at is unique.
+        const key = room.room_id + '|' + (r.computed_at || '');
+        const duels = loadLocalDuels();
+        if (duels.some(d => d.key === key)) return;
+        duels.push({
+            key,
+            opponent: room[opponentSlot()] ? room[opponentSlot()].nickname : 'Opponent',
+            my_team: mySlot,
+            winner: r.winner,
+            my_config_label: myConfigLabel || '—',
+            timestamp: new Date().toISOString(),
+        });
+        while (duels.length > LOCAL_CAP) duels.shift();
+        localStorage.setItem(LOCAL_KEY, JSON.stringify(duels));
+    }
+
+    function aggregateLocal(duels) {
+        const hh = {};
+        let w = 0, l = 0, d = 0;
+        duels.forEach(duel => {
+            const rec = hh[duel.opponent] || (hh[duel.opponent] = { wins: 0, losses: 0, draws: 0 });
+            if (duel.winner === 'draw') { d++; rec.draws++; }
+            else if (duel.winner === duel.my_team) { w++; rec.wins++; }
+            else { l++; rec.losses++; }
+        });
+        const head = Object.keys(hh).map(name => ({ opponent: name, ...hh[name] }));
+        return { head_to_head: head, tally: { w, l, d }, best_weapon: null };
+    }
+
+    function openMyDuels() {
+        stopPoll();
+        showScreen('duels');
+        document.getElementById('duels-status').textContent = '';
+        // Local-first: render instantly from localStorage.
+        renderRecord(aggregateLocal(loadLocalDuels()), false);
+        // Then reconcile with the server (authoritative) when reachable.
+        reconcileRecord();
+    }
+
+    async function reconcileRecord() {
+        const { ok, data } = await api('GET',
+            '/api/v1/duels?player_id=' + encodeURIComponent(playerId));
+        if (ok && data && data.tally) {
+            renderRecord(data, true);
+            document.getElementById('duels-status').textContent = 'Synced with server.';
+        }
+    }
+
+    function renderRecord(rec, synced) {
+        const t = rec.tally || { w: 0, l: 0, d: 0 };
+        document.getElementById('tally').textContent = t.w + ' · ' + t.l + ' · ' + t.d;
+
+        const bw = document.getElementById('best-weapon');
+        if (rec.best_weapon && rec.best_weapon.seed) {
+            bw.innerHTML = '<p class="muted" style="text-align:center;margin:0 0 6px">Best weapon ('
+                + rec.best_weapon.wins + ' wins)</p>';
+            const seed = document.createElement('div');
+            seed.className = 'seed';
+            renderSeed(seed, rec.best_weapon.seed);
+            bw.appendChild(seed);
+        } else {
+            bw.innerHTML = '';
+        }
+
+        const list = document.getElementById('hh-list');
+        list.innerHTML = '';
+        const head = rec.head_to_head || [];
+        if (head.length === 0) {
+            list.innerHTML = '<p class="muted" style="text-align:center">No duels yet.</p>';
+            return;
+        }
+        head.forEach(h => {
+            const row = document.createElement('div');
+            row.className = 'hh-row';
+            const name = document.createElement('span');
+            name.textContent = h.opponent;
+            const score = document.createElement('span');
+            score.className = 'score';
+            score.textContent = h.wins + ':' + h.losses + (h.draws ? ' (' + h.draws + 'd)' : '');
+            row.appendChild(name);
+            row.appendChild(score);
+            list.appendChild(row);
+        });
+    }
+
+    document.getElementById('btn-duels-back').addEventListener('click', () => {
+        // Return to a result if a room is still live, otherwise home.
+        if (roomId) { showScreen('result'); startPoll(); }
+        else showScreen('home');
+    });
+
+    // ---- Boot: handle a ?join=ROOM_ID deep link from a scanned QR -----------
+    document.getElementById('player-tag').textContent = nickname + ' · id ' + playerId.slice(0, 6);
+
+    (function boot() {
+        const params = new URLSearchParams(location.search);
+        const joinId = params.get('join');
+        if (joinId) {
+            // Clean the URL so a refresh doesn't re-trigger the join.
+            history.replaceState({}, '', location.pathname);
+            joinRoom(joinId);
+        }
+    })();
+</script>
+</body>
+</html>

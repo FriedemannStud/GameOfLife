@@ -91,6 +91,90 @@ class MatchResult(BaseModel):
     elo_delta: int = Field(..., description="Elo change for this match")
 
 
+# KI-Agent unterstützt: Shoulder-Duel Mode models (ADR-0028 / DEV_TECH_DESIGN-0028 §3).
+# A duel room is ephemeral shared state coordinating two phones; `duels` is the
+# permanent per-player record.
+
+
+class DuelParticipant(BaseModel):
+    player_id: str = Field(
+        ..., description="Silent identity from localStorage (ADR-0027)"
+    )
+    nickname: str = Field(
+        ..., description="Display name, or a guest tag (e.g. Gast-7F3K)"
+    )
+    is_guest: bool = Field(
+        False, description="True if no claimed name backs this nickname"
+    )
+    locked: bool = Field(False, description="Has this participant locked in this round")
+    # The hidden chosen config; never exposed to the opponent until computing/result.
+    config: Optional[Config] = Field(
+        None, description="Hidden chosen start configuration"
+    )
+    config_id: Optional[str] = Field(
+        None, description="Optional source submission id (best-weapon attribution)"
+    )
+
+
+class DuelResultEmbed(BaseModel):
+    winner: str = Field(..., description="red / blue / draw")
+    generations: int = Field(..., description="End generation from the referee")
+    red_population: int
+    blue_population: int
+    red_seed: List[int] = Field(..., description="8x8 grid as list of 64 integers")
+    blue_seed: List[int] = Field(..., description="8x8 grid as list of 64 integers")
+    computed_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class DuelRoom(BaseModel):
+    room_id: str = Field(..., description="Short URL-safe id (QR payload), unique")
+    room_code: str = Field(
+        ..., description="4-char human fallback code (Crockford-style)"
+    )
+    status: str = Field(
+        "waiting",
+        description="waiting -> choosing -> computing -> result -> choosing/expired",
+    )
+    red: DuelParticipant = Field(..., description="Creator slot")
+    blue: Optional[DuelParticipant] = Field(
+        None, description="Joiner slot (null until join)"
+    )
+    result: Optional[DuelResultEmbed] = Field(
+        None, description="Set when status is result"
+    )
+    rematch: dict = Field(
+        default_factory=lambda: {"red": False, "blue": False},
+        description="Both true -> reset to choosing",
+    )
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    expires_at: datetime = Field(..., description="TTL index drives automatic cleanup")
+
+
+# KI-Agent unterstützt: Request schemas for the duel endpoints (DEV_TECH_DESIGN §4.1).
+
+
+class CreateRoomRequest(BaseModel):
+    player_id: str
+    nickname: str
+
+
+class JoinRoomRequest(BaseModel):
+    player_id: str
+    nickname: str
+
+
+class LockRequest(BaseModel):
+    # KI-Agent unterstützt: A player either references one of their own submissions
+    # (config_id) or quick-draws an inline config (guest path, FR-4). One is required.
+    player_id: str
+    config: Optional[Config] = None
+    config_id: Optional[str] = None
+
+
+class RematchRequest(BaseModel):
+    player_id: str
+
+
 class Highlight(BaseModel):
     metric_type: str = Field(
         ..., description="Type of metric (duration, volatility)", examples=["duration"]

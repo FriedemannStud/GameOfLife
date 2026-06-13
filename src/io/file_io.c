@@ -430,6 +430,10 @@ bool initialize_world_from_file(const char* filepath, World* world, Team team, c
                     if (x >= 0 && x < LOCAL_GRID_SIZE && y >= 0 && y < LOCAL_GRID_SIZE) {
                         int offset_x = (team == TEAM_BLUE) ? LOCAL_GRID_SIZE : 0;
                         world->grid[(y + 1) * (world->cols + 2) + (x + offset_x + 1)] = team;
+                        // KI-Agent unterstützt: Mark the chunk active so the
+                        // chunk-skip optimization in update_generation does not
+                        // treat the seed as a dead region (mirrors run_isolated_match).
+                        activate_chunk_at(world, y, x + offset_x);
                     }
                 }
             }

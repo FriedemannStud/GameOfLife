@@ -121,10 +121,6 @@ int update_generation(World *current_gen, World *next_gen, int rows, int cols, i
         for (int cc = 0; cc < current_gen->chunk_cols; cc++) {
             int chunk_idx = cr * current_gen->chunk_cols + cc;
 
-            if (current_gen->chunk_map && !is_chunk_or_neighbors_active(current_gen, cr, cc)) {
-                continue;
-            }
-
             int start_r = cr * CHUNK_SIZE + 1;
             int end_r = (cr + 1) * CHUNK_SIZE;
             if (end_r > rows) end_r = rows;
@@ -132,6 +128,20 @@ int update_generation(World *current_gen, World *next_gen, int rows, int cols, i
             int start_c = cc * CHUNK_SIZE + 1;
             int end_c = (cc + 1) * CHUNK_SIZE;
             if (end_c > cols) end_c = cols;
+
+            if (current_gen->chunk_map && !is_chunk_or_neighbors_active(current_gen, cr, cc)) {
+                // KI-Agent unterstützt: An inactive chunk has no life and no
+                // active neighbour, so it stays dead. It must still be written
+                // as DEAD into next_gen — otherwise the double buffer leaves
+                // stale cells from two generations ago, which then "resurrect"
+                // once a region empties out.
+                for (int r = start_r; r <= end_r; r++) {
+                    for (int c = start_c; c <= end_c; c++) {
+                        next_gen->grid[r * stride + c] = DEAD;
+                    }
+                }
+                continue;
+            }
 
             bool chunk_has_life = false;
 

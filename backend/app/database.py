@@ -2,7 +2,7 @@ import os
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 
-# KI-Agent unterstützt: Database connection setup for MongoDB Atlas
+# KI-Agent unterstützt: Database connection setup for MongoDB
 
 load_dotenv()
 

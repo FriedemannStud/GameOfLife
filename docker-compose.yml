@@ -44,6 +44,15 @@ services:
     # KI-Agent unterstützt: Environment variables for development
     environment:
       - PYTHONUNBUFFERED=1
+    # KI-Agent unterstützt: Report "healthy" only once uvicorn actually answers on
+    # port 8000. start_period covers the one-off `pip install` window so early
+    # failures are not counted; the slim image has no curl, hence the urllib probe.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/').status == 200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
     depends_on:
       mongo:
         condition: service_healthy

@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from datetime import datetime
-from pymongo.errors import DuplicateKeyError
+from pymongo.errors import DuplicateKeyError, OperationFailure
 from .models import Submission, DBSubmission, Player
 from .validators import validate_biotope_rules
 from .database import get_db
@@ -31,12 +31,34 @@ app.add_middleware(
 async def startup_db_client():
     from .database import check_connection
     if await check_connection():
-        print("Successfully connected to MongoDB Atlas!")
-        # KI-Agent unterstützt: Unique index is the authoritative ownership guard
-        # for normalized names, including under concurrent claims (ADR-0027).
-        await get_db().players.create_index("nickname_normalized", unique=True)
+        print("Successfully connected to MongoDB!")
+        await _ensure_nickname_index(get_db().players)
     else:
-        print("CRITICAL: Could not connect to MongoDB Atlas. Check your .env file.")
+        print("CRITICAL: Could not connect to MongoDB. Check your .env file.")
+
+
+# KI-Agent unterstützt: Partial unique index is the authoritative ownership guard
+# for normalized names, including under concurrent claims (ADR-0027). The
+# partialFilterExpression scopes uniqueness to real string names, so legacy/null
+# player docs (pre-claim schema) cannot break the index build. If an older plain
+# unique index of the same name already exists, migrate it in place (IndexOptions-
+# Conflict, code 85) by dropping and recreating it as the partial variant.
+async def _ensure_nickname_index(players):
+    def _create():
+        return players.create_index(
+            "nickname_normalized",
+            unique=True,
+            partialFilterExpression={"nickname_normalized": {"$type": "string"}},
+        )
+
+    try:
+        await _create()
+    except OperationFailure as e:
+        if e.code == 85:
+            await players.drop_index("nickname_normalized_1")
+            await _create()
+        else:
+            raise
 
 
 @app.get("/")

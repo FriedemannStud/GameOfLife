@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 ## Project Overview
 
 "Biotop" is an extended Conway's Game of Life where two teams (Red vs. Blue) compete for cellular dominance. It is a university project written in C (Raylib GUI, headless simulation, OpenMP hyper-worker) with a FastAPI/MongoDB backend and a web-based pattern editor.
@@ -29,7 +31,7 @@ Compiler flags: `gcc -Wall -Wextra -std=c99 -O3 -fopenmp`. The build **must** pr
 ## Backend & Services
 
 ```bash
-# Start FastAPI backend (port 8000) + Python tournament worker + C-dev container
+# Start the full stack
 docker-compose up
 
 # Run backend standalone (from /backend)
@@ -37,7 +39,13 @@ pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Backend environment variables (MongoDB credentials) are in `.env` — do not commit changes to it.
+`docker-compose up` brings up four services:
+- `mongo` — local MongoDB (`mongo:4.4`), exposed on `127.0.0.1:27018`. This replaced the earlier MongoDB Atlas setup; older CHANGELOG/ADR entries that mention Atlas are historical.
+- `backend` — FastAPI on port 8000 (`uvicorn app.main:app`), depends on `mongo` being healthy. Mounts `./build` as `/app/build`.
+- `matchmaker` — the Python tournament worker (`app/worker.py`). It mounts `./worker_bin` (not `./build`) as `/app/build`, so the C binaries it invokes must be present in `worker_bin/`.
+- `c-dev` — C build/dev container with X11 forwarding (`DISPLAY=host.docker.internal:0`).
+
+Backend environment variables (`MONGO_USER`, `MONGO_PASSWORD`, etc.) are in `.env` — do not commit changes to it. See `.env.example` for the expected keys.
 
 ## Testing
 
@@ -50,10 +58,13 @@ gcc tests/test_core_types.c src/core/game_logic.c src/core/core_types.c \
 ```
 Test sources live in `tests/test_*.c`. Compiled test binaries (no extension) are pre-built there too.
 
-**Python backend tests** — run directly (no test runner needed):
+**Python backend tests** — run directly (no test runner needed). Each `backend/tests/test_*.py` file is self-running:
 ```bash
 python backend/tests/test_ranking.py
 python backend/tests/test_validators.py
+python backend/tests/test_auth_utils.py
+python backend/tests/test_name_claiming.py
+python backend/tests/test_oscillator_detection.py
 python backend/tests/test_system_integration.py  # requires built binaries
 ```
 

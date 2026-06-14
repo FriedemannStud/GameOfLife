@@ -80,3 +80,26 @@ jobs:
 
       - name: Run validator unit tests
         run: python backend/tests/test_validators.py
+
+  lint-python:
+    name: Python Lint (black + ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Versions are kept in sync with backend/requirements-dev.txt.
+      # Config (line-length 88, rules E/F/W/I) lives in the project-root pyproject.toml.
+      - name: Install black + ruff
+        run: pip install black==24.10.0 ruff==0.15.17
+
+      # Scope: backend/ only — that is the formatted/linted source tree.
+      - name: Check formatting (black)
+        run: black --check backend/
+
+      - name: Lint (ruff)
+        run: ruff check backend/

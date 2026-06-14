@@ -61,6 +61,16 @@ async def get_room(room_id: str):
         raise _http(e)
 
 
+@router.get("/duel/rooms/{room_id}/frames")
+async def room_frames(room_id: str):
+    # KI-Agent unterstützt: one-shot deterministic replay payload (kept off the
+    # short-poll); each phone fetches it once when the VS splash starts.
+    try:
+        return await duel_service.get_room_frames(room_id)
+    except DuelError as e:
+        raise _http(e)
+
+
 @router.post("/duel/rooms/{room_id}/lock")
 async def lock(room_id: str, req: LockRequest):
     # KI-Agent unterstützt: hidden lock-in; the second lock triggers exactly one

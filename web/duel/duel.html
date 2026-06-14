@@ -223,6 +223,37 @@
         }
         .pop-bar .red { color: var(--team-red); }
         .pop-bar .blue { color: var(--team-blue); }
+        /* KI-Agent unterstützt: proportional red/blue population meter (replay 6.2) */
+        .pop-meter {
+            display: flex;
+            height: 14px;
+            border-radius: 7px;
+            overflow: hidden;
+            background: #0c1117;
+        }
+        .pop-meter .seg { height: 100%; width: 0; transition: width 90ms linear; }
+        .pop-meter .seg.red { background: var(--team-red); }
+        .pop-meter .seg.blue { background: var(--team-blue); }
+        /* KI-Agent unterstützt: generation counter + replay timeline (6.2) */
+        .gen-line {
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--muted);
+            font-variant-numeric: tabular-nums;
+        }
+        .gen-track {
+            height: 4px;
+            margin-top: 4px;
+            border-radius: 2px;
+            overflow: hidden;
+            background: #0c1117;
+        }
+        .gen-fill {
+            height: 100%;
+            width: 0;
+            background: var(--wiai-yellow);
+            transition: width 90ms linear;
+        }
 
         /* My Duels */
         .hh-row {
@@ -319,6 +350,36 @@
         </div>
     </section>
 
+    <!-- Screen: VS splash + deterministic match replay (before the verdict) -->
+    <section id="screen-vs" class="screen">
+        <div class="verdict draw" style="font-size:2.6rem;letter-spacing:6px">VS</div>
+        <div class="panel">
+            <div class="vs-bar" style="margin-bottom:12px">
+                <span class="red" id="vs-red">Red</span>
+                <span class="vs">VS</span>
+                <span class="blue" id="vs-blue">Blue</span>
+            </div>
+            <canvas id="replay-canvas" width="320" height="160"
+                style="width:100%;height:auto;background:#0c1117;border-radius:8px;display:block;image-rendering:pixelated"></canvas>
+            <div class="pop-meter" style="margin:12px 0 0" aria-hidden="true">
+                <div class="seg red" id="vs-pop-red-bar"></div>
+                <div class="seg blue" id="vs-pop-blue-bar"></div>
+            </div>
+            <p class="pop-bar" style="margin:6px 0 0">
+                <span class="red">Red: <span id="vs-pop-red">0</span></span>
+                <span class="blue">Blue: <span id="vs-pop-blue">0</span></span>
+            </p>
+            <!-- KI-Agent unterstützt: generation counter + timeline (replay 6.2) -->
+            <div class="gen-line" style="margin:10px 0 0">
+                <span>Gen <span id="vs-gen">0</span> / <span id="vs-gen-total">100</span></span>
+            </div>
+            <div class="gen-track" aria-hidden="true">
+                <div class="gen-fill" id="vs-gen-fill"></div>
+            </div>
+        </div>
+        <div class="status-line" id="vs-status">Fight!</div>
+    </section>
+
     <!-- Screen: Result -->
     <section id="screen-result" class="screen">
         <div class="verdict" id="verdict">—</div>
@@ -342,6 +403,12 @@
         <button id="btn-rematch" class="btn btn-primary">Rematch</button>
         <button id="btn-myduels" class="btn btn-ghost btn-small">My Duels</button>
         <button id="btn-result-home" class="btn btn-ghost btn-small">Back to Home</button>
+        <!-- Guest fallback: non-blocking post-match claim prompt (FR-4 / FR-20). -->
+        <div id="claim-prompt" class="panel" style="display:none;border:1px dashed var(--wiai-yellow);margin-top:6px">
+            <p class="muted" style="margin:0 0 10px">You're playing as a guest. Claim a name so your duels count for real.</p>
+            <a id="link-claim" class="btn btn-ghost btn-small" href="/editor/editor.html" target="_blank" rel="noopener">Claim a name</a>
+            <button id="btn-claim-dismiss" class="link-btn" style="margin-top:8px">Maybe later</button>
+        </div>
     </section>
 
     <!-- Screen: My Duels -->
@@ -357,20 +424,40 @@
         <button id="btn-duels-back" class="btn btn-ghost btn-small">Back</button>
     </section>
 
+    <!-- KI-Agent unterstützt: self-hosted Suno soundtrack (ADR-0028 §2.6). -->
+    <audio id="duel-audio" src="/assets/duel_theme.mp3" preload="auto" loop></audio>
+
     <footer>
-        <span id="player-tag"></span>
+        <div id="player-tag"></div>
+        <div style="margin-top:6px">
+            <button id="btn-mute" class="link-btn">♪ Sound: on</button>
+        </div>
+        <div style="margin-top:6px">
+            ♪ Music: “Open Flow” — made with
+            <a href="https://suno.com/s/82OAUnbHAxUlSSla" target="_blank" rel="noopener">Suno</a>
+        </div>
     </footer>
 </div>
 
 <script>
-    // KI-Agent unterstützt: Shoulder-Duel frontend MVP (ADR-0028, DEV_TASKS Phase 5).
+    // KI-Agent unterstützt: Shoulder-Duel frontend (ADR-0028, DEV_TASKS Phases 5-6).
     // A single-page, poll-driven flow whose screens mirror the server room status:
-    // home -> lobby/join -> choice -> result -> (rematch) -> my-duels.
+    // home -> lobby/join -> choice -> vs+replay -> result -> (rematch) -> my-duels.
+    // Phase 6 adds the VS-splash + self-hosted soundtrack (6.1), the deterministic
+    // frame-by-frame match replay on a canvas (6.2), and the guest post-match claim
+    // prompt (6.3).
 
     const API = '';                 // same origin (served by the backend)
     const POLL_MS = 1500;
     const GRID_SIZE = 8;
     const MAX_BIOMASS = 24;
+    const VS_SPLASH_MS = 3500;       // KI-Agent unterstützt: fallback if no frames.
+    // KI-Agent unterstützt: playback locked to the soundtrack. duel_theme.mp3 was
+    // measured at ~120 BPM, so one generation advances per 1/16 note (125 ms); the
+    // animateReplay clock is the audio position, keeping the board on the beat.
+    const TRACK_BPM = 120;
+    const BEAT_MS = 60000 / TRACK_BPM;   // 500 ms per quarter note
+    const REPLAY_FRAME_MS = BEAT_MS / 2; // 1/8 note -> 250 ms/gen (~25s for 101)
 
     // KI-Agent unterstützt: Silent identity (ADR-0027). Stable UUID per browser;
     // a claimed nickname is reused if present, else a guest tag (FR-4 groundwork).
@@ -396,6 +483,7 @@
     let drawGrid = [];              // 8x8 quick-draw state
     let myConfigLabel = null;       // label of the locked choice (for My Duels)
     let rematchRequested = false;
+    let vsTimer = null;             // VS-splash -> result transition timer
 
     // ---- Helpers -----------------------------------------------------------
     function showScreen(id) {
@@ -432,6 +520,49 @@
     }
 
     function opponentSlot() { return mySlot === 'red' ? 'blue' : 'red'; }
+
+    // ---- Audio (self-hosted Suno track, ADR-0028 §2.6) ---------------------
+    // KI-Agent unterstützt: mobile autoplay needs a user gesture, so the first
+    // tap anywhere unlocks playback; build-up on the VS splash, payoff on result.
+    const duelAudio = document.getElementById('duel-audio');
+    let soundOn = true;
+    let audioUnlocked = false;
+
+    function unlockAudio() {
+        if (audioUnlocked || !duelAudio) return;
+        duelAudio.play().then(() => {
+            duelAudio.pause();
+            duelAudio.currentTime = 0;
+            audioUnlocked = true;
+        }).catch(() => { /* gesture not enough yet; retry on next tap */ });
+        document.removeEventListener('pointerdown', unlockAudio);
+    }
+    document.addEventListener('pointerdown', unlockAudio);
+
+    function playBuildup() {
+        if (!duelAudio || !soundOn) return;
+        try {
+            duelAudio.currentTime = 0;
+            duelAudio.volume = 0.55;
+            duelAudio.play().catch(() => {});
+        } catch (e) { /* ignore */ }
+    }
+    function playPayoff() {
+        if (!duelAudio || !soundOn) return;
+        try {
+            if (duelAudio.paused) duelAudio.play().catch(() => {});
+            duelAudio.volume = 0.9;
+        } catch (e) { /* ignore */ }
+    }
+    function stopAudio() {
+        if (!duelAudio) return;
+        try { duelAudio.pause(); duelAudio.currentTime = 0; } catch (e) { /* ignore */ }
+    }
+    document.getElementById('btn-mute').addEventListener('click', () => {
+        soundOn = !soundOn;
+        document.getElementById('btn-mute').textContent = '♪ Sound: ' + (soundOn ? 'on' : 'off');
+        if (!soundOn) stopAudio();
+    });
 
     // ---- Polling -----------------------------------------------------------
     function startPoll() {
@@ -475,7 +606,8 @@
             return;
         }
         if (st === 'result') {
-            if (currentScreen !== 'result') enterResult(room);
+            // Pass through the VS splash (build-up) before the verdict.
+            if (currentScreen !== 'result' && currentScreen !== 'vs') enterVsSplash(room);
             return;
         }
         if (st === 'expired') {
@@ -683,9 +815,124 @@
         document.getElementById('choice-waiting').style.display = 'block';
     }
 
+    // ---- VS splash + deterministic replay (FR-10/11/14, DEV_TASKS 6.2) -----
+    // KI-Agent unterstützt: a build-up screen with the soundtrack, then the match
+    // is animated frame by frame from the server's deterministic replay payload
+    // (one engine, the C core; server verdict stays canonical). On any failure we
+    // fall back to a short timed splash so the result is always reached.
+    function enterVsSplash(room) {
+        showScreen('vs');
+        fillVsBar('vs-red', 'vs-blue', room);
+        document.getElementById('vs-pop-red').textContent = '0';
+        document.getElementById('vs-pop-blue').textContent = '0';
+        document.getElementById('vs-pop-red-bar').style.width = '0';
+        document.getElementById('vs-pop-blue-bar').style.width = '0';
+        document.getElementById('vs-gen').textContent = '0';
+        document.getElementById('vs-gen-fill').style.width = '0';
+        document.getElementById('vs-status').textContent = 'Fight!';
+        playBuildup();
+        startReplay(room);
+    }
+
+    async function startReplay(room) {
+        let data = null;
+        try {
+            const res = await api('GET', '/api/v1/duel/rooms/' + roomId + '/frames');
+            if (res.ok && res.data && res.data.frames) data = res.data;
+        } catch (e) { /* fall back below */ }
+        if (currentScreen !== 'vs') return;     // user navigated away while fetching
+        if (!data) {
+            if (vsTimer) clearTimeout(vsTimer);
+            vsTimer = setTimeout(() => enterResult(room), VS_SPLASH_MS);
+            return;
+        }
+        animateReplay(data, room);
+    }
+
+    // KI-Agent unterstützt: the frame index is driven by the playback clock, not a
+    // fixed setTimeout counter, so each generation lands on a 1/16-note beat of the
+    // soundtrack and never drifts over the ~12s replay. When the track is actually
+    // playing we read duelAudio.currentTime; if the sound is muted or autoplay was
+    // blocked we fall back to a wall clock so the replay still runs at the same tempo.
+    function animateReplay(data, room) {
+        const canvas = document.getElementById('replay-canvas');
+        const ctx = canvas.getContext('2d');
+        const rows = data.rows, cols = data.cols, frames = data.frames;
+        const cellW = canvas.width / cols, cellH = canvas.height / rows;
+        const stepSec = REPLAY_FRAME_MS / 1000;
+
+        // KI-Agent unterstützt: frame i == generation i (frame 0 = the seeds), so the
+        // counter and timeline read directly off the same clock-driven target index.
+        const lastGen = frames.length - 1;
+        document.getElementById('vs-gen-total').textContent = lastGen;
+        function setGen(gen) {
+            document.getElementById('vs-gen').textContent = gen;
+            document.getElementById('vs-gen-fill').style.width =
+                (lastGen ? (gen / lastGen) * 100 : 0) + '%';
+        }
+
+        const useAudio = soundOn && duelAudio && !duelAudio.paused;
+        const audioStart = useAudio ? duelAudio.currentTime : 0;
+        const wallStart = performance.now();
+        let lastDrawn = -1;
+
+        function elapsedSec() {
+            if (useAudio && !duelAudio.paused) {
+                return duelAudio.currentTime - audioStart;
+            }
+            return (performance.now() - wallStart) / 1000;
+        }
+        function step() {
+            if (currentScreen !== 'vs') return; // aborted (left the screen)
+            const target = Math.floor(elapsedSec() / stepSec);
+            if (target >= frames.length) {
+                drawReplayFrame(ctx, canvas, frames[lastGen],
+                    rows, cols, cellW, cellH);
+                setGen(lastGen);
+                document.getElementById('vs-status').textContent = '';
+                vsTimer = setTimeout(() => enterResult(room), 600); // hold final frame
+                return;
+            }
+            if (target !== lastDrawn) {
+                drawReplayFrame(ctx, canvas, frames[target],
+                    rows, cols, cellW, cellH);
+                setGen(target);
+                lastDrawn = target;
+            }
+            vsTimer = setTimeout(step, 16); // poll the clock; redraw only on change
+        }
+        step();
+    }
+
+    // Each frame is a row-major "0/1/2" string over the rows x cols playfield.
+    function drawReplayFrame(ctx, canvas, frame, rows, cols, cellW, cellH) {
+        ctx.fillStyle = '#0c1117';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        let rp = 0, bp = 0;
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const v = frame.charCodeAt(r * cols + c) - 48;
+                if (!v) continue;
+                if (v === 1) { ctx.fillStyle = '#e74c3c'; rp++; }
+                else { ctx.fillStyle = '#3498db'; bp++; }
+                ctx.fillRect(c * cellW, r * cellH, cellW - 1, cellH - 1);
+            }
+        }
+        document.getElementById('vs-pop-red').textContent = rp;
+        document.getElementById('vs-pop-blue').textContent = bp;
+        // KI-Agent unterstützt: proportional meter; widths track the live share of
+        // live cells. An empty board leaves both segments at 0 (neutral background).
+        const total = rp + bp;
+        const redPct = total ? (rp / total) * 100 : 0;
+        document.getElementById('vs-pop-red-bar').style.width = redPct + '%';
+        document.getElementById('vs-pop-blue-bar').style.width = (total ? 100 - redPct : 0) + '%';
+    }
+
     // ---- Result ------------------------------------------------------------
     function enterResult(room) {
+        if (vsTimer) { clearTimeout(vsTimer); vsTimer = null; }
         showScreen('result');
+        playPayoff();
         rematchRequested = false;
         document.getElementById('result-status').textContent = '';
         document.getElementById('btn-rematch').disabled = false;
@@ -713,7 +960,25 @@
         document.getElementById('gen-count').textContent = r.generations;
 
         recordDuel(room);
+        maybeShowClaimPrompt();
     }
+
+    // ---- Guest claim prompt (FR-4 / FR-20) --------------------------------
+    // KI-Agent unterstützt: a phone with no claimed name plays as Gast-XXXX; after
+    // a match we gently, non-blockingly invite claiming a name (links to the editor
+    // claim flow). The player_id is stable (ADR-0027) and local duel records do not
+    // store the player's own name, so a later claim keeps the existing record valid.
+    function isGuest() { return !localStorage.getItem('biotope_nickname'); }
+
+    function maybeShowClaimPrompt() {
+        const el = document.getElementById('claim-prompt');
+        const dismissed = sessionStorage.getItem('biotope_claim_dismissed') === '1';
+        el.style.display = (isGuest() && !dismissed) ? 'block' : 'none';
+    }
+    document.getElementById('btn-claim-dismiss').addEventListener('click', () => {
+        sessionStorage.setItem('biotope_claim_dismissed', '1');
+        document.getElementById('claim-prompt').style.display = 'none';
+    });
 
     document.getElementById('btn-rematch').addEventListener('click', async () => {
         if (rematchRequested) return;
@@ -738,6 +1003,8 @@
     document.getElementById('btn-myduels').addEventListener('click', openMyDuels);
 
     function leaveToHome() {
+        if (vsTimer) { clearTimeout(vsTimer); vsTimer = null; }
+        stopAudio();
         roomId = null; mySlot = null; rematchRequested = false;
         showScreen('home');
     }

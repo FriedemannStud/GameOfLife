@@ -1,6 +1,6 @@
 ### **ADR-0028: Shoulder-Duel Mode — Server-Authoritative Real-Time 1:1 Matches**
 
-**Status:** proposed
+**Status:** implemented
 
 **Date:** 2026-06-13
 

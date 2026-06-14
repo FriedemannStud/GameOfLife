@@ -477,6 +477,10 @@
             const data = await res.json().catch(() => ({}));
 
             if(res.status === 201) {
+                // KI-Agent unterstützt: persist the claimed species name so the
+                // same-browser duel page (duel.html) reuses it instead of the
+                // Gast-XXXX fallback (ADR-0028 FR-4 / ADR-0027 silent identity).
+                localStorage.setItem('biotope_nickname', speciesName);
                 if(data.recovery_code) {
                     // First claim: present the code on the recovery card.
                     showRecoveryOverlay(speciesName, data.recovery_code);

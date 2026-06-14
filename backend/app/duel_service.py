@@ -82,6 +82,9 @@ def project_room(room: dict) -> dict:
     """
     safe = dict(room)
     safe.pop("_id", None)
+    # The replay frames are large; they are fetched once via the frames endpoint,
+    # never on the short-poll. Strip them here just like the hidden configs.
+    safe.pop("frames", None)
     for slot in ("red", "blue"):
         participant = safe.get(slot)
         if participant:
@@ -102,6 +105,23 @@ async def get_room(room_id: str) -> dict:
     if room["status"] == "expired" or room["expires_at"] < datetime.utcnow():
         raise DuelError("room_expired", 410)
     return project_room(room)
+
+
+# KI-Agent unterstützt
+async def get_room_frames(room_id: str) -> dict:
+    """Return the one-shot deterministic replay payload {rows, cols, frames:[...]}.
+
+    Fetched once by each phone when the VS splash starts, kept off the short-poll
+    (project_room strips it). 404 until a match has produced frames (ADR-0028 §2.2).
+    """
+    db = get_db()
+    room = await db.duel_rooms.find_one({"room_id": room_id})
+    if room is None:
+        raise DuelError("room_not_found", 404)
+    frames = room.get("frames")
+    if not frames:
+        raise DuelError("frames_not_ready", 404)
+    return frames
 
 
 # KI-Agent unterstützt
@@ -327,6 +347,7 @@ async def _invoke_headless(red_cells: list, blue_cells: list) -> dict:
     red_path = os.path.join(tmpdir, "red.json")
     blue_path = os.path.join(tmpdir, "blue.json")
     out_path = os.path.join(tmpdir, "out.json")
+    frames_path = os.path.join(tmpdir, "frames.json")
     try:
         with open(red_path, "w") as f:
             json.dump({"metadata": {"player_id": "red", "nickname": "red"},
@@ -335,11 +356,14 @@ async def _invoke_headless(red_cells: list, blue_cells: list) -> dict:
             json.dump({"metadata": {"player_id": "blue", "nickname": "blue"},
                        "config": {"cells": blue_cells}}, f)
 
+        # KI-Agent unterstützt: the extra frames_path argument makes headless emit a
+        # per-generation replay payload alongside the result (ADR-0028 §2.2).
         process = await asyncio.create_subprocess_exec(
             binary,
             red_path,
             blue_path,
             out_path,
+            frames_path,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -347,9 +371,16 @@ async def _invoke_headless(red_cells: list, blue_cells: list) -> dict:
         if process.returncode != 0:
             raise RuntimeError(f"headless failed: {stderr.decode()}")
         with open(out_path) as f:
-            return json.load(f)
+            result = json.load(f)
+        # Frames are best-effort: a result without them still shows the verdict.
+        try:
+            with open(frames_path) as f:
+                result["_frames"] = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            result["_frames"] = None
+        return result
     finally:
-        for path in (red_path, blue_path, out_path):
+        for path in (red_path, blue_path, out_path, frames_path):
             try:
                 os.remove(path)
             except OSError:
@@ -386,9 +417,13 @@ async def run_match(room: dict) -> None:
         blue_seed=blue_seed,
     ).model_dump()
 
+    # KI-Agent unterstützt: the replay frames live at the room top-level (not inside
+    # `result`), so the 1.5s poll projection can strip them and serve them only once
+    # via GET /rooms/{id}/frames. The permanent `duels` record stays lean (no frames).
+    frames = result.get("_frames")
     await db.duel_rooms.update_one(
         {"room_id": room["room_id"]},
-        {"$set": {"status": "result", "result": embed}},
+        {"$set": {"status": "result", "result": embed, "frames": frames}},
     )
 
     # Permanent per-player record (keyed by identity, not submission id).
@@ -453,6 +488,7 @@ async def request_rematch(room_id: str, player_id: str) -> dict:
                 "$set": {
                     "status": "choosing",
                     "result": None,
+                    "frames": None,
                     "rematch": {"red": False, "blue": False},
                     "red.locked": False,
                     "red.config": None,

@@ -1,21 +1,20 @@
-import sys
-import os
-import uuid
 import asyncio
+import os
+import sys
+import uuid
 
 # Add app to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database import get_db
-from app.models import Config
 from app.duel_service import (
     create_room,
-    join_room,
-    lock_choice,
     get_room,
     get_room_frames,
-    DuelError,
+    join_room,
+    lock_choice,
 )
+from app.models import Config
 
 # KI-Agent unterstützt: Duel end-to-end integration test (ADR-0028, Step 7.2). Unlike
 # the service-only test_duel_room, this drives the full referee path through the C

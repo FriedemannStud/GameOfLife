@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
 
-from .models import CreateRoomRequest, JoinRoomRequest, LockRequest, RematchRequest
 from . import duel_service
 from .duel_service import DuelError
+from .models import CreateRoomRequest, JoinRoomRequest, LockRequest, RematchRequest
 
 # KI-Agent unterstützt: Shoulder-Duel REST surface (ADR-0028 / DEV_TECH_DESIGN §4.1).
 # A single router under /api/v1: room lifecycle lives beneath /duel/rooms, while the

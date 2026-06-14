@@ -9,18 +9,17 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from pymongo import ReturnDocument
 
+from .auth_utils import hash_recovery_code, normalize_nickname
 from .database import get_db
-from .auth_utils import normalize_nickname, hash_recovery_code
 from .grid_utils import cells_to_grid
-from .validators import validate_biotope_rules
 from .models import (
-    Config,
     DuelParticipant,
     DuelResultEmbed,
     DuelRoom,
     Metadata,
     Submission,
 )
+from .validators import validate_biotope_rules
 
 # KI-Agent unterstützt: Shoulder-Duel service layer (ADR-0028 / DEV_TECH_DESIGN §4.2).
 # Room lifecycle (create / join), with later phases adding lock-in, the headless
@@ -350,11 +349,21 @@ async def _invoke_headless(red_cells: list, blue_cells: list) -> dict:
     frames_path = os.path.join(tmpdir, "frames.json")
     try:
         with open(red_path, "w") as f:
-            json.dump({"metadata": {"player_id": "red", "nickname": "red"},
-                       "config": {"cells": red_cells}}, f)
+            json.dump(
+                {
+                    "metadata": {"player_id": "red", "nickname": "red"},
+                    "config": {"cells": red_cells},
+                },
+                f,
+            )
         with open(blue_path, "w") as f:
-            json.dump({"metadata": {"player_id": "blue", "nickname": "blue"},
-                       "config": {"cells": blue_cells}}, f)
+            json.dump(
+                {
+                    "metadata": {"player_id": "blue", "nickname": "blue"},
+                    "config": {"cells": blue_cells},
+                },
+                f,
+            )
 
         # KI-Agent unterstützt: the extra frames_path argument makes headless emit a
         # per-generation replay payload alongside the result (ADR-0028 §2.2).

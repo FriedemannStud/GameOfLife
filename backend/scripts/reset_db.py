@@ -5,7 +5,7 @@ import sys
 # Add backend root to path so `app` is importable when run directly.
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.database import get_db, DB_NAME
+from app.database import DB_NAME, get_db
 
 # KI-Agent unterstützt: Clean-slate reset before the fair (ADR-0027, FR-11).
 # Clears players + submissions and (re)creates the unique ownership index.

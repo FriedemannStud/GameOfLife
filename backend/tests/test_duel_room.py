@@ -1,21 +1,21 @@
-import sys
-import os
-import uuid
 import asyncio
+import os
+import sys
+import uuid
 
 # Add app to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database import get_db
-from app.models import Config
 from app.duel_service import (
+    DuelError,
     create_room,
+    get_room,
     join_room,
     lock_choice,
-    get_room,
     request_rematch,
-    DuelError,
 )
+from app.models import Config
 
 # KI-Agent unterstützt: Duel-room lifecycle test (ADR-0028, Step 2.2). Drives the
 # service layer directly against the configured MONGODB_DB. Uses unique player ids
@@ -121,9 +121,7 @@ async def run_lifecycle():
             await db.duel_rooms.delete_many({"room_id": room_id})
             await db.duels.delete_many({"room_id": room_id})
         # Defensive: ensure nothing from this run survives.
-        leftover = await db.duel_rooms.count_documents(
-            {"red.player_id": RED}
-        )
+        leftover = await db.duel_rooms.count_documents({"red.player_id": RED})
         assert leftover == 0, f"leftover rooms for {RED}: {leftover}"
         print("OK: Cleaned up test rooms.")
 

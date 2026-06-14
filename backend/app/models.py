@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field
-from typing import List, Tuple, Optional
 from datetime import datetime
+from typing import List, Optional, Tuple
+
+from pydantic import BaseModel, Field
 
 # KI-Agent unterstützt: Extended Pydantic models for MongoDB persistence and Matchmaking
 

@@ -1,10 +1,10 @@
-import sys
 import os
+import sys
 
 # Add app to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.models import Submission, Metadata, Config
+from app.models import Config, Metadata, Submission
 from app.validators import validate_biotope_rules
 
 # KI-Agent unterstützt: Simple test script for validators

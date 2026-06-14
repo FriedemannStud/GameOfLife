@@ -1,14 +1,14 @@
-import sys
-import os
-import uuid
 import asyncio
+import os
+import sys
+import uuid
 
 # Add app to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.database import get_db
 from app.auth_utils import hash_recovery_code
-from app.duel_service import get_my_record, DuelError
+from app.database import get_db
+from app.duel_service import DuelError, get_my_record
 
 # KI-Agent unterstützt: Personal duel-record aggregation test (ADR-0028, Step 4.1).
 # Seeds a handful of duels docs for one identity, asserts head-to-head, best-weapon

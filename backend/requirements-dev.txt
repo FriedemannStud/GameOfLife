@@ -1,0 +1,7 @@
+# KI-Agent unterstützt
+# Development-only tooling (formatter + linter). Not needed at runtime, so it is
+# kept out of requirements.txt and the slim backend/matchmaker images.
+# Install with: python3 -m pip install -r requirements-dev.txt
+-r requirements.txt
+black==24.10.0
+ruff==0.15.17

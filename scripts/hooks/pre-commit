@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# KI-Agent unterstützt
+# Pre-commit hook: block a commit if any staged Python file is not formatted
+# (black) or fails linting (ruff). Configuration is read from the project-root
+# pyproject.toml; tooling is pinned in backend/requirements-dev.txt.
+#
+# Activate once per clone:
+#     git config core.hooksPath scripts/hooks
+#
+# Tools are looked up in this order: the project .venv, then whatever black/ruff
+# is on PATH. No network access required.
+
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+# Resolve black/ruff: prefer the project venv, fall back to PATH.
+if [ -x ".venv/bin/black" ] && [ -x ".venv/bin/ruff" ]; then
+    black=".venv/bin/black"
+    ruff=".venv/bin/ruff"
+elif command -v black >/dev/null 2>&1 && command -v ruff >/dev/null 2>&1; then
+    black="black"
+    ruff="ruff"
+else
+    echo "pre-commit: black/ruff not found." >&2
+    echo "  Install them with:" >&2
+    echo "    python3 -m venv .venv && .venv/bin/pip install -r backend/requirements-dev.txt" >&2
+    exit 1
+fi
+
+# Collect staged Python files (added/copied/modified), skipping deletions.
+mapfile -t staged < <(git diff --cached --name-only --diff-filter=ACM -- '*.py')
+
+if [ "${#staged[@]}" -eq 0 ]; then
+    exit 0
+fi
+
+status=0
+
+if ! "$black" --check --quiet "${staged[@]}"; then
+    echo "" >&2
+    echo "pre-commit: black would reformat staged files. Fix with:" >&2
+    echo "    $black ${staged[*]}" >&2
+    status=1
+fi
+
+if ! "$ruff" check --quiet "${staged[@]}"; then
+    echo "" >&2
+    echo "pre-commit: ruff found issues in staged files. Fix with:" >&2
+    echo "    $ruff check --fix ${staged[*]}" >&2
+    status=1
+fi
+
+if [ "$status" -ne 0 ]; then
+    echo "" >&2
+    echo "Commit aborted. Re-stage the fixed files and commit again." >&2
+fi
+
+exit "$status"

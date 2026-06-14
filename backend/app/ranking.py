@@ -11,7 +11,8 @@ def calculate_elo(
         rating_a: Current Elo rating of player A.
         rating_b: Current Elo rating of player B.
         score_a: Outcome for player A (1.0 for win, 0.5 for draw, 0.0 for loss).
-        matches_played_a: Number of matches player A has played (used for dynamic K-factor).
+        matches_played_a: Number of matches player A has played (used for the
+            dynamic K-factor).
 
     Returns:
         The new Elo rating for player A as an integer.

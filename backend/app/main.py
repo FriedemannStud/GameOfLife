@@ -1,18 +1,20 @@
+from datetime import datetime
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from datetime import datetime
 from pymongo.errors import DuplicateKeyError, OperationFailure
-from .models import Submission, DBSubmission, Player
-from .validators import validate_biotope_rules
-from .database import get_db
-from .grid_utils import cells_to_grid
+
 from .auth_utils import (
-    normalize_nickname,
     generate_recovery_code,
     hash_recovery_code,
+    normalize_nickname,
 )
+from .database import get_db
 from .duel_router import router as duel_router
+from .grid_utils import cells_to_grid
+from .models import DBSubmission, Player, Submission
+from .validators import validate_biotope_rules
 
 # KI-Agent unterstützt: Biotope Backend with MongoDB integration for Matchmaking
 
@@ -21,7 +23,7 @@ app = FastAPI(title="Biotope API")
 # KI-Agent unterstützt: Enable CORS for Mobile Web Editor
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Allow all origins for MVP / Mobile access
+    allow_origins=["*"],  # Allow all origins for MVP / Mobile access
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -31,6 +33,7 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_db_client():
     from .database import check_connection
+
     if await check_connection():
         print("Successfully connected to MongoDB!")
         await _ensure_nickname_index(get_db().players)
@@ -77,6 +80,7 @@ async def _ensure_nickname_index(players):
 @app.get("/")
 async def root():
     return {"message": "Hello Biotope"}
+
 
 # KI-Agent unterstützt: Serve web editor as static files
 app.mount("/editor", StaticFiles(directory="web/editor"), name="editor")
@@ -191,12 +195,15 @@ async def get_submission_count():
 async def get_leaderboard():
     try:
         db = get_db()
-        # KI-Agent unterstützt: Per-configuration leaderboard read from `submissions` (ADR-0025).
-        # Each active, already-ranked submission is its own row with its own stats and seed
-        # icon. This avoids the per-nickname last-write-wins aggregation on `players`, where a
-        # player's weakest submission would overwrite the displayed stats.
+        # KI-Agent unterstützt: Per-configuration leaderboard read from
+        # `submissions` (ADR-0025). Each active, already-ranked submission is its
+        # own row with its own stats and seed icon. This avoids the per-nickname
+        # last-write-wins aggregation on `players`, where a player's weakest
+        # submission would overwrite the displayed stats.
         submissions = (
-            await db.submissions.find({"status": "active", "matches_played": {"$gt": 0}})
+            await db.submissions.find(
+                {"status": "active", "matches_played": {"$gt": 0}}
+            )
             .sort([("win_rate", -1), ("avg_stable_generation", 1)])
             .limit(20)
             .to_list(length=20)
@@ -204,17 +211,22 @@ async def get_leaderboard():
 
         leaderboard = []
         for position, s in enumerate(submissions, start=1):
-            leaderboard.append({
-                "rank": position,
-                "name": s["metadata"]["nickname"],
-                "win_rate": round(s.get("win_rate", 0.0) * 100, 1),
-                "wins": s.get("wins", 0),
-                "draws": s.get("draws", 0),
-                "losses": s.get("losses", 0),
-                "avg_stable_generation": round(s.get("avg_stable_generation", 0.0), 1),
-                # KI-Agent unterstützt: Dense 8x8 start configuration for the leaderboard icon (ADR-0025)
-                "seed": cells_to_grid(s.get("config", {}).get("cells", [])),
-            })
+            leaderboard.append(
+                {
+                    "rank": position,
+                    "name": s["metadata"]["nickname"],
+                    "win_rate": round(s.get("win_rate", 0.0) * 100, 1),
+                    "wins": s.get("wins", 0),
+                    "draws": s.get("draws", 0),
+                    "losses": s.get("losses", 0),
+                    "avg_stable_generation": round(
+                        s.get("avg_stable_generation", 0.0), 1
+                    ),
+                    # KI-Agent unterstützt: Dense 8x8 start configuration for
+                    # the leaderboard icon (ADR-0025)
+                    "seed": cells_to_grid(s.get("config", {}).get("cells", [])),
+                }
+            )
 
         return {"leaderboard": leaderboard}
     except Exception as e:
@@ -227,7 +239,10 @@ async def get_epoch_highlights():
         db = get_db()
         # Fetch the most recent epoch highlight document
         highlight_doc = (
-            await db.epoch_highlights.find({}).sort("timestamp", -1).limit(1).to_list(length=1)
+            await db.epoch_highlights.find({})
+            .sort("timestamp", -1)
+            .limit(1)
+            .to_list(length=1)
         )
 
         if not highlight_doc:

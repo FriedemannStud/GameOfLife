@@ -1,0 +1,16 @@
+# KI-Agent unterstützt
+# Shared formatter/linter configuration so `black .` and `ruff check .`
+# behave identically on every host, container and CI runner.
+# Line length 88 = black's default (DEV_TASKS-0028 specified a plain `black .`).
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+# E/W = pycodestyle, F = pyflakes, I = import sorting.
+select = ["E", "F", "W", "I"]

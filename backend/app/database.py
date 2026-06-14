@@ -1,6 +1,7 @@
 import os
-from motor.motor_asyncio import AsyncIOMotorClient
+
 from dotenv import load_dotenv
+from motor.motor_asyncio import AsyncIOMotorClient
 
 # KI-Agent unterstützt: Database connection setup for MongoDB
 

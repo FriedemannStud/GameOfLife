@@ -22,9 +22,10 @@ all AI-authored blocks carry `// KI-Agent unterstützt` (or `# KI-Agent unterst�
 > polish (WASM replay, soundtrack, guest-claim). Each phase is a safe stopping point.
 
 > **Status (2026-06-14):** Phases 1–6 implemented and interactively verified. Phase 6.2 was
-> delivered via the **server frame-payload** path (not WASM — `emcc` unavailable). Phase 7 DoD is
-> done except the formatter/linter run (`black`/`ruff` not installed here), the final two-phone
-> acceptance loop (7.3), and the commit/PR — all left to the developer.
+> delivered via the **server frame-payload** path (not WASM — `emcc` unavailable). The
+> formatter/linter run is now **done** (`black --check .` + `ruff check .` both pass; see Step 7.1).
+> Phase 7 DoD remains only: the final two-phone acceptance loop (7.3) and the commit/PR — both
+> left to the developer.
 
 ---
 
@@ -272,8 +273,14 @@ all AI-authored blocks carry `// KI-Agent unterstützt` (or `# KI-Agent unterst�
         `black --check .` and `ruff check .` in `backend/`.
         **Result:** All unit/service tests pass (duel, validators, auth, ranking, oscillator with
         `PYTHONPATH=/app`, system_integration). `test_name_claiming` targets a separate `:8001`
-        test server (not a regression). ⚠️ `black`/`ruff` are **not installed** here (host or
-        container) — the formatter/linter run is **still outstanding**, to be done elsewhere.
+        test server (not a regression). ✅ `black --check .` and `ruff check .` now **both pass**.
+        Setup made reproducible: `black`/`ruff` are pinned in `backend/requirements-dev.txt` and
+        configured (line-length 88, `E/F/W/I`) in a project-root `pyproject.toml`; install via
+        `python3 -m pip install -r backend/requirements-dev.txt` (in a venv). The run reformatted 8
+        files, ruff auto-fixed 36 issues (imports, whitespace, unused imports), and 12 over-long
+        comments/docstrings/log f-strings were rewrapped by hand. A version-controlled pre-commit
+        hook (`scripts/hooks/pre-commit`) now enforces both on staged `*.py`; activate it once per
+        clone with `git config core.hooksPath scripts/hooks`.
 
 - [x] **Step 7.2: End-to-end integration test**
     - [x] **Action:** Add a `test_duel_integration.py` that, against a running backend with built

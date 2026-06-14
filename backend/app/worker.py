@@ -1,13 +1,14 @@
 import asyncio
+import json
 import logging
 import os
 import sys
-import json
 import tempfile
-from datetime import datetime
 from collections import deque
-from bson import ObjectId
+from datetime import datetime
+
 import numpy as np
+from bson import ObjectId
 
 # Path management MUST be first
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -25,41 +26,41 @@ logger = logging.getLogger("epoch_worker")
 # the kiosk seed placement in app_state_manager.c (KIOSK_SIM_ROWS/COLS).
 # ---------------------------------------------------------------------------
 # KI-Agent unterstützt
-_KIOSK_ROWS     = 8     # LOCAL_GRID_SIZE
-_KIOSK_COLS     = 16    # LOCAL_GRID_SIZE * 2
-_SEED_SIZE      = 8
-_RED_ORIGIN     = (0, 0)   # left half:  rows 0-7, cols 0-7
-_BLUE_ORIGIN    = (0, 8)   # right half: rows 0-7, cols 8-15
-_TEAM_RED       = 1
-_TEAM_BLUE      = 2
-_DEAD           = 0
-_MAX_PERIOD     = 5
+_KIOSK_ROWS = 8  # LOCAL_GRID_SIZE
+_KIOSK_COLS = 16  # LOCAL_GRID_SIZE * 2
+_SEED_SIZE = 8
+_RED_ORIGIN = (0, 0)  # left half:  rows 0-7, cols 0-7
+_BLUE_ORIGIN = (0, 8)  # right half: rows 0-7, cols 8-15
+_TEAM_RED = 1
+_TEAM_BLUE = 2
+_DEAD = 0
+_MAX_PERIOD = 5
 _CONFIRM_CYCLES = 2
 
 
 def _step_numpy(grid: np.ndarray) -> np.ndarray:
     """One generation of two-team Conway rules with toroidal (wrap-around) boundary."""
     # KI-Agent unterstützt: Translated from update_generation() in game_logic.c
-    red    = (grid == _TEAM_RED).astype(np.int16)
-    blue   = (grid == _TEAM_BLUE).astype(np.int16)
-    red_n  = np.zeros(grid.shape, dtype=np.int16)
+    red = (grid == _TEAM_RED).astype(np.int16)
+    blue = (grid == _TEAM_BLUE).astype(np.int16)
+    red_n = np.zeros(grid.shape, dtype=np.int16)
     blue_n = np.zeros(grid.shape, dtype=np.int16)
 
     for dr in (-1, 0, 1):
         for dc in (-1, 0, 1):
             if dr == 0 and dc == 0:
                 continue
-            red_n  += np.roll(np.roll(red,  dr, axis=0), dc, axis=1)
+            red_n += np.roll(np.roll(red, dr, axis=0), dc, axis=1)
             blue_n += np.roll(np.roll(blue, dr, axis=0), dc, axis=1)
 
-    total_n  = red_n + blue_n
-    alive    = grid != _DEAD
-    survives = alive  & ((total_n == 2) | (total_n == 3))
-    born     = ~alive & (total_n == 3)
+    total_n = red_n + blue_n
+    alive = grid != _DEAD
+    survives = alive & ((total_n == 2) | (total_n == 3))
+    born = ~alive & (total_n == 3)
 
     new_grid = np.zeros_like(grid)
     new_grid[survives] = grid[survives]
-    new_grid[born]     = np.where(red_n[born] > blue_n[born], _TEAM_RED, _TEAM_BLUE)
+    new_grid[born] = np.where(red_n[born] > blue_n[born], _TEAM_RED, _TEAM_BLUE)
     return new_grid
 
 
@@ -73,25 +74,25 @@ def is_oscillating_match(red_seed: list, blue_seed: list, max_generations: int) 
 
     r0_r, c0_r = _RED_ORIGIN
     r0_b, c0_b = _BLUE_ORIGIN
-    seed_r = np.array(red_seed,  dtype=np.int8).reshape(_SEED_SIZE, _SEED_SIZE)
+    seed_r = np.array(red_seed, dtype=np.int8).reshape(_SEED_SIZE, _SEED_SIZE)
     seed_b = np.array(blue_seed, dtype=np.int8).reshape(_SEED_SIZE, _SEED_SIZE)
     grid[r0_r : r0_r + _SEED_SIZE, c0_r : c0_r + _SEED_SIZE] = seed_r * _TEAM_RED
     grid[r0_b : r0_b + _SEED_SIZE, c0_b : c0_b + _SEED_SIZE] = seed_b * _TEAM_BLUE
 
-    buf_size   = _MAX_PERIOD * _CONFIRM_CYCLES + 1  # 11 state snapshots
-    state_buf  = deque(maxlen=buf_size)
+    buf_size = _MAX_PERIOD * _CONFIRM_CYCLES + 1  # 11 state snapshots
+    state_buf = deque(maxlen=buf_size)
     prev_state: bytes = b""
 
     for _ in range(max_generations):
-        grid       = _step_numpy(grid)
+        grid = _step_numpy(grid)
         curr_state = grid.tobytes()
-        if curr_state == prev_state:   # Truly static (period-1): not an oscillator
+        if curr_state == prev_state:  # Truly static (period-1): not an oscillator
             return False
         state_buf.append(curr_state)
         prev_state = curr_state
 
     buf = list(state_buf)
-    n   = len(buf)
+    n = len(buf)
     for p in range(2, _MAX_PERIOD + 1):
         if n >= 2 * p + 1:
             if buf[-1] == buf[-1 - p] == buf[-1 - 2 * p]:
@@ -106,64 +107,74 @@ def filter_highlights_by_oscillation(highlights: list, max_generations: int) -> 
     """
     # KI-Agent unterstützt
     non_osc = []
-    osc     = []
+    osc = []
     for h in highlights:
         if is_oscillating_match(h["red_seed"], h["blue_seed"], max_generations):
             logger.info(
                 "Oscillator detected: %s vs %s (metric_value=%.0f)",
-                h.get("red_name", "?"), h.get("blue_name", "?"),
-                h.get("metric_value", 0)
+                h.get("red_name", "?"),
+                h.get("blue_name", "?"),
+                h.get("metric_value", 0),
             )
             osc.append(h)
         else:
             non_osc.append(h)
     logger.info(
         "Highlight filter: %d non-oscillating, %d oscillating (of %d candidates)",
-        len(non_osc), len(osc), len(highlights)
+        len(non_osc),
+        len(osc),
+        len(highlights),
     )
     return non_osc + osc
+
 
 async def execute_epoch(db):
     """
     Executes a full tournament epoch using the C-Hyper-Worker.
     """
     logger.info("Starting Tournament Epoch...")
-    
+
     # 1. Fetch all active submissions
     # We use a large length limit for the university exhibition (up to 1000)
     submissions = await db.submissions.find({"status": "active"}).to_list(length=1000)
-    
+
     if len(submissions) < 2:
-        logger.info(f"Not enough submissions for a tournament (Found: {len(submissions)}). Skipping.")
+        logger.info(
+            f"Not enough submissions for a tournament "
+            f"(Found: {len(submissions)}). Skipping."
+        )
         return
 
     # 2. Prepare input batch
-    batch_input = {
-        "max_generations": 1000,
-        "competitors": []
-    }
-    
+    batch_input = {"max_generations": 1000, "competitors": []}
+
     for s in submissions:
-        batch_input["competitors"].append({
-            "player_id": str(s["_id"]),
-            "cells": s["config"]["cells"]
-        })
+        batch_input["competitors"].append(
+            {"player_id": str(s["_id"]), "cells": s["config"]["cells"]}
+        )
 
     # Create temp files
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f_in:
         json.dump(batch_input, f_in)
         input_path = f_in.name
-    
+
     output_path = input_path + ".out.json"
 
     try:
         # 3. Run biotope_hyper_worker
         # KI-Agent unterstützt: Check in multiple locations for Docker/Local flexibility
-        possible_paths = ["./build/biotope_hyper_worker", "/app/build/biotope_hyper_worker", "./biotope_hyper_worker"]
+        possible_paths = [
+            "./build/biotope_hyper_worker",
+            "/app/build/biotope_hyper_worker",
+            "./biotope_hyper_worker",
+        ]
         binary_path = next((p for p in possible_paths if os.path.exists(p)), None)
-        
+
         if not binary_path:
-            logger.error(f"Binary not found. Checked: {possible_paths}. Did you run 'make' before starting docker-compose?")
+            logger.error(
+                f"Binary not found. Checked: {possible_paths}. "
+                f"Did you run 'make' before starting docker-compose?"
+            )
             return
 
         process = await asyncio.create_subprocess_exec(
@@ -188,39 +199,50 @@ async def execute_epoch(db):
         with open(output_path, "r") as f_out:
             results = json.load(f_out)
 
-        logger.info(f"Epoch finished. Matches played: {results['total_matches_played']}")
+        logger.info(
+            f"Epoch finished. Matches played: {results['total_matches_played']}"
+        )
 
         # Store Highlights
         epoch_id = f"epoch_{int(datetime.utcnow().timestamp())}"
-        # KI-Agent unterstützt: Resolve UUID player_ids to human-readable nicknames (ADR-0021 bugfix)
+        # KI-Agent unterstützt: Resolve UUID player_ids to human-readable
+        # nicknames (ADR-0021 bugfix)
         id_to_nickname = {str(s["_id"]): s["metadata"]["nickname"] for s in submissions}
         highlights_data = []
-        # KI-Agent unterstützt: Filter oscillating patterns before storing highlights (ADR-0023)
+        # KI-Agent unterstützt: Filter oscillating patterns before storing
+        # highlights (ADR-0023)
         _raw_highlights = results.get("highlights", [])
         _filtered_highlights = filter_highlights_by_oscillation(
             _raw_highlights, batch_input["max_generations"]
         )
         for h in _filtered_highlights:
-            highlights_data.append({
-                "metric_type": "activity_sum",
-                "red_name": id_to_nickname.get(h["red_name"], h["red_name"]),
-                "blue_name": id_to_nickname.get(h["blue_name"], h["blue_name"]),
-                "red_seed": h["red_seed"],
-                "blue_seed": h["blue_seed"],
-                "metric_value": h["metric_value"]
-            })
-        
+            highlights_data.append(
+                {
+                    "metric_type": "activity_sum",
+                    "red_name": id_to_nickname.get(h["red_name"], h["red_name"]),
+                    "blue_name": id_to_nickname.get(h["blue_name"], h["blue_name"]),
+                    "red_seed": h["red_seed"],
+                    "blue_seed": h["blue_seed"],
+                    "metric_value": h["metric_value"],
+                }
+            )
+
         if highlights_data:
-            await db.epoch_highlights.insert_one({
-                "epoch_id": epoch_id,
-                "timestamp": datetime.utcnow(),
-                "highlights": highlights_data
-            })
+            await db.epoch_highlights.insert_one(
+                {
+                    "epoch_id": epoch_id,
+                    "timestamp": datetime.utcnow(),
+                    "highlights": highlights_data,
+                }
+            )
             logger.info(f"Stored {len(highlights_data)} highlights for {epoch_id}")
 
-        # KI-Agent unterstützt: Epoch-fresh ranking — no historical Elo, full round-robin data resets each epoch
+        # KI-Agent unterstützt: Epoch-fresh ranking — no historical Elo, full
+        # round-robin data resets each epoch
         for position, rank in enumerate(results["rankings"], start=1):
-            submission = next((s for s in submissions if str(s["_id"]) == rank["player_id"]), None)
+            submission = next(
+                (s for s in submissions if str(s["_id"]) == rank["player_id"]), None
+            )
 
             await db.submissions.update_one(
                 {"_id": ObjectId(rank["player_id"])},
@@ -234,9 +256,9 @@ async def execute_epoch(db):
                         "total_score": rank["total_score"],
                         "matches_played": rank["matches_played"],
                         "avg_stable_generation": rank["avg_stable_generation"],
-                        "last_epoch_at": datetime.utcnow()
+                        "last_epoch_at": datetime.utcnow(),
                     }
-                }
+                },
             )
 
             if submission:
@@ -252,7 +274,7 @@ async def execute_epoch(db):
                             "avg_stable_generation": rank["avg_stable_generation"],
                             "matches_played": rank["matches_played"],
                         }
-                    }
+                    },
                 )
 
         logger.info("Database updated with Epoch results.")
@@ -266,9 +288,11 @@ async def execute_epoch(db):
         if os.path.exists(output_path):
             os.remove(output_path)
 
+
 async def worker_loop():
     logger.info("Biotope Epoch Worker started.")
-    from app.database import get_db, check_connection
+    from app.database import check_connection
+
     if not await check_connection():
         logger.error("Could not connect to MongoDB. Worker exiting.")
         return
@@ -281,6 +305,7 @@ async def worker_loop():
         except Exception as e:
             logger.error(f"Fatal error in worker loop: {e}")
             await asyncio.sleep(10)
+
 
 if __name__ == "__main__":
     asyncio.run(worker_loop())

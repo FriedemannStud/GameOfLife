@@ -1,16 +1,16 @@
-import sys
-import os
-import json
-import uuid
 import asyncio
-import urllib.request
+import json
+import os
+import sys
 import urllib.error
+import urllib.request
+import uuid
 
 # Add app to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.database import get_db
 from app.auth_utils import normalize_nickname
+from app.database import get_db
 
 # KI-Agent unterstützt: End-to-end integration test for name-claiming (ADR-0027).
 # Requires a reachable backend (default http://localhost:8001) whose MONGODB_DB

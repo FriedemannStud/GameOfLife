@@ -1,14 +1,14 @@
-import sys
 import os
 import re
+import sys
 
 # Add app to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.auth_utils import (
-    normalize_nickname,
     generate_recovery_code,
     hash_recovery_code,
+    normalize_nickname,
 )
 
 # KI-Agent unterstützt: Unit tests for the name-claiming auth helpers (ADR-0027)

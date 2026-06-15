@@ -2,6 +2,7 @@ from datetime import datetime
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pymongo.errors import DuplicateKeyError, OperationFailure
 
@@ -77,9 +78,11 @@ async def _ensure_nickname_index(players):
             raise
 
 
+# KI-Agent unterstützt: serve the smartphone landing / title screen at the root,
+# which links onward to the editor and the shoulder-duel page.
 @app.get("/")
 async def root():
-    return {"message": "Hello Biotope"}
+    return FileResponse("web/landing/index.html")
 
 
 # KI-Agent unterstützt: Serve web editor as static files

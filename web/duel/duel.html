@@ -321,6 +321,13 @@
         }
         .verdict.lose { color: var(--team-red); text-shadow: 0 0 22px rgba(255,60,100,0.55); }
         .verdict.draw { color: var(--muted); }
+        /* KI-Agent unterstützt: live "FIGHT" banner during the match replay —
+           amber accent + the same pulse as the win verdict (Street-Fighter beat). */
+        .verdict.fight {
+            color: var(--amber);
+            text-shadow: 0 0 24px rgba(255,184,77,0.6);
+            animation: verdictPulse 1.4s ease-in-out infinite;
+        }
         @keyframes verdictPulse {
             0%, 100% { transform: scale(1); filter: brightness(1); }
             50% { transform: scale(1.04); filter: brightness(1.2); }
@@ -495,7 +502,7 @@
 
     <!-- Screen: VS splash + deterministic match replay (before the verdict) -->
     <section id="screen-vs" class="screen">
-        <div class="verdict draw" style="font-size:2.6rem;letter-spacing:10px">VS</div>
+        <div class="verdict fight" style="font-size:2.6rem;letter-spacing:10px">FIGHT</div>
         <div class="panel">
             <div class="vs-bar" style="margin-bottom:12px">
                 <span class="red" id="vs-red">Red</span>
@@ -520,7 +527,6 @@
                 <div class="gen-fill" id="vs-gen-fill"></div>
             </div>
         </div>
-        <div class="status-line" id="vs-status">Fight!</div>
     </section>
 
     <!-- Screen: Result -->
@@ -982,7 +988,6 @@
         document.getElementById('vs-pop-blue-bar').style.width = '0';
         document.getElementById('vs-gen').textContent = '0';
         document.getElementById('vs-gen-fill').style.width = '0';
-        document.getElementById('vs-status').textContent = 'Fight!';
         playBuildup();
         startReplay(room);
     }
@@ -1042,7 +1047,6 @@
                 drawReplayFrame(ctx, canvas, frames[lastGen],
                     rows, cols, cellW, cellH);
                 setGen(lastGen);
-                document.getElementById('vs-status').textContent = '';
                 vsTimer = setTimeout(() => enterResult(room), 600); // hold final frame
                 return;
             }

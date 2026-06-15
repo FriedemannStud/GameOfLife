@@ -1,3 +1,10 @@
+2026-06-15 — Mobile landing / title screen + cross-page navigation
+
+- `web/landing/index.html` (new): smartphone landing / title screen in the shared Modern-Retro "Digital Lab" theme (cyan/red palette, Orbitron/Rajdhani/Share-Tech-Mono, scanline veil, HUD bracket corners). Carries the project masthead (`// Conway Lab`, "Biotop: Wenn Zellkulturen den Kampf aufnehmen", "> von Friedemann Decker") and routes onward to the editor and the shoulder-duel page via two "mission-select" portal cards. A live red-vs-blue Game of Life runs as an ambient `<canvas>` backdrop (toroidal, majority-team birth color, reseeds on stagnation); each card carries its own tiny live-Conway preview; footer shows the global species counter (`/api/v1/stats/count`). Respects `prefers-reduced-motion` (disables backdrop + reveals).
+- `backend/app/main.py`: `GET /` now serves the landing page (`FileResponse("web/landing/index.html")`) instead of the JSON stub.
+- `web/editor/editor.html`: masthead trio removed (the landing now carries the branding); added a `« Zurück zum Lab` footer link back to `/`; dead masthead CSS (`.kicker`, `h1`, `.author`) pruned.
+- `web/duel/duel.html`: added a `« Back to Lab` footer link back to `/`. During the match replay the big banner now reads a pulsing amber **FIGHT** (new `.verdict.fight`, reusing the win-verdict `verdictPulse`) instead of "VS"; the small "Fight!" status line below the board was removed (element + both JS writes). The "Red VS Blue" matchup separator is unchanged.
+
 2026-06-14 — ADR-0028: Shoulder-Duel Mode (on-demand server-authoritative 1:1 duel)
 
 - New feature: a 1:1 duel between two co-located phones — pair (QR deep-link + 4-char room code) → blind config choice → the server runs the referee exactly once → WIN/LOSE → rematch → personal record. Built on the silent identity from ADR-0027.

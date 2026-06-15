@@ -11,6 +11,11 @@ before moving on.
 **Briefing Document:**
 - [ADR-0025: Per-Configuration Leaderboard with 8x8 Start-Config Icon](../adr/ADR-0025-leaderboard-per-config-and-seed-icon.md)
 
+> **Follow-up:** The `"+ N more"` overflow indicator introduced here counted only rows within the
+> 20-record cap, so it froze (observed `"+ 11 more"`) once ≥ 20 configs were ranked. This is
+> corrected in [ADR-0030](../adr/ADR-0030-honest-leaderboard-overflow-count.md) /
+> [DEV_TASKS-0030](./DEV_TASKS-0030-honest-leaderboard-overflow-count.md).
+
 ---
 
 ## Phase 0: Orientation Convention (read before coding)

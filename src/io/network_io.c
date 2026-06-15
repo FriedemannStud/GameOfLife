@@ -99,9 +99,16 @@ static void* fetch_leaderboard_thread(void* arg) {
                                 g_leaderboard.count++;
                             }
                         }
+                        // KI-Agent unterstützt: Honest overflow total; fall back to
+                        // parsed count for backends that don't send the field (ADR-0030)
+                        cJSON* total = cJSON_GetObjectItemCaseSensitive(root, "total_count");
+                        g_leaderboard.total_count = cJSON_IsNumber(total)
+                                                  ? total->valueint
+                                                  : g_leaderboard.count;
                         g_leaderboard.is_ready = true;
                         pthread_mutex_unlock(&g_network_mutex);
-                        printf("Leaderboard: Parsed %d entries\n", g_leaderboard.count);
+                        printf("Leaderboard: Parsed %d entries (total %d)\n",
+                               g_leaderboard.count, g_leaderboard.total_count);
                     } else {
                         printf("Leaderboard: Unexpected JSON format (no array)\n");
                     }

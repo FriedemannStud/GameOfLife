@@ -25,6 +25,9 @@ typedef struct {
 typedef struct {
     LeaderboardEntry entries[MAX_LEADERBOARD_ENTRIES];
     int count;
+    // KI-Agent unterstützt: true server-side total of eligible rows; may exceed
+    // MAX_LEADERBOARD_ENTRIES. `count` stays the number of parsed rows (ADR-0030)
+    int total_count;
     bool is_ready; // Flag indicating data is fresh and ready to consume
 } LeaderboardData;
 

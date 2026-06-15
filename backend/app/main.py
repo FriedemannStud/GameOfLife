@@ -206,10 +206,14 @@ async def get_leaderboard():
         # own row with its own stats and seed icon. This avoids the per-nickname
         # last-write-wins aggregation on `players`, where a player's weakest
         # submission would overwrite the displayed stats.
+        # KI-Agent unterstützt: count and list must share one filter so the
+        # honest "+N more" total can never disagree with the returned rows (ADR-0030)
+        query = {"status": "active", "matches_played": {"$gt": 0}}
+
+        total_count = await db.submissions.count_documents(query)
+
         submissions = (
-            await db.submissions.find(
-                {"status": "active", "matches_played": {"$gt": 0}}
-            )
+            await db.submissions.find(query)
             .sort([("win_rate", -1), ("avg_stable_generation", 1)])
             .limit(20)
             .to_list(length=20)
@@ -234,7 +238,9 @@ async def get_leaderboard():
                 }
             )
 
-        return {"leaderboard": leaderboard}
+        # KI-Agent unterstützt: true server-side total for the honest "+N more"
+        # overflow indicator; may exceed the 20 returned rows (ADR-0030)
+        return {"leaderboard": leaderboard, "total_count": total_count}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Leaderboard error: {str(e)}")
 

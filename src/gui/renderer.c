@@ -1345,14 +1345,22 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
     int rowHeight      = entries_area_h / 10;
     if (rowHeight < 28) rowHeight = 28;
 
-    int total_entries = ctrl->cached_lb.count;
-    if (total_entries > MAX_LEADERBOARD_ENTRIES) total_entries = MAX_LEADERBOARD_ENTRIES;
+    // KI-Agent unterstützt: Overflow counts the true server-side total, not the
+    // 20-capped parsed rows, so "+N more" no longer freezes at 20-show_count (ADR-0030)
+    int parsed_entries = ctrl->cached_lb.count;
+    if (parsed_entries > MAX_LEADERBOARD_ENTRIES) parsed_entries = MAX_LEADERBOARD_ENTRIES;
+
+    int true_total = ctrl->cached_lb.total_count;
+    if (true_total < parsed_entries) true_total = parsed_entries;  // non-atomic-read safety clamp
+
     int max_fit      = entries_area_h / rowHeight;
-    int show_count   = total_entries;
+    int show_count   = parsed_entries;
     int hidden_count = 0;
-    if (total_entries > max_fit) {
-        show_count   = max_fit - 1;  // reserve last slot for "+N more" line
-        hidden_count = total_entries - show_count;
+    // Clip when rows overflow the screen, or when more eligible rows exist server-side.
+    if (parsed_entries > max_fit || true_total > parsed_entries) {
+        show_count   = (parsed_entries > max_fit) ? max_fit - 1  // reserve last slot for "+N more"
+                                                  : parsed_entries;
+        hidden_count = true_total - show_count;
     }
 
     // KI-Agent unterstützt: Proportional column layout — 80% of screen width, 10% margins (ADR-0022)
@@ -1378,7 +1386,7 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
     DrawLine(table_x, startY + layout.font_header + 5,
              table_x + table_w, startY + layout.font_header + 5, THEME_GRID);
 
-    if (total_entries > 0) {
+    if (parsed_entries > 0) {
         for (int i = 0; i < show_count; i++) {
             int y = startY + layout.font_header + 20 + i * rowHeight;
             char rankBuf[8];

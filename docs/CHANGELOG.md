@@ -1,3 +1,11 @@
+2026-06-15 — ADR-0030: Honest "+N more" leaderboard overflow count
+
+- Fix: the Kiosk "Global Leaderboard" `+N more` line froze (observed `+ 11 more`) once ≥ 20 configurations were ranked, because it was computed from the 20-row cap rather than the true total. It now reports the real number of additional ranked configurations.
+- `backend/app/main.py`: `get_leaderboard` factors its filter into one shared `query`, adds `total_count = count_documents(query)` over the same predicate, and returns it alongside `leaderboard` (verified live: `rows=20, total_count=27`).
+- `src/io/network_io.h`/`.c`: `LeaderboardData` gains `total_count` (distinct from the parsed-row `count`); the parser reads `total_count` with a fallback to `count` for older backends.
+- `src/gui/renderer.c`: `draw_kiosk_leaderboard` derives `hidden_count` from the true total and also emits the line when all parsed rows fit but more eligible rows exist server-side (`true_total >= parsed_entries` clamp guards the non-atomic count/list read). The geometric row cap and footer protection are unchanged.
+- Both 20-record caps are retained by design — only the count becomes honest. See ADR-0030; follow-up to ADR-0025.
+
 2026-06-15 — Mobile landing / title screen + cross-page navigation
 
 - `web/landing/index.html` (new): smartphone landing / title screen in the shared Modern-Retro "Digital Lab" theme (cyan/red palette, Orbitron/Rajdhani/Share-Tech-Mono, scanline veil, HUD bracket corners). Carries the project masthead (`// Conway Lab`, "Biotop: Wenn Zellkulturen den Kampf aufnehmen", "> von Friedemann Decker") and routes onward to the editor and the shoulder-duel page via two "mission-select" portal cards. A live red-vs-blue Game of Life runs as an ambient `<canvas>` backdrop (toroidal, majority-team birth color, reseeds on stagnation); each card carries its own tiny live-Conway preview; footer shows the global species counter (`/api/v1/stats/count`). Respects `prefers-reduced-motion` (disables backdrop + reveals).

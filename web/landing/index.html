@@ -115,6 +115,7 @@
         .reveal.d3 { animation-delay: 0.31s; }
         .reveal.d4 { animation-delay: 0.46s; }
         .reveal.d5 { animation-delay: 0.60s; }
+        .reveal.d6 { animation-delay: 0.74s; }
         @media (prefers-reduced-motion: reduce) {
             .reveal { opacity: 1; animation: none; }
             #life-bg { display: none; }
@@ -235,6 +236,11 @@
         .card-arena:hover {
             border-color: rgba(255,60,100,0.5);
             box-shadow: 0 26px 60px -26px rgba(0,0,0,0.9), 0 0 34px -10px rgba(255,60,100,0.6);
+        }
+        .card-codex { --c: var(--amber); }
+        .card-codex:hover {
+            border-color: rgba(255,184,77,0.5);
+            box-shadow: 0 26px 60px -26px rgba(0,0,0,0.9), 0 0 34px -10px rgba(255,184,77,0.6);
         }
 
         /* Mini live-preview grid inside each card */
@@ -357,9 +363,19 @@
             </div>
             <span class="card-arrow">»</span>
         </a>
+
+        <a class="card card-codex reveal d6" href="/mission/mission.html">
+            <div class="card-preview" id="preview-codex" aria-hidden="true"></div>
+            <div class="card-body">
+                <p class="card-tag">Codex</p>
+                <h2 class="card-title">Mission Statement</h2>
+                <p class="card-sub">Die Spielregeln des Biotops — Evolution, Revier &amp; Sieg.</p>
+            </div>
+            <span class="card-arrow">»</span>
+        </a>
     </nav>
 
-    <footer class="reveal d5">
+    <footer class="reveal d6">
         <span class="count">Bereits <strong id="global-counter">…</strong> Spezies im Biotop</span>
         <span class="build">v1.0 · biotop</span>
     </footer>
@@ -515,8 +531,10 @@
 
         const editor = document.getElementById('preview-editor');
         const arena = document.getElementById('preview-arena');
+        const codex = document.getElementById('preview-codex');
         if (editor) run(editor, () => 2, 0.30);                    // cyan-only lab
         if (arena) run(arena, () => (Math.random() < 0.5 ? 1 : 2), 0.34); // red vs blue
+        if (codex) run(codex, () => (Math.random() < 0.5 ? 1 : 2), 0.34); // red vs blue
     })();
 
     // KI-Agent unterstützt: global species counter (same endpoint as the editor).

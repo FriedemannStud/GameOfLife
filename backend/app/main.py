@@ -88,6 +88,9 @@ async def root():
 # KI-Agent unterstützt: Serve web editor as static files
 app.mount("/editor", StaticFiles(directory="web/editor"), name="editor")
 
+# KI-Agent unterstützt: Serve the Mission Statement (rules of Biotop) static page.
+app.mount("/mission", StaticFiles(directory="web/mission"), name="mission")
+
 # KI-Agent unterstützt: Serve the Shoulder-Duel page and its self-hosted assets
 # (soundtrack) as static files (ADR-0028).
 app.mount("/duel", StaticFiles(directory="web/duel"), name="duel")

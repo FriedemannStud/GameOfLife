@@ -332,6 +332,28 @@
             0%, 100% { transform: scale(1); filter: brightness(1); }
             50% { transform: scale(1.04); filter: brightness(1.2); }
         }
+        /* KI-Agent unterstützt: 3-2-1 countdown overlay, centered over the replay
+           canvas. Amber matches the FIGHT banner; one "pop" per number (1s each). */
+        .replay-stage { position: relative; }
+        .countdown {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: var(--font-mono);
+            font-weight: bold;
+            font-size: 5.5rem;
+            line-height: 1;
+            color: var(--amber);
+            text-shadow: 0 0 24px rgba(255,184,77,0.6);
+            pointer-events: none;
+            animation: countdownPop 1s ease-out;
+        }
+        @keyframes countdownPop {
+            0%   { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+            25%  { opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0.85; }
+        }
         .pop-bar {
             display: flex;
             justify-content: space-around;
@@ -502,15 +524,20 @@
 
     <!-- Screen: VS splash + deterministic match replay (before the verdict) -->
     <section id="screen-vs" class="screen">
-        <div class="verdict fight" style="font-size:2.6rem;letter-spacing:10px">FIGHT</div>
+        <div id="vs-fight" class="verdict fight" style="font-size:2.6rem;letter-spacing:10px" hidden>FIGHT</div>
         <div class="panel">
             <div class="vs-bar" style="margin-bottom:12px">
                 <span class="red" id="vs-red">Red</span>
                 <span class="vs">VS</span>
                 <span class="blue" id="vs-blue">Blue</span>
             </div>
-            <canvas id="replay-canvas" width="320" height="160"
-                style="width:100%;height:auto;background:#0d0f13;border-radius:8px;display:block;image-rendering:pixelated"></canvas>
+            <!-- KI-Agent unterstützt: relative stage so the 3-2-1 countdown can be
+                 centered over the board (mirrors the C GUI's STATE_IGNITION). -->
+            <div class="replay-stage">
+                <canvas id="replay-canvas" width="320" height="160"
+                    style="width:100%;height:auto;background:#0d0f13;border-radius:8px;display:block;image-rendering:pixelated"></canvas>
+                <div id="vs-countdown" class="countdown" hidden></div>
+            </div>
             <div class="pop-meter" style="margin:12px 0 0" aria-hidden="true">
                 <div class="seg red" id="vs-pop-red-bar"></div>
                 <div class="seg blue" id="vs-pop-blue-bar"></div>
@@ -580,7 +607,7 @@
         <div id="player-tag"></div>
         <!-- KI-Agent unterstützt: back to the Conway Lab landing/title screen -->
         <div style="margin-top:6px">
-            <a class="link-btn" href="/">« Back to Lab</a>
+            <a id="link-lab" class="link-btn" href="/">« Back to Lab</a>
         </div>
         <div style="margin-top:6px">
             <button id="btn-mute" class="link-btn">♪ Sound: on</button>
@@ -643,6 +670,7 @@
     let myConfigLabel = null;       // label of the locked choice (for My Duels)
     let rematchRequested = false;
     let vsTimer = null;             // VS-splash -> result transition timer
+    let countdownTimer = null;      // 3-2-1 countdown ticker before the replay
 
     // ---- Helpers -----------------------------------------------------------
     function showScreen(id) {
@@ -689,11 +717,17 @@
 
     function unlockAudio() {
         if (audioUnlocked || !duelAudio) return;
+        // KI-Agent unterstützt: the play()/pause() unlock has an audible window on
+        // mobile (pause only runs once play() resolves, which is slow there), so the
+        // soundtrack would blip on the very first tap (e.g. "Start Duel"). Mute for
+        // the unlock and restore before the real start (playBuildup) after the count.
+        duelAudio.muted = true;
         duelAudio.play().then(() => {
             duelAudio.pause();
             duelAudio.currentTime = 0;
+            duelAudio.muted = false;
             audioUnlocked = true;
-        }).catch(() => { /* gesture not enough yet; retry on next tap */ });
+        }).catch(() => { duelAudio.muted = false; /* gesture not enough yet; retry */ });
         document.removeEventListener('pointerdown', unlockAudio);
     }
     document.addEventListener('pointerdown', unlockAudio);
@@ -717,10 +751,40 @@
         if (!duelAudio) return;
         try { duelAudio.pause(); duelAudio.currentTime = 0; } catch (e) { /* ignore */ }
     }
+    // KI-Agent unterstützt: gentle ~600 ms volume ramp-down when leaving the result
+    // (REMATCH / MY DUELS / NEW DUEL / Back to Lab), instead of the abrupt stopAudio.
+    // Restores the volume afterwards so the next playBuildup/playPayoff starts clean.
+    let fadeTimer = null;
+    function fadeOutAudio(onDone) {
+        if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
+        if (!duelAudio || duelAudio.paused) { stopAudio(); if (onDone) onDone(); return; }
+        const startVol = duelAudio.volume;
+        const steps = 24, stepMs = 25;      // ~600 ms total
+        let i = 0;
+        fadeTimer = setInterval(() => {
+            i++;
+            const v = startVol * (1 - i / steps);
+            duelAudio.volume = v > 0 ? v : 0;
+            if (i >= steps) {
+                clearInterval(fadeTimer); fadeTimer = null;
+                stopAudio();
+                duelAudio.volume = startVol; // restore for the next match
+                if (onDone) onDone();
+            }
+        }, stepMs);
+    }
     document.getElementById('btn-mute').addEventListener('click', () => {
         soundOn = !soundOn;
         document.getElementById('btn-mute').textContent = '♪ Sound: ' + (soundOn ? 'on' : 'off');
         if (!soundOn) stopAudio();
+    });
+    // KI-Agent unterstützt: fade the soundtrack out before following the "Back to
+    // Lab" link, then navigate. If nothing is playing, let the link behave normally.
+    document.getElementById('link-lab').addEventListener('click', (e) => {
+        if (!duelAudio || duelAudio.paused) return;
+        e.preventDefault();
+        const href = e.currentTarget.getAttribute('href');
+        fadeOutAudio(() => { window.location.href = href; });
     });
 
     // ---- Polling -----------------------------------------------------------
@@ -988,23 +1052,88 @@
         document.getElementById('vs-pop-blue-bar').style.width = '0';
         document.getElementById('vs-gen').textContent = '0';
         document.getElementById('vs-gen-fill').style.width = '0';
-        playBuildup();
-        startReplay(room);
+        setFightVisible(false);     // KI-Agent: FIGHT appears only after the count
+        clearReplayCanvas();        // dark board behind the countdown until frame 0
+        startReplay(room);          // music starts on "FIGHT", not during the count
     }
 
+    // KI-Agent unterstützt: the duel opens with a centered 3-2-1 countdown over the
+    // board (mirrors the C GUI's STATE_IGNITION). The frames are fetched in parallel
+    // so network latency hides behind the count; the replay starts only once the
+    // count reaches zero. Frame 0 is drawn as soon as it arrives.
     async function startReplay(room) {
-        let data = null;
-        try {
-            const res = await api('GET', '/api/v1/duel/rooms/' + roomId + '/frames');
-            if (res.ok && res.data && res.data.frames) data = res.data;
-        } catch (e) { /* fall back below */ }
-        if (currentScreen !== 'vs') return;     // user navigated away while fetching
-        if (!data) {
-            if (vsTimer) clearTimeout(vsTimer);
-            vsTimer = setTimeout(() => enterResult(room), VS_SPLASH_MS);
-            return;
+        let frameData = null;
+        const fetchPromise = (async () => {
+            try {
+                const res = await api('GET', '/api/v1/duel/rooms/' + roomId + '/frames');
+                if (res.ok && res.data && res.data.frames) frameData = res.data;
+            } catch (e) { /* fall back below */ }
+            if (frameData && currentScreen === 'vs') drawFrameZero(frameData);
+        })();
+
+        runCountdown(3, async () => {
+            await fetchPromise;                 // ensure the frames have resolved
+            if (currentScreen !== 'vs') return; // user navigated away
+            playBuildup();                      // KI-Agent: silence during the count,
+                                                // the soundtrack kicks in with "FIGHT"
+            if (!frameData) {
+                if (vsTimer) clearTimeout(vsTimer);
+                vsTimer = setTimeout(() => enterResult(room), VS_SPLASH_MS);
+                return;
+            }
+            setFightVisible(true);
+            animateReplay(frameData, room);
+        });
+    }
+
+    // KI-Agent unterstützt: 1s-per-number countdown (3 -> 2 -> 1, 3s total) over the
+    // replay canvas. Aborts cleanly when the user leaves the VS screen (same guard
+    // as animateReplay), then invokes done() to start the replay.
+    function runCountdown(from, done) {
+        const el = document.getElementById('vs-countdown');
+        let n = from;
+        function show(v) {
+            el.textContent = v;
+            el.hidden = false;
+            el.style.animation = 'none';
+            void el.offsetWidth;            // reflow so the pop animation re-runs
+            el.style.animation = '';
         }
-        animateReplay(data, room);
+        show(n);
+        function tick() {
+            if (currentScreen !== 'vs') { el.hidden = true; countdownTimer = null; return; }
+            n -= 1;
+            if (n >= 1) {
+                show(n);
+                countdownTimer = setTimeout(tick, 1000);
+            } else {
+                el.hidden = true;
+                countdownTimer = null;
+                done();
+            }
+        }
+        countdownTimer = setTimeout(tick, 1000);
+    }
+
+    function setFightVisible(on) {
+        document.getElementById('vs-fight').hidden = !on;
+    }
+
+    // KI-Agent unterstützt: clear the board to the display surface (frame 0 has not
+    // arrived yet), and paint frame 0 once the deterministic frames are fetched.
+    function clearReplayCanvas() {
+        const canvas = document.getElementById('replay-canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = REPLAY_BG;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function drawFrameZero(data) {
+        const canvas = document.getElementById('replay-canvas');
+        const ctx = canvas.getContext('2d');
+        const cellW = canvas.width / data.cols, cellH = canvas.height / data.rows;
+        drawReplayFrame(ctx, canvas, data.frames[0], data.rows, data.cols, cellW, cellH);
+        document.getElementById('vs-gen-total').textContent = data.frames.length - 1;
     }
 
     // KI-Agent unterstützt: the frame index is driven by the playback clock, not a
@@ -1088,6 +1217,7 @@
     // ---- Result ------------------------------------------------------------
     function enterResult(room) {
         if (vsTimer) { clearTimeout(vsTimer); vsTimer = null; }
+        if (countdownTimer) { clearTimeout(countdownTimer); countdownTimer = null; }
         showScreen('result');
         playPayoff();
         rematchRequested = false;
@@ -1140,6 +1270,7 @@
     document.getElementById('btn-rematch').addEventListener('click', async () => {
         if (rematchRequested) return;
         rematchRequested = true;
+        fadeOutAudio();
         document.getElementById('btn-rematch').disabled = true;
         document.getElementById('result-status').textContent =
             'Rematch requested — waiting for opponent…';
@@ -1161,7 +1292,8 @@
 
     function leaveToHome() {
         if (vsTimer) { clearTimeout(vsTimer); vsTimer = null; }
-        stopAudio();
+        if (countdownTimer) { clearTimeout(countdownTimer); countdownTimer = null; }
+        fadeOutAudio();
         roomId = null; mySlot = null; rematchRequested = false;
         showScreen('home');
     }
@@ -1208,6 +1340,7 @@
 
     function openMyDuels() {
         stopPoll();
+        fadeOutAudio();
         showScreen('duels');
         document.getElementById('duels-status').textContent = '';
         // Local-first: render instantly from localStorage.
@@ -1231,7 +1364,7 @@
 
         const bw = document.getElementById('best-weapon');
         if (rec.best_weapon && rec.best_weapon.seed) {
-            bw.innerHTML = '<p class="muted" style="text-align:center;margin:0 0 6px">Best weapon ('
+            bw.innerHTML = '<p class="muted" style="text-align:center;margin:0 0 6px">Best bio ('
                 + rec.best_weapon.wins + ' wins)</p>';
             const seed = document.createElement('div');
             seed.className = 'seed';

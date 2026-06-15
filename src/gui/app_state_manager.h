@@ -41,6 +41,13 @@ typedef struct {
 extern KioskController kiosk_ctrl;
 void reset_kiosk_timers(void);
 
+// KI-Agent unterstützt: Single source of truth for leaderboard paging — returns the
+// number of pages (>=1) needed to show all parsed rows at full row size. Used by both
+// the renderer (page window + progress) and the state machine (slot duration) so they
+// always agree on page count and timing (ADR-0031). Defined in renderer.c.
+int   kiosk_leaderboard_page_count(const KioskController *ctrl, int screen_w, int screen_h);
+float kiosk_leaderboard_duration(const KioskController *ctrl, int screen_w, int screen_h);
+
 // KI-Agent unterstützt: Explicit lifecycle for kiosk GPU and simulation resources (ADR-0022)
 void init_kiosk_controller(KioskController *ctrl, int match_count, int screen_w, int screen_h);
 void free_kiosk_controller(KioskController *ctrl);

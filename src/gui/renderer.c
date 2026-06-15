@@ -1324,6 +1324,58 @@ void draw_current_state(AppState state, const GameConfig* config, const World* g
 // at its top to derive all pixel values — no magic numbers anywhere below.
 // =============================================================================
 
+// KI-Agent unterstützt: Number of full rows that fit above the footer panel (ADR-0031).
+// Same formula the leaderboard table has always used (rowHeight target ~10 rows,
+// 28 px floor); extracted so paging math and rendering never diverge.
+static int kiosk_lb_max_fit(const KioskLayout *layout, int screen_h) {
+    int footer_y       = screen_h - layout->bottom_panel_h;
+    int startY         = layout->lb_table_y;
+    int entries_area_h = footer_y - (startY + layout->font_header + 20);
+    int rowHeight      = entries_area_h / 10;
+    if (rowHeight < 28) rowHeight = 28;
+    int max_fit = entries_area_h / rowHeight;
+    if (max_fit < 1) max_fit = 1;
+    return max_fit;
+}
+
+// KI-Agent unterstützt: Final rows per page (ADR-0031). When more eligible rows exist
+// server-side than we parsed (true overflow beyond the 50-row cap), one row is reserved
+// on every page so the last page always has room for the "+N more" line — keeping
+// rows_per_page uniform across pages.
+static int kiosk_lb_rows_per_page(const KioskController *ctrl, const KioskLayout *layout, int screen_h) {
+    int parsed = ctrl->cached_lb.count;
+    if (parsed > MAX_LEADERBOARD_ENTRIES) parsed = MAX_LEADERBOARD_ENTRIES;
+    int true_total = ctrl->cached_lb.total_count;
+    if (true_total < parsed) true_total = parsed;  // non-atomic-read safety clamp
+
+    int rpp = kiosk_lb_max_fit(layout, screen_h);
+    if (true_total > parsed && rpp > 1) rpp -= 1;
+    return rpp;
+}
+
+// KI-Agent unterstützt: Public — pages needed to show all parsed rows (>=1). Shared by
+// the renderer and the kiosk state machine so page count and timing always agree (ADR-0031).
+int kiosk_leaderboard_page_count(const KioskController *ctrl, int screen_w, int screen_h) {
+    int parsed = ctrl->cached_lb.count;
+    if (parsed > MAX_LEADERBOARD_ENTRIES) parsed = MAX_LEADERBOARD_ENTRIES;
+    if (parsed <= 0) return 1;  // "LOADING DATA..." state — single page
+
+    KioskLayout layout = compute_kiosk_layout(screen_w, screen_h, ctrl->match_count);
+    int rpp   = kiosk_lb_rows_per_page(ctrl, &layout, screen_h);
+    int pages = (parsed + rpp - 1) / rpp;
+    if (pages < 1) pages = 1;
+    return pages;
+}
+
+// KI-Agent unterstützt: Public — leaderboard slot duration = pages * dwell, clamped so a
+// single page stays 15 s (unchanged) and a full cycle never runs away (ADR-0031).
+float kiosk_leaderboard_duration(const KioskController *ctrl, int screen_w, int screen_h) {
+    float d = kiosk_leaderboard_page_count(ctrl, screen_w, screen_h) * KIOSK_LB_SECONDS_PER_PAGE;
+    if (d < KIOSK_LB_MIN_DURATION) d = KIOSK_LB_MIN_DURATION;
+    if (d > KIOSK_LB_MAX_DURATION) d = KIOSK_LB_MAX_DURATION;
+    return d;
+}
+
 // KI-Agent unterstützt: Dedicated leaderboard render function extracted from draw_current_state (ADR-0022)
 static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, int screen_h) {
     KioskLayout layout = compute_kiosk_layout(screen_w, screen_h, ctrl->match_count);
@@ -1338,30 +1390,35 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
 
     int startY = layout.lb_table_y;
 
-    // KI-Agent unterstützt: Clip-to-fit — footer panel is always protected (ADR-0022)
-    // rowHeight targets ~10 visible rows; clamp ensures readability.
-    // show_count is capped so all drawn rows + optional "+N more" line fit above footer_y.
-    int entries_area_h = footer_y - (startY + layout.font_header + 20);
-    int rowHeight      = entries_area_h / 10;
+    // KI-Agent unterstützt: rowHeight targets ~10 visible rows; 28 px floor ensures
+    // readability. Same formula as kiosk_lb_max_fit(), so row spacing matches paging.
+    int rowHeight = (footer_y - (startY + layout.font_header + 20)) / 10;
     if (rowHeight < 28) rowHeight = 28;
 
-    // KI-Agent unterstützt: Overflow counts the true server-side total, not the
-    // 20-capped parsed rows, so "+N more" no longer freezes at 20-show_count (ADR-0030)
     int parsed_entries = ctrl->cached_lb.count;
     if (parsed_entries > MAX_LEADERBOARD_ENTRIES) parsed_entries = MAX_LEADERBOARD_ENTRIES;
 
     int true_total = ctrl->cached_lb.total_count;
     if (true_total < parsed_entries) true_total = parsed_entries;  // non-atomic-read safety clamp
 
-    int max_fit      = entries_area_h / rowHeight;
-    int show_count   = parsed_entries;
-    int hidden_count = 0;
-    // Clip when rows overflow the screen, or when more eligible rows exist server-side.
-    if (parsed_entries > max_fit || true_total > parsed_entries) {
-        show_count   = (parsed_entries > max_fit) ? max_fit - 1  // reserve last slot for "+N more"
-                                                  : parsed_entries;
-        hidden_count = true_total - show_count;
-    }
+    // KI-Agent unterstützt: Auto-paging — cycle through all pages within the slot.
+    // page_index is derived purely from state_timer, so no new mutable controller
+    // state is needed; rows_per_page/num_pages come from the shared helpers (ADR-0031).
+    int rows_per_page = kiosk_lb_rows_per_page(ctrl, &layout, screen_h);
+    int num_pages     = kiosk_leaderboard_page_count(ctrl, screen_w, screen_h);
+
+    int page_index = (int)(ctrl->state_timer / KIOSK_LB_SECONDS_PER_PAGE);
+    if (page_index < 0)             page_index = 0;
+    if (page_index > num_pages - 1) page_index = num_pages - 1;
+
+    int page_start = page_index * rows_per_page;
+    int page_end   = page_start + rows_per_page;
+    if (page_end > parsed_entries) page_end = parsed_entries;
+    bool is_last_page = (page_index >= num_pages - 1);
+
+    // "+N more" (eligible rows beyond the parsed cap) belongs on the last page only.
+    int hidden_count = (is_last_page && true_total > parsed_entries)
+                       ? true_total - parsed_entries : 0;
 
     // KI-Agent unterstützt: Proportional column layout — 80% of screen width, 10% margins (ADR-0022)
     // KI-Agent unterstützt: CONFIG icon column inserted between RANK and PLAYER (ADR-0025)
@@ -1376,6 +1433,16 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
     int col_wdl       = table_x + (int)(table_w * 0.60f);
     int col_endurance = table_x + (int)(table_w * 0.80f);
 
+    // KI-Agent unterstützt: Page indicator, right-aligned on the title line — only
+    // shown when the board spans more than one page (ADR-0031).
+    if (num_pages > 1) {
+        char page_buf[40];
+        sprintf(page_buf, "PAGE %d / %d", page_index + 1, num_pages);
+        DrawText(page_buf,
+                 table_x + table_w - MeasureText(page_buf, layout.font_header),
+                 layout.lb_title_y, layout.font_header, THEME_HINT);
+    }
+
     // B.6: Column headers
     DrawText("RANK",      col_rank,      startY, layout.font_header, THEME_HINT);
     DrawText("PLAYER",    col_player,    startY, layout.font_header, THEME_HINT);
@@ -1387,35 +1454,40 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
              table_x + table_w, startY + layout.font_header + 5, THEME_GRID);
 
     if (parsed_entries > 0) {
-        for (int i = 0; i < show_count; i++) {
-            int y = startY + layout.font_header + 20 + i * rowHeight;
-            char rankBuf[8];
-            char winBuf[16];
-            char wdlBuf[16];
-            char asgBuf[16];
+        // KI-Agent unterstützt: Render the current page window. `row` is the global
+        // 0-based rank; `slot` is the on-screen position within the page (ADR-0031).
+        for (int row = page_start; row < page_end; row++) {
+            int slot = row - page_start;
+            int y = startY + layout.font_header + 20 + slot * rowHeight;
+            char rankBuf[16];
+            char winBuf[24];
+            char wdlBuf[48];
+            char asgBuf[24];
 
-            sprintf(rankBuf, "#%d", i + 1);
-            sprintf(winBuf,  "%.1f%%", ctrl->cached_lb.entries[i].win_rate);
+            sprintf(rankBuf, "#%d", row + 1);
+            sprintf(winBuf,  "%.1f%%", ctrl->cached_lb.entries[row].win_rate);
             sprintf(wdlBuf,  "%d / %d / %d",
-                    ctrl->cached_lb.entries[i].wins,
-                    ctrl->cached_lb.entries[i].draws,
-                    ctrl->cached_lb.entries[i].losses);
-            sprintf(asgBuf,  "%.0f Gen", ctrl->cached_lb.entries[i].avg_stable_generation);
+                    ctrl->cached_lb.entries[row].wins,
+                    ctrl->cached_lb.entries[row].draws,
+                    ctrl->cached_lb.entries[row].losses);
+            sprintf(asgBuf,  "%.0f Gen", ctrl->cached_lb.entries[row].avg_stable_generation);
 
+            // KI-Agent unterstützt: Podium styling keys off the global rank, so it
+            // appears only on the true top-3 (page 0), never repeated per page (ADR-0031).
             Color rankCol = THEME_TEXT;
-            if      (i == 0) rankCol = THEME_RED;
-            else if (i == 1) rankCol = THEME_BLUE;
-            else if (i == 2) rankCol = THEME_ACCENT;
+            if      (row == 0) rankCol = THEME_RED;
+            else if (row == 1) rankCol = THEME_BLUE;
+            else if (row == 2) rankCol = THEME_ACCENT;
 
             // B.5: Subtle coloured background for top-3 entries (ADR-0022)
-            if (i < 3) {
-                Color row_bg = (i == 0) ? Fade(THEME_RED,    0.12f)
-                             : (i == 1) ? Fade(THEME_BLUE,   0.12f)
-                                        : Fade(THEME_ACCENT,  0.10f);
+            if (row < 3) {
+                Color row_bg = (row == 0) ? Fade(THEME_RED,    0.12f)
+                             : (row == 1) ? Fade(THEME_BLUE,   0.12f)
+                                          : Fade(THEME_ACCENT,  0.10f);
                 DrawRectangle(table_x, y - 4, table_w, rowHeight, row_bg);
             }
 
-            DrawText(rankBuf,                          col_rank,      y, layout.font_header, rankCol);
+            DrawText(rankBuf,                            col_rank,      y, layout.font_header, rankCol);
 
             // KI-Agent unterstützt: 8x8 start-config icon between rank and name (ADR-0025)
             // Single colour (no red/blue split) — a start config has no team assignment yet.
@@ -1427,7 +1499,7 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
                               8 * cell_px + 2, 8 * cell_px + 2, Fade(BLACK, 0.55f));
                 for (int tr = 0; tr < 8; tr++) {
                     for (int tc = 0; tc < 8; tc++) {
-                        if (ctrl->cached_lb.entries[i].seed[tr * 8 + tc])
+                        if (ctrl->cached_lb.entries[row].seed[tr * 8 + tc])
                             DrawRectangle(col_icon + tc * cell_px,
                                           icon_y + tr * cell_px,
                                           cell_px - 1, cell_px - 1, THEME_ACCENT);
@@ -1435,17 +1507,17 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
                 }
             }
 
-            DrawText(ctrl->cached_lb.entries[i].name,  col_player,    y, layout.font_header, THEME_TEXT);
-            DrawText(winBuf,                           col_winrate,   y, layout.font_header, THEME_ACCENT);
-            DrawText(wdlBuf,                           col_wdl,       y, layout.font_header, THEME_TEXT);
-            DrawText(asgBuf,                           col_endurance, y, layout.font_header, THEME_HINT);
+            DrawText(ctrl->cached_lb.entries[row].name, col_player,    y, layout.font_header, THEME_TEXT);
+            DrawText(winBuf,                            col_winrate,   y, layout.font_header, THEME_ACCENT);
+            DrawText(wdlBuf,                            col_wdl,       y, layout.font_header, THEME_TEXT);
+            DrawText(asgBuf,                            col_endurance, y, layout.font_header, THEME_HINT);
         }
 
-        // "+N more" indicator — only shown when entries were clipped
+        // "+N more" indicator — only on the last page, for rows beyond the parsed cap
         if (hidden_count > 0) {
             char more_buf[32];
             sprintf(more_buf, "+ %d more", hidden_count);
-            int more_y = startY + layout.font_header + 20 + show_count * rowHeight + 4;
+            int more_y = startY + layout.font_header + 20 + (page_end - page_start) * rowHeight + 4;
             DrawText(more_buf, col_rank, more_y, layout.font_small, THEME_HINT);
         }
     } else {
@@ -1459,7 +1531,9 @@ static void draw_kiosk_leaderboard(const KioskController *ctrl, int screen_w, in
         int bar_w = layout.progress_bar_w;
         int bar_x = screen_w / 2 - bar_w / 2;
         int bar_y = footer_y + layout.bottom_panel_h - 14;
-        float progress = ctrl->state_timer / 15.0f;
+        // KI-Agent unterstützt: Progress spans the whole adaptive slot, not a fixed 15 s,
+        // so the bar fills exactly as the leaderboard hands off to Multicam (ADR-0031).
+        float progress = ctrl->state_timer / kiosk_leaderboard_duration(ctrl, screen_w, screen_h);
         if (progress > 1.0f) progress = 1.0f;
         DrawRectangle(bar_x, bar_y, bar_w, 6, Fade(THEME_HINT, 0.3f));
         DrawRectangle(bar_x, bar_y, (int)(bar_w * progress), 6, THEME_ACCENT);

@@ -294,7 +294,11 @@ AppState update_app_state(AppState current_state, GameConfig* config, Simulation
             kiosk_ctrl.state_timer += delta_time;
 
             if (kiosk_ctrl.current_sub_state == KIOSK_SUB_LEADERBOARD) {
-                if (kiosk_ctrl.state_timer > 15.0f) {
+                // KI-Agent unterstützt: Adaptive slot duration so every page is shown
+                // before handing off to Multicam; single page stays 15 s (ADR-0031).
+                float lb_duration = kiosk_leaderboard_duration(
+                    &kiosk_ctrl, GetScreenWidth(), GetScreenHeight());
+                if (kiosk_ctrl.state_timer > lb_duration) {
                     kiosk_ctrl.current_sub_state = KIOSK_SUB_MULTICAM;
                     kiosk_ctrl.state_timer = 0.0f;
                     network_fetch_highlights_async();

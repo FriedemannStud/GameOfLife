@@ -89,4 +89,11 @@ typedef struct {
 // No drawing, no Raylib calls, no side effects — safe to call any time.
 KioskLayout compute_kiosk_layout(int screen_w, int screen_h, int match_count);
 
+// KI-Agent unterstützt: Leaderboard auto-paging timing — shared by the renderer
+// (page index + progress bar) and the kiosk state machine (slot duration), so both
+// derive the same page index from state_timer (ADR-0031).
+#define KIOSK_LB_SECONDS_PER_PAGE 6.0f   // dwell time per leaderboard page
+#define KIOSK_LB_MIN_DURATION     15.0f  // single-page slot stays 15 s, as before
+#define KIOSK_LB_MAX_DURATION     48.0f  // cap so a full cycle never runs away
+
 #endif // RENDERER_H

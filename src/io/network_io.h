@@ -6,7 +6,9 @@
 
 // KI-Agent unterstützt: Network data structures for Kiosk Mode
 
-#define MAX_LEADERBOARD_ENTRIES 20
+// KI-Agent unterstützt: Must match the backend LEADERBOARD_MAX_ROWS so paging
+// capacity agrees end-to-end (ADR-0031)
+#define MAX_LEADERBOARD_ENTRIES 50
 #define MAX_NAME_LENGTH 32
 #define GRID_SIZE_8X8 64
 // KI-Agent unterstützt: Single source of truth for highlight pool capacity (ADR-0024)

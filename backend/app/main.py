@@ -19,6 +19,12 @@ from .validators import validate_biotope_rules
 
 # KI-Agent unterstützt: Biotope Backend with MongoDB integration for Matchmaking
 
+# KI-Agent unterstützt: Max ranked rows returned by /api/leaderboard. Must match
+# the C client's MAX_LEADERBOARD_ENTRIES so paging capacity agrees end-to-end.
+# `total_count` stays an independent server-side count, so the honest "+N more"
+# overflow indicator remains correct beyond this cap (ADR-0030, ADR-0031).
+LEADERBOARD_MAX_ROWS = 50
+
 app = FastAPI(title="Biotope API")
 
 # KI-Agent unterstützt: Enable CORS for Mobile Web Editor
@@ -215,8 +221,8 @@ async def get_leaderboard():
         submissions = (
             await db.submissions.find(query)
             .sort([("win_rate", -1), ("avg_stable_generation", 1)])
-            .limit(20)
-            .to_list(length=20)
+            .limit(LEADERBOARD_MAX_ROWS)
+            .to_list(length=LEADERBOARD_MAX_ROWS)
         )
 
         leaderboard = []
@@ -239,7 +245,8 @@ async def get_leaderboard():
             )
 
         # KI-Agent unterstützt: true server-side total for the honest "+N more"
-        # overflow indicator; may exceed the 20 returned rows (ADR-0030)
+        # overflow indicator; may exceed the LEADERBOARD_MAX_ROWS rows
+        # returned (ADR-0030)
         return {"leaderboard": leaderboard, "total_count": total_count}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Leaderboard error: {str(e)}")

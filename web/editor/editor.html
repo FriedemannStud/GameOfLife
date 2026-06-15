@@ -680,6 +680,11 @@
                 } else {
                     showStatus("Erfolgreich eingereicht!", "success");
                 }
+                // KI-Agent unterstützt: clear the species name after a successful
+                // submit so the same config cannot be re-submitted by an accidental
+                // second press of "Ab in die Arena" — updateUI() then re-disables
+                // the button until a new (>=2 char) name is entered.
+                nicknameInput.value = '';
                 fetchGlobalCount();
                 updateUI();
             } else if(res.status === 409) {

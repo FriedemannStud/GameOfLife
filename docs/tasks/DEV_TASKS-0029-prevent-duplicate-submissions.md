@@ -1,5 +1,9 @@
 # DEV_TASKS-0029: Prevent Accidental Duplicate Submissions
 
+> **INVALID / WITHDRAWN (2026-06-15).** This task plan is void. The underlying feature was a
+> mistake; see [ADR-0029](../adr/ADR-0029-prevent-duplicate-submissions.md), which has been
+> declared invalid. Do **not** implement the steps below. Retained for historical reference only.
+
 Implementation plan for the per-player species-name uniqueness rule that stops repeated
 "Ab in die Arena" presses from creating duplicate submissions.
 

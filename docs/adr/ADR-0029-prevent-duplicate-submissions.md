@@ -1,6 +1,10 @@
 ### **ADR-0029: Prevent Accidental Duplicate Submissions via Per-Player Name Uniqueness**
 
-**Status:** Proposed
+**Status:** Invalid / Withdrawn (2026-06-15)
+
+> This ADR has been declared **invalid**. The feature was a mistake and is not pursued.
+> The corresponding task plan [DEV_TASKS-0029](../tasks/DEV_TASKS-0029-prevent-duplicate-submissions.md)
+> is likewise void. The content below is retained for historical reference only.
 
 **Date:** 2026-06-15
 

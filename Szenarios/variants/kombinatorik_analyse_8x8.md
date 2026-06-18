@@ -41,7 +41,48 @@ Der Algorithmus summiert die Möglichkeiten für jedes zulässige $k$:
 ### Ergebnis (Exakt)
 Die Summe ergibt:
 $$\mathbf{552.859.891.708.071.949}$$
-Dies sind ca. **552 Billiarden** Möglichkeiten.
+Dies sind ca. **553 Billiarden** Möglichkeiten (genauer: 552,86 Billiarden).
+
+---
+
+## 3.1 Präzisierung: Der Sonderfall k=0 (leeres Feld)
+
+Die Summe beginnt bewusst bei $k=0$. Das ist sowohl rechnerisch zwingend als auch
+zur Reproduktion der exakten Zahl notwendig — verdient aber eine inhaltliche
+Einordnung.
+
+### Paritäts-Quercheck (Satz von Lucas)
+Da $64 = 2^6$ eine Zweierpotenz ist, ist $\binom{64}{k}$ für alle $1 \le k \le 63$
+**gerade**; **ungerade** nur für $k=0$ und $k=64$. Im Summenbereich $k=0..24$ ist
+der Nullterm $\binom{64}{0}=1$ damit der **einzige ungerade Summand**. Die
+Gesamtsumme endet folglich auf eine 9 ($552.859.891.708.071.949$, ungerade).
+Ohne den Nullterm ergäbe sich $552.859.891.708.071.948$ (gerade, endet auf 8).
+Die abgedruckte Zahl belegt also eindeutig, dass das leere Feld mitgezählt ist.
+
+### Semantische Einordnung im Biotop-Kontext
+$k=0$ entspricht dem vollständig toten 8×8-Feld. Es ist eine gültige
+*Konfiguration*, aber keine sinnvolle *Spezies*:
+
+* **Backend:** `backend/app/validators.py` erzwingt nur die Obergrenze
+  ($\le 24$ Zellen) und **keine Untergrenze** — ein leeres Feld würde formal
+  akzeptiert.
+* **Editor:** `web/editor/editor.html` deaktiviert den Absende-Button bei 0
+  Zellen (`count === 0`) — über die reguläre Oberfläche ist eine leere
+  Einreichung damit **nicht möglich**.
+* **Spieltheoretisch:** Ein leeres Feld ist „tot": Nach Conways Regeln bleibt es
+  leer und kann kein Match gewinnen.
+
+**Konsequenz:** $\sum_{k=0}^{24}\binom{64}{k}$ zählt exakt die
+**fair-play-konformen Felder**. Als Maß für *praktisch einreichbare* Spezies ist
+diese Zahl eine Obergrenze, die das leere Feld um genau 1 zu hoch ansetzt; die
+Menge der über den Editor einreichbaren Konfigurationen ist
+$\sum_{k=1}^{24}\binom{64}{k} = 552.859.891.708.071.948$.
+
+> *Hinweis:* $\sum_{k=0}^{24}\binom{64}{k}$ ist zugleich das Volumen einer
+> Hamming-Kugel mit Radius 24 in $\{0,1\}^{64}$. Anders als im
+> Quasispezies-/Genetik-Modell gibt es im Biotop aber **keine Referenzsequenz**
+> („Wildtyp"); der Nullterm ist hier schlicht das leere Brett, nicht die
+> unmutierte Originalsequenz.
 
 ---
 

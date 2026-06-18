@@ -109,13 +109,56 @@ All three contain the identical three-question article body.
 6. **Removed doc references in Frage 3** (all three files): deleted the closing
    sentence pointing to DEV_TECH_DESIGN-0026 and ADR-0026 from the "Die schöne
    Konsequenz" box.
+7. **Interactive 3D torus viewer added to Frage 1** (all three files): an
+   `<canvas id="torus-canvas">` figure inserted exactly between the
+   "…kein Ort ist mehr 'besonders'" paragraph and the "Wie wir das im Code
+   machen" box. It visualises the *same* 8×8 simulation on the surface of a
+   donut so the wrapped (glued) edges become literally visible.
+   - **Dependency-free renderer** (no Three.js / no CDN → still runs from
+     `file://`): a small hand-rolled 3D pipeline — each of the 64 cells is a
+     torus quad, rotated → perspective-projected → drawn far-to-near
+     (painter's algorithm) with normal-based shading and a faint wireframe net.
+   - **Live sync, zero wiring:** a `requestAnimationFrame` loop reads the
+     existing module-scope `grid` (and `GRID_SIZE`) each frame, so the page's
+     own simulator/editor drives its own donut. Drawing cells + "Simulieren"
+     animates the torus in lockstep; alive cells glow cyan.
+   - **Rotation handles:** drag (pointer = mouse/touch/pen) orbits the model
+     around its centre (pitch clamped to avoid flipping); idle **Auto-Dreh**
+     yaw spin (toggle button) + **Ansicht zurücksetzen** button.
+   - **Theming:** the two dark variants reuse identical CSS/JS (cyan-on-dark);
+     the light variant (`260618_WIAI25_Zwischenbericht_2.html`) is re-themed to
+     a WIAI-blue card with a dark `--grid-bg` stage (so the `#00f2ff` cells
+     still glow) and ghost-style blue buttons. Renderer logic is identical.
+   - Each insertion is marked `// KI-Agent unterstützt`. JS validated with
+     `node --check` in all three files.
+8. **`k=0` (empty-field) clarification — math review + footnote** (Frage 2):
+   - Double-checked the printed combinatorics. `Σ_{k=0}^{24} C(64,k) =
+     552,859,891,708,071,949` is exact. **Parity cross-check (Lucas):** since
+     `64 = 2⁶`, `C(64,k)` is even for all `0 < k < 64` (odd only at `k=0` and
+     `k=64`), so in range `k=0..24` the only odd summand is `C(64,0)=1` → the
+     total is odd (ends in 9). Without `k=0` it would be `…948`. This *proves*
+     the empty field is counted.
+   - **Semantic ruling for Biotop** (grounded in the repo): `validators.py`
+     enforces only the upper bound (≤ 24), no lower bound → backend would
+     formally accept an empty field; but `web/editor/editor.html:560` disables
+     submit at `count === 0` → not submittable via the UI; and an empty board is
+     game-theoretically dead. So the sum counts fair-play *configurations*; the
+     *submittable* count is `Σ_{k=1}^{24} = …948` (exactly one less).
+   - Updated `Szenarios/variants/kombinatorik_analyse_8x8.md`: new section "3.1
+     Präzisierung: Der Sonderfall k=0", fixed the 552→553 Billiarden rounding,
+     noted the Hamming-ball-radius-24 equivalence (but no "Wildtyp" reference in
+     Biotop).
+   - Added a one-line themed footnote under the Σ big-number callout in **all
+     three report HTML variants** (WIAI-blue ∗ on light, cyan ∗ on the two dark).
 
 ---
 
 ## 6. Key numbers (for reuse)
 
 - 8×8 grid = **64 cells**; Fair-Play biomass cap = **24 cells (38 %)**.
-- Constrained species count: **552,859,891,708,071,949 ≈ 553 Billiarden**.
+- Constrained species count: **552,859,891,708,071,949 ≈ 553 Billiarden**
+  (552.86 Billiarden; ≈ 2.997 % of `2^64`). Starts at `k=0` (empty field);
+  *submittable* species = `Σ_{k=1}^{24} = 552,859,891,708,071,948` (one less).
 - (Dropped from text, kept for reference) unconstrained: `2^64 ≈ 1.84 × 10^19`;
   two-species field `3^64 ≈ 3.43 × 10^30`.
 - Tournament round removal: N=50 → 1225 instead of 2450 matches.
@@ -128,8 +171,12 @@ All three contain the identical three-question article body.
   by the agent).
 - **Decide which variant ships:** light vs. dark; upload vs. offline. The
   upload dark variant needs the FastAPI backend reachable on the same origin.
-- **Old light variant** `260618_WIAI25_Zwischenbericht_2.html` is currently kept
-  unchanged — confirm whether to keep or delete it.
+- **Old light variant** `260618_WIAI25_Zwischenbericht_2.html` now also carries
+  the Frage-1 torus viewer (step 7); otherwise its content is unchanged —
+  confirm whether to keep or delete it.
+- The torus renderer is duplicated verbatim in all three files (reads `grid` /
+  `GRID_SIZE` by name). If the embedded simulator's grid model is renamed, the
+  three copies must be updated together.
 - If the dark upload variant should run locally (not same-origin), revert its
   two endpoints to absolute URLs (`http://127.0.0.1:8000/...`).
 - The dark variants embed a copy of the editor JS; if `web/editor/editor.html`

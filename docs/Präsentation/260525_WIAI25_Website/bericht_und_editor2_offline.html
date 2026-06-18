@@ -194,6 +194,82 @@
         .rules-list { margin: 0; padding-left: 20px; }
         .rules-list li { margin-bottom: 5px; }
 
+        /* ---------- 3D Torus viewer (Frage 1) ---------- */
+        .torus-figure {
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.02), transparent 40%),
+                var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 16px 16px 14px;
+            margin: 26px 0;
+            text-align: center;
+        }
+        .torus-figure h4 {
+            margin: 0 0 4px;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 0.88rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--cyan);
+        }
+        .torus-figure h4::before { content: "◈ "; }
+        .torus-sub {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            letter-spacing: 1.5px;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin: 0 0 12px;
+        }
+        .torus-stage {
+            position: relative;
+            background:
+                radial-gradient(420px 300px at 50% 38%, rgba(0,220,255,0.06), transparent 70%),
+                var(--bg-deep);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.6);
+            overflow: hidden;
+        }
+        #torus-canvas {
+            display: block;
+            width: 100%;
+            height: 340px;
+            cursor: grab;
+            touch-action: none;
+        }
+        #torus-canvas:active { cursor: grabbing; }
+        .torus-hint {
+            position: absolute;
+            left: 12px; bottom: 10px;
+            font-family: var(--font-mono);
+            font-size: 0.66rem;
+            letter-spacing: 1px;
+            color: var(--muted);
+            pointer-events: none;
+            opacity: 0.85;
+        }
+        .torus-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .torus-controls button { padding: 9px 16px; font-size: 0.72rem; }
+        .btn-ghost {
+            background: transparent;
+            border-color: var(--line);
+            color: var(--muted);
+        }
+        .btn-ghost:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+        .btn-ghost.active {
+            border-color: rgba(0,220,255,0.6);
+            color: var(--cyan);
+            box-shadow: 0 0 16px -6px rgba(0,220,255,0.7);
+        }
+
         /* ---------- Question sections ---------- */
         .question-block { margin: 54px 0; }
         .question-tag {
@@ -538,13 +614,32 @@
             Schachbrett verhält sich für die Spielregeln, als wäre es unendlich
             und vollkommen gleichförmig – kein Ort ist mehr „besonders".</p>
 
+        <!-- KI-Agent unterstützt: interaktiver 3D-Torus — spiegelt das 8×8 aus dem
+             Simulator oben auf die Donut-Oberfläche; ziehen zum Drehen (Frage 1). -->
+        <figure class="torus-figure">
+            <h4>Das 8×8-Feld als Torus</h4>
+            <p class="torus-sub">dieselbe Simulation · auf den Donut geklebt · ziehen zum Drehen</p>
+            <div class="torus-stage">
+                <canvas id="torus-canvas"></canvas>
+                <span class="torus-hint">↻ ziehen zum Drehen</span>
+            </div>
+            <div class="torus-controls">
+                <button id="torus-autorotate" class="btn-ghost active" type="button">Auto-Dreh</button>
+                <button id="torus-reset" class="btn-ghost" type="button">Ansicht zurücksetzen</button>
+            </div>
+        </figure>
+        <p style="font-size:0.9rem; color:var(--muted); text-align:center; margin:-6px 0 0;">
+            Das ist <em>kein</em> zweites Feld: Es zeigt exakt das Gitter aus dem
+            Simulator oben – nur die verklebten Ränder sind jetzt sichtbar zusammengeführt.
+            Zeichne oben ein Muster, drücke „Simulieren" und beobachte es hier von allen Seiten.</p>
+
         <div class="rules-wrapper">
             <h4>Wie wir das im Code machen</h4>
             <p style="margin:0;">Unser Gitter hat einen unsichtbaren „Geister-Rahmen"
                 um die echten Zellen herum. Vor jedem Schritt kopieren wir die
                 gegenüberliegende Seite in diesen Rahmen hinein – die ganze
                 Funktion heißt im Quelltext nicht zufällig
-                <code>sync_ghost_borders</code> („für unendliches Spielfeld").
+                <code>sync_ghost_borders</code>.
                 Der Simulator oben tut im Browser exakt dasselbe: Beim Zählen der
                 Nachbarn rechnet er <code>(position + 8) % 8</code> – das
                 „<code>% 8</code>" (Modulo) ist die mathematische Schere, die das
@@ -584,6 +679,12 @@
             <div class="value">&Sigma;<sub>k=0</sub><sup>24</sup> ( 64 über k ) = 552&nbsp;859&nbsp;891&nbsp;708&nbsp;071&nbsp;949</div>
             <div class="label">≈ 553 Billiarden erlaubte Spezies</div>
         </div>
+
+        <p style="font-size:0.82rem; color:var(--muted); margin:-8px 0 0; text-align:center;">
+            <span style="color:var(--cyan);">∗</span> Die Summe beginnt bei k=0, dem leeren
+            Feld: als Konfiguration mitgezählt, aber keine spielbare Spezies (der Editor lässt
+            0 Zellen gar nicht erst abschicken) – tatsächlich einreichbar ist also genau eines
+            weniger.</p>
 
         <p>Diese Zahl ist schwer zu fassen: Es gibt mehr erlaubte Spezies, als es
             <em>Sekunden seit dem Urknall</em> gegeben hat. „Alle durchprobieren"
@@ -870,6 +971,162 @@
 
     createGrid();
     updateUI();
+
+    // ============ KI-Agent unterstützt: 3D-Torus-Viewer (Frage 1) ============
+    // Hand-rolled, dependency-free renderer (works from file://). Maps the same
+    // 8×8 `grid` onto a torus surface and projects it with a tiny 3D pipeline:
+    // rotate -> perspective project -> painter's algorithm (far faces first).
+    (function torusViewer() {
+        const canvas = document.getElementById('torus-canvas');
+        if(!canvas || !canvas.getContext) return;
+        const ctx = canvas.getContext('2d');
+
+        const N = GRID_SIZE;     // 8 cells around each ring
+        const R = 1.0;           // major radius (the donut ring)
+        const r = 0.46;          // minor radius (the tube)
+        const CAM_Z = 3.4;       // camera distance along +z
+        const FOCAL = 2.6;       // perspective focal length
+        const TAU = Math.PI * 2;
+        const du = TAU / N, dv = TAU / N;
+
+        // Rotation state (radians). Initial tilt so the hole is visible.
+        const VIEW0_X = -0.62, VIEW0_Y = 0.6;
+        let rotX = VIEW0_X, rotY = VIEW0_Y;
+        let autoRotate = true, dragging = false, lastX = 0, lastY = 0;
+
+        let W = 0, H = 0, scale = 0, cx = 0, cy = 0;
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            W = Math.max(1, Math.round(rect.width));
+            H = Math.max(1, Math.round(rect.height));
+            canvas.width = W * dpr;
+            canvas.height = H * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            scale = Math.min(W, H) * 0.34;
+            cx = W / 2; cy = H / 2;
+        }
+        window.addEventListener('resize', resize);
+
+        // Torus surface point for ring-angle u and tube-angle v.
+        function surfPoint(u, v) {
+            const cu = Math.cos(u), su = Math.sin(u);
+            const rr = R + r * Math.cos(v);
+            return { x: rr * cu, y: r * Math.sin(v), z: rr * su };
+        }
+        // Outward surface normal at (u, v) — used for shading.
+        function surfNormal(u, v) {
+            const cv = Math.cos(v);
+            return { x: cv * Math.cos(u), y: Math.sin(v), z: cv * Math.sin(u) };
+        }
+        // Yaw (around y) then pitch (around x).
+        function rotate(p) {
+            const cax = Math.cos(rotX), sax = Math.sin(rotX);
+            const cay = Math.cos(rotY), say = Math.sin(rotY);
+            const x1 = p.x * cay + p.z * say;
+            const z1 = -p.x * say + p.z * cay;
+            const y2 = p.y * cax - z1 * sax;
+            const z2 = p.y * sax + z1 * cax;
+            return { x: x1, y: y2, z: z2 };
+        }
+        function project(p) {
+            const persp = FOCAL / (CAM_Z - p.z);
+            return { sx: cx + p.x * persp * scale, sy: cy - p.y * persp * scale };
+        }
+
+        const LIGHT = (function () {
+            const x = 0.35, y = 0.55, z = 1.0, m = Math.hypot(x, y, z);
+            return { x: x / m, y: y / m, z: z / m };
+        })();
+
+        // Pre-allocate the 64 faces to avoid per-frame allocation.
+        const faces = [];
+        for(let gy = 0; gy < N; gy++)
+            for(let gx = 0; gx < N; gx++)
+                faces.push({ gx, gy, z: 0, shade: 0, pts: new Array(8) });
+
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            for(let i = 0; i < faces.length; i++) {
+                const f = faces[i];
+                const u0 = f.gx * du, v0 = f.gy * dv;
+                const a = project(rotate(surfPoint(u0, v0)));
+                const b = project(rotate(surfPoint(u0 + du, v0)));
+                const c = project(rotate(surfPoint(u0 + du, v0 + dv)));
+                const d = project(rotate(surfPoint(u0, v0 + dv)));
+                f.pts[0]=a.sx; f.pts[1]=a.sy; f.pts[2]=b.sx; f.pts[3]=b.sy;
+                f.pts[4]=c.sx; f.pts[5]=c.sy; f.pts[6]=d.sx; f.pts[7]=d.sy;
+                const cen = rotate(surfPoint(u0 + du / 2, v0 + dv / 2));
+                f.z = cen.z;
+                const nrm = rotate(surfNormal(u0 + du / 2, v0 + dv / 2));
+                f.shade = Math.max(0, nrm.x * LIGHT.x + nrm.y * LIGHT.y + nrm.z * LIGHT.z);
+            }
+            // Painter's algorithm: draw far faces (small z) first.
+            faces.sort((p, q) => p.z - q.z);
+            for(let i = 0; i < faces.length; i++) {
+                const f = faces[i];
+                const alive = grid[f.gy][f.gx];
+                const s = 0.32 + 0.68 * f.shade;
+                ctx.beginPath();
+                ctx.moveTo(f.pts[0], f.pts[1]);
+                ctx.lineTo(f.pts[2], f.pts[3]);
+                ctx.lineTo(f.pts[4], f.pts[5]);
+                ctx.lineTo(f.pts[6], f.pts[7]);
+                ctx.closePath();
+                if(alive) {
+                    const g = Math.round(120 + 100 * s);
+                    const bl = Math.round(150 + 105 * s);
+                    ctx.fillStyle = 'rgb(0,' + g + ',' + bl + ')';
+                    ctx.shadowColor = 'rgba(0,220,255,0.8)';
+                    ctx.shadowBlur = 12;
+                } else {
+                    const base = Math.round(26 + 30 * s);
+                    ctx.fillStyle = 'rgb(' + (base - 6) + ',' + base + ',' + (base + 8) + ')';
+                    ctx.shadowBlur = 0;
+                }
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = alive ? 'rgba(190,245,255,0.55)' : 'rgba(120,140,170,0.18)';
+                ctx.stroke();
+            }
+        }
+
+        let last = performance.now();
+        function frame(now) {
+            const dt = (now - last) / 1000; last = now;
+            if(autoRotate && !dragging) rotY += dt * 0.45;
+            draw();
+            requestAnimationFrame(frame);
+        }
+
+        // Drag handle: pointer (mouse / touch / pen) rotates the model.
+        canvas.addEventListener('pointerdown', (e) => {
+            dragging = true; lastX = e.clientX; lastY = e.clientY;
+            if(canvas.setPointerCapture && e.pointerId != null) canvas.setPointerCapture(e.pointerId);
+        });
+        window.addEventListener('pointermove', (e) => {
+            if(!dragging) return;
+            rotY += (e.clientX - lastX) * 0.01;
+            rotX += (e.clientY - lastY) * 0.01;
+            rotX = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, rotX));
+            lastX = e.clientX; lastY = e.clientY;
+            e.preventDefault();
+        }, { passive: false });
+        window.addEventListener('pointerup', () => { dragging = false; });
+
+        const autoBtn = document.getElementById('torus-autorotate');
+        autoBtn.addEventListener('click', () => {
+            autoRotate = !autoRotate;
+            autoBtn.classList.toggle('active', autoRotate);
+        });
+        document.getElementById('torus-reset').addEventListener('click', () => {
+            rotX = VIEW0_X; rotY = VIEW0_Y;
+        });
+
+        resize();
+        requestAnimationFrame(frame);
+    })();
 </script>
 
 </body>

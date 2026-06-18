@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>// Conway Lab — Biotop · Zwischenbericht #2</title>
+    <!-- KI-Agent unterstützt: Zwischenbericht #2 — Modern-Retro "Digital Lab" theme
+         (matches web/landing/index.html + web/editor/editor.html) with embedded editor. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        /* ============================================================
+           Biotop · Conway Lab — Modern-Retro Dark theme
+           Palette mirrors the kiosk renderer (THEME_BG / RED / BLUE):
+             neon cyan #00dcff   team red #ff3c64
+           Shared with landing/index.html + editor.html + duel.html.
+           ============================================================ */
+        :root {
+            --bg:        #1a1a1a;
+            --bg-grad-a: #1d2128;
+            --bg-deep:   #0d0f13;
+            --panel:     #1f242c;
+            --panel-2:   #262c36;
+            --line:      rgba(140,160,190,0.14);
+            --grid-line: #2a2f3a;
+            --cyan:      #00dcff;
+            --cyan-deep: #073945;
+            --red:       #ff3c64;
+            --amber:     #ffb84d;
+            --green:     #3df0a8;
+            --text:      #e7eaf0;
+            --muted:     #8b97a8;
+            --accent:    #b4bed2;
+            --cell-dead: #232932;
+            --cell-alive: var(--cyan);
+
+            --font-display: 'Orbitron', 'Segoe UI', sans-serif;
+            --font-ui: 'Rajdhani', 'Segoe UI', Roboto, sans-serif;
+            --font-mono: 'Share Tech Mono', 'Courier New', monospace;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            min-height: 100%;
+            color: var(--text);
+            font-family: var(--font-ui);
+            font-size: 17px;
+            line-height: 1.6;
+            background-color: var(--bg);
+            background-image:
+                radial-gradient(1100px 600px at 12% -8%, rgba(0,220,255,0.10), transparent 60%),
+                radial-gradient(1000px 620px at 100% 0%, rgba(255,60,100,0.09), transparent 55%),
+                linear-gradient(180deg, var(--bg-grad-a), var(--bg) 40%),
+                linear-gradient(var(--grid-line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+            background-size: auto, auto, auto, 46px 46px, 46px 46px;
+            background-position: center;
+            background-attachment: fixed;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Fine scanline veil — the CRT signature, kept very subtle */
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 9999;
+            background: repeating-linear-gradient(
+                to bottom,
+                rgba(0,0,0,0.0) 0px,
+                rgba(0,0,0,0.0) 2px,
+                rgba(0,0,0,0.16) 3px
+            );
+            mix-blend-mode: multiply;
+            opacity: 0.5;
+        }
+
+        /* ---------- Live Game-of-Life hero backdrop (from landing) ---------- */
+        #life-bg {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.16;
+            pointer-events: none;
+            -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 40%, rgba(0,0,0,0.18) 100%);
+            mask-image: linear-gradient(180deg, #000 0%, #000 40%, rgba(0,0,0,0.18) 100%);
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 52px 20px 60px;
+        }
+
+        /* ---------- Masthead ---------- */
+        .kicker {
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            letter-spacing: 4px;
+            color: var(--cyan);
+            text-transform: uppercase;
+            margin: 0 0 12px;
+            opacity: 0.9;
+        }
+        .kicker .blink { animation: blink 1.1s steps(1) infinite; color: var(--cyan); }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        h1 {
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 2.0rem;
+            line-height: 1.14;
+            margin: 0;
+            color: var(--text);
+            text-shadow: 0 0 22px rgba(0,220,255,0.28);
+        }
+        h1 .hl { color: var(--cyan); text-shadow: 0 0 26px rgba(0,220,255,0.55); }
+
+        h2 {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 1.4rem;
+            line-height: 1.2;
+            margin: 4px 0 14px;
+            color: var(--text);
+        }
+        h3 {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 1.08rem;
+            letter-spacing: 0.5px;
+            color: var(--cyan);
+            margin: 36px 0 12px;
+        }
+
+        p { color: #d2d8e2; }
+        strong { color: var(--text); }
+        em { color: var(--accent); font-style: italic; }
+        code {
+            font-family: var(--font-mono);
+            font-size: 0.92em;
+            color: var(--cyan);
+            background: var(--bg-deep);
+            border: 1px solid var(--line);
+            border-radius: 5px;
+            padding: 1px 6px;
+        }
+
+        .author {
+            font-family: var(--font-mono);
+            color: var(--muted);
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            margin: 16px 0 30px;
+        }
+        .author::before { content: "> "; color: var(--cyan); }
+
+        hr {
+            border: 0;
+            border-top: 1px solid var(--line);
+            margin: 44px 0;
+        }
+
+        /* ---------- Info / rules box ---------- */
+        .rules-wrapper {
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.02), transparent 40%),
+                var(--panel);
+            border: 1px solid var(--line);
+            border-left: 3px solid var(--cyan);
+            padding: 16px 20px;
+            margin: 22px 0;
+            font-size: 0.95rem;
+            border-radius: 0 10px 10px 0;
+        }
+        .rules-wrapper h4 {
+            margin: 0 0 10px;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 0.88rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--cyan);
+        }
+        .rules-list { margin: 0; padding-left: 20px; }
+        .rules-list li { margin-bottom: 5px; }
+
+        /* ---------- Question sections ---------- */
+        .question-block { margin: 54px 0; }
+        .question-tag {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--amber);
+            background: rgba(255,184,77,0.10);
+            border: 1px solid rgba(255,184,77,0.4);
+            padding: 4px 12px;
+            border-radius: 20px;
+            margin-bottom: 10px;
+        }
+
+        /* Big-number callout */
+        .bignum {
+            background:
+                radial-gradient(120% 120% at 50% 0%, rgba(0,220,255,0.08), transparent 60%),
+                var(--bg-deep);
+            border: 1px solid rgba(0,220,255,0.3);
+            border-radius: 12px;
+            padding: 22px 25px;
+            margin: 26px 0;
+            text-align: center;
+            box-shadow: 0 0 30px -10px rgba(0,220,255,0.4), inset 0 0 30px rgba(0,0,0,0.5);
+        }
+        .bignum .value {
+            font-family: var(--font-mono);
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--cyan);
+            line-height: 1.3;
+            word-break: break-all;
+            text-shadow: 0 0 16px rgba(0,220,255,0.45);
+        }
+        .bignum .label {
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 10px;
+        }
+
+        /* Answer box */
+        .answer-box {
+            background:
+                linear-gradient(180deg, rgba(61,240,168,0.05), transparent 40%),
+                var(--panel);
+            border: 1px solid var(--line);
+            border-left: 3px solid var(--green);
+            padding: 14px 20px;
+            margin: 22px 0;
+            border-radius: 0 10px 10px 0;
+            font-size: 0.96rem;
+        }
+        .answer-box strong { color: var(--green); }
+
+        /* ============================================================
+           Embedded editor — taken verbatim from web/editor/editor.html
+           ============================================================ */
+        .editor-section {
+            position: relative;
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.025), transparent 30%),
+                var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 26px 22px 24px;
+            margin: 36px auto;
+            max-width: 560px;
+            text-align: center;
+            box-shadow:
+                0 24px 60px -28px rgba(0,0,0,0.9),
+                inset 0 1px 0 rgba(255,255,255,0.04);
+        }
+        .editor-section::before,
+        .editor-section::after {
+            content: "";
+            position: absolute;
+            width: 22px; height: 22px;
+            border: 2px solid var(--cyan);
+            opacity: 0.7;
+        }
+        .editor-section::before {
+            top: 10px; left: 10px;
+            border-right: 0; border-bottom: 0;
+            border-top-left-radius: 8px;
+        }
+        .editor-section::after {
+            bottom: 10px; right: 10px;
+            border-left: 0; border-top: 0;
+            border-bottom-right-radius: 8px;
+        }
+
+        .editor-title {
+            margin: 0 0 4px;
+            font-family: var(--font-display);
+            font-size: 1.02rem;
+            font-weight: 700;
+            color: var(--text);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .editor-title::before { content: "▰ "; color: var(--cyan); }
+        .panel-sub {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            letter-spacing: 1.5px;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin: 0 0 18px;
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            max-width: 340px;
+            margin: 0 auto 16px;
+        }
+        .stats-bar span {
+            flex: 1;
+            font-family: var(--font-mono);
+            font-size: 0.82rem;
+            letter-spacing: 1px;
+            color: var(--text);
+            background: var(--bg-deep);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 8px 6px;
+        }
+        #biomass-count { color: var(--cyan); }
+        #gen-count { color: var(--accent); }
+
+        .grid-wrapper {
+            display: inline-block;
+            background: var(--bg-deep);
+            padding: 10px;
+            border-radius: 10px;
+            margin: 18px 0;
+            border: 1px solid var(--line);
+            box-shadow:
+                inset 0 0 40px rgba(0,0,0,0.6),
+                0 0 0 1px rgba(0,220,255,0.05);
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(8, 38px);
+            grid-template-rows: repeat(8, 38px);
+            gap: 3px;
+        }
+        @media (max-width: 460px) {
+            .grid {
+                grid-template-columns: repeat(8, min(9.5vw, 40px));
+                grid-template-rows: repeat(8, min(9.5vw, 40px));
+            }
+        }
+        .cell {
+            width: 100%;
+            height: 100%;
+            background: var(--cell-dead);
+            border-radius: 3px;
+            cursor: pointer;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.025);
+            transition: background 0.08s, box-shadow 0.12s, transform 0.05s;
+        }
+        .cell:hover { background: #2c333e; }
+        .cell:active { transform: scale(0.9); }
+        .cell.alive {
+            background: var(--cell-alive);
+            box-shadow:
+                0 0 10px rgba(0,220,255,0.9),
+                0 0 20px rgba(0,220,255,0.45),
+                inset 0 0 6px rgba(255,255,255,0.6);
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        button {
+            font-family: var(--font-display);
+            padding: 12px 20px;
+            border: 1px solid transparent;
+            border-radius: 9px;
+            font-weight: 700;
+            font-size: 0.78rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            cursor: pointer;
+            color: var(--text);
+            background: var(--panel-2);
+            transition: transform 0.06s, filter 0.15s, box-shadow 0.15s, background 0.15s;
+        }
+        button:active { transform: scale(0.96); }
+        button:disabled { opacity: 0.32; cursor: not-allowed; filter: grayscale(0.4); }
+
+        .btn-play {
+            background: rgba(61,240,168,0.08);
+            border-color: rgba(61,240,168,0.55);
+            color: var(--green);
+            box-shadow: 0 0 18px -6px rgba(61,240,168,0.6);
+        }
+        .btn-play:hover:not(:disabled) { box-shadow: 0 0 22px -3px rgba(61,240,168,0.85); }
+        .btn-stop {
+            background: rgba(255,60,100,0.10);
+            border-color: rgba(255,60,100,0.6);
+            color: var(--red);
+            box-shadow: 0 0 18px -6px rgba(255,60,100,0.6);
+        }
+        .btn-clear {
+            background: transparent;
+            border-color: var(--line);
+            color: var(--muted);
+        }
+        .btn-clear:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+        .btn-submit {
+            flex-grow: 1;
+            max-width: 280px;
+            font-size: 0.92rem;
+            padding: 15px 20px;
+            color: #06141a;
+            background: linear-gradient(180deg, #46e7ff, var(--cyan));
+            border-color: rgba(0,220,255,0.6);
+            box-shadow: 0 0 24px -6px rgba(0,220,255,0.8), inset 0 1px 0 rgba(255,255,255,0.5);
+        }
+        .btn-submit:hover:not(:disabled) {
+            filter: brightness(1.08);
+            box-shadow: 0 0 32px -4px rgba(0,220,255,0.95);
+        }
+        .btn-submit::before { content: "» "; }
+
+        .input-group { max-width: 340px; margin: 0 auto 18px; }
+        input[type="text"] {
+            width: 100%;
+            padding: 13px 14px;
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            letter-spacing: 1px;
+            text-align: center;
+            color: var(--text);
+            background: var(--bg-deep);
+            border: 1px solid var(--line);
+            border-radius: 9px;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        input[type="text"]::placeholder { color: #5e6877; }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--cyan);
+            box-shadow: 0 0 0 3px rgba(0,220,255,0.15);
+        }
+
+        .counter-info {
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            color: var(--muted);
+            margin-top: 16px;
+            letter-spacing: 0.5px;
+        }
+        .counter-info strong { color: var(--cyan); }
+
+        .status-msg {
+            min-height: 22px;
+            font-family: var(--font-mono);
+            font-size: 0.82rem;
+            letter-spacing: 0.5px;
+            margin-top: 10px;
+        }
+        .error { color: var(--red); text-shadow: 0 0 10px rgba(255,60,100,0.4); }
+        .success { color: var(--green); text-shadow: 0 0 10px rgba(61,240,168,0.4); }
+
+        /* Reclaim input + recovery-card overlay (ADR-0027) */
+        #recovery-group { display: none; }
+        #recovery-hint {
+            color: var(--amber);
+            font-weight: 600;
+            line-height: 1.5;
+            text-align: left;
+            font-family: var(--font-ui);
+            font-size: 0.85rem;
+        }
+        #recovery-hint strong { color: var(--text); }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(8, 9, 12, 0.78);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .overlay.visible { display: flex; animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .overlay-box {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 26px 22px;
+            max-width: 380px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 30px 70px -20px rgba(0,0,0,0.9);
+        }
+        .recovery-card {
+            position: relative;
+            background:
+                radial-gradient(120% 120% at 50% 0%, rgba(255,184,77,0.10), transparent 60%),
+                var(--bg-deep);
+            color: var(--text);
+            border-radius: 12px;
+            padding: 26px 18px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,184,77,0.55);
+            box-shadow: 0 0 30px -8px rgba(255,184,77,0.4), inset 0 0 30px rgba(0,0,0,0.5);
+        }
+        .rc-title {
+            font-family: var(--font-mono);
+            font-size: 0.74rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--amber);
+        }
+        .rc-species {
+            font-family: var(--font-display);
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 12px 0 18px;
+            word-break: break-word;
+        }
+        .rc-code {
+            font-family: var(--font-mono);
+            font-size: 2rem;
+            font-weight: bold;
+            letter-spacing: 4px;
+            color: var(--amber);
+            background: rgba(255,184,77,0.10);
+            border: 1px dashed rgba(255,184,77,0.5);
+            border-radius: 8px;
+            padding: 12px;
+            text-shadow: 0 0 14px rgba(255,184,77,0.5);
+        }
+        .rc-date { font-family: var(--font-mono); font-size: 0.74rem; color: var(--muted); margin-top: 14px; }
+        .rc-note { font-size: 0.86rem; margin-top: 16px; line-height: 1.5; color: var(--muted); }
+        .rc-note strong { color: var(--text); }
+
+        @media (max-width: 460px) {
+            h1 { font-size: 1.55rem; }
+            h2 { font-size: 1.2rem; }
+            .bignum .value { font-size: 1.15rem; }
+            .container { padding-top: 40px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- KI-Agent unterstützt: live red-vs-blue Game of Life backdrop (from landing) -->
+<canvas id="life-bg"></canvas>
+
+<div class="container">
+
+    <p class="kicker">// Conway Lab · Zwischenbericht #2 <span class="blink">_</span></p>
+    <h1><span class="hl">Biotop</span> – Drei Fragen an ein digitales Ökosystem</h1>
+    <p class="author">von Friedemann Decker</p>
+
+    <p>Im ersten Bericht haben wir „Biotop" vorgestellt: Conway's
+        <em>Game of Life</em>, aber als Wettkampf – zwei Farben, Rot und Blau,
+        kämpfen auf einem gemeinsamen Gitter um die dominierende Population.
+        Seitdem hat das Projekt nicht nur Code dazugewonnen, sondern vor allem
+        <strong>Fragen</strong>. Drei davon haben sich als überraschend tief
+        herausgestellt – und genau diese drei beantwortet dieser zweite Bericht.
+        Sie sehen harmlos aus, führen aber mitten hinein in das, was ein
+        Informatikstudium im ersten Semester „Diskrete Modellierung" nennt.</p>
+
+    <div class="rules-wrapper">
+        <h4>Zur Erinnerung – Die 4 Regeln des Lebens</h4>
+        <ul class="rules-list">
+            <li><strong>Einsamkeit:</strong> Jede lebende Zelle mit weniger als 2 Nachbarn stirbt.</li>
+            <li><strong>Stabilität:</strong> Jede lebende Zelle mit 2 oder 3 Nachbarn lebt weiter.</li>
+            <li><strong>Überbevölkerung:</strong> Jede lebende Zelle mit mehr als 3 Nachbarn stirbt.</li>
+            <li><strong>Schöpfung:</strong> Jede tote Zelle mit <strong>exakt 3</strong> Nachbarn wird neu geboren.</li>
+        </ul>
+        <p style="margin-bottom: 0; margin-top: 10px;">Im Biotop kommt nur eine
+            Zutat hinzu: Eine neugeborene Zelle bekommt die <strong>Mehrheitsfarbe</strong>
+            ihrer drei Eltern. Sonst bleibt alles beim Klassiker. Diese kleine
+            Ergänzung wird in Frage 3 noch eine entscheidende Rolle spielen.</p>
+    </div>
+
+    <p>Bevor wir loslegen: Unten könnt Ihr direkt selbst eine <strong>Spezies
+        erschaffen</strong>, sie auf dem 8×8-Feld simulieren und – wenn Ihr mutig
+        seid – in die Arena schicken. Der Editor ist kein Spielzeug, sondern
+        unsere erste Antwort auf Frage 1.</p>
+
+    <!-- ============ Embedded frontend editor (web/editor/editor.html) ============ -->
+    <div class="editor-section">
+        <h3 class="editor-title">Erschaffe deine Spezies</h3>
+        <p class="panel-sub">8 × 8 Genom · max 24 Zellen · Torus</p>
+
+        <div class="stats-bar">
+            <span id="biomass-count">Zellen: 0/24</span>
+            <span id="gen-count">Gen: 0</span>
+        </div>
+
+        <div class="grid-wrapper">
+            <div id="grid" class="grid"></div>
+        </div>
+
+        <div class="controls">
+            <button id="btn-toggle" class="btn-play">Simulieren</button>
+            <button id="btn-reset" class="btn-clear">Reset</button>
+            <button id="btn-clear" class="btn-clear">Clear</button>
+        </div>
+
+        <div class="input-group">
+            <input type="text" id="nickname" placeholder="Name deiner Spezies" maxlength="20">
+        </div>
+
+        <!-- KI-Agent unterstützt: Reclaim input, revealed on 409 name_taken (ADR-0027) -->
+        <div class="input-group" id="recovery-group">
+            <input type="text" id="recovery-input" placeholder="Recovery-Code (z.B. BIOTOP-7F3A)" maxlength="20">
+            <p class="counter-info" id="recovery-hint">
+                Dieser Name ist bereits vergeben.<br>
+                <strong>Ist das nicht deine Spezies?</strong> Wähle bitte oben einen anderen Namen.<br>
+                <strong>Hast du diesen Namen schon einmal auf einem anderen Gerät eingereicht?</strong>
+                Dann gib hier deinen Recovery-Code ein, um die Spezies zurückzuholen.
+            </p>
+        </div>
+
+        <div class="controls">
+            <button id="btn-submit" class="btn-submit" disabled>Ab in die Arena</button>
+        </div>
+
+        <div id="status" class="status-msg"></div>
+
+        <p class="counter-info">
+            Bereits <strong id="global-counter">...</strong> Konfigurationen im Biotop eingereicht.
+        </p>
+    </div>
+
+    <!-- ===================== FRAGE 1 ===================== -->
+    <div class="question-block">
+        <span class="question-tag">Frage 1</span>
+        <h2>Wie wird ein Schachbrett unendlich?</h2>
+
+        <p>Das echte Game of Life lebt auf einem <em>unendlich</em> großen Feld.
+            Ein Gleiter darf für immer geradeaus fliegen, ein Muster darf wachsen,
+            solange es will. Ein Computer hat aber keinen unendlichen Speicher –
+            unser Spielfeld ist ein endliches Schachbrett aus 8×8 Feldern. Was
+            passiert am Rand? Sterben Zellen, die hinausfallen? Prallen sie ab?
+            Beides wäre unfair: Wer am Rand startet, hätte plötzlich andere Regeln
+            als wer in der Mitte sitzt.</p>
+
+        <p>Die Lösung ist ein alter Trick aus der Mathematik und aus den
+            Videospielen der 80er-Jahre (man denke an <em>Pac-Man</em> oder
+            <em>Asteroids</em>): Wir <strong>verkleben die Ränder</strong>. Die
+            rechte Kante wird mit der linken verbunden, die obere mit der unteren.
+            Eine Zelle, die rechts hinausläuft, taucht links wieder auf. Eine
+            Zelle, die oben hinausläuft, erscheint unten.</p>
+
+        <p>Geometrisch entsteht dabei etwas Schönes: Klebt man zuerst links und
+            rechts zusammen, wird aus dem Blatt ein <strong>Zylinder</strong>.
+            Klebt man dann noch oben und unten zusammen, biegt sich der Zylinder
+            zu einem <strong>Donut</strong> – Mathematiker:innen sagen
+            <strong>Torus</strong>. Auf dieser Oberfläche gibt es keinen Rand
+            mehr. Jede Zelle hat exakt 8 Nachbarn, egal wo sie sitzt. Das endliche
+            Schachbrett verhält sich für die Spielregeln, als wäre es unendlich
+            und vollkommen gleichförmig – kein Ort ist mehr „besonders".</p>
+
+        <div class="rules-wrapper">
+            <h4>Wie wir das im Code machen</h4>
+            <p style="margin:0;">Unser Gitter hat einen unsichtbaren „Geister-Rahmen"
+                um die echten Zellen herum. Vor jedem Schritt kopieren wir die
+                gegenüberliegende Seite in diesen Rahmen hinein – die ganze
+                Funktion heißt im Quelltext nicht zufällig
+                <code>sync_ghost_borders</code> („für unendliches Spielfeld").
+                Der Editor oben tut im Browser exakt dasselbe: Beim Zählen der
+                Nachbarn rechnet er <code>(position + 8) % 8</code> – das
+                „<code>% 8</code>" (Modulo) ist die mathematische Schere, die das
+                Blatt zum Donut faltet. Probiert es aus: Setzt einen „Gleiter" an
+                den rechten Rand und schaut, wo er wieder auftaucht.</p>
+        </div>
+
+        <div class="answer-box">
+            <strong>Antwort:</strong> Ein Schachbrett wird unendlich, indem man
+            seine Ränder paarweise verklebt. Aus dem Quadrat wird ein Torus
+            (Donut) – eine randlose, überall gleiche Fläche. Genau diese
+            Eigenschaft brauchen wir später für die faire Antwort auf Frage 3.
+        </div>
+    </div>
+
+    <!-- ===================== FRAGE 2 ===================== -->
+    <div class="question-block">
+        <span class="question-tag">Frage 2</span>
+        <h2>Wie viele verschiedene Biotope kann es auf einem 8×8 geben?</h2>
+
+        <p>Beim Turnier zeichnet jede:r Teilnehmer:in eine Start-Spezies auf ein
+            8×8-Feld – das sind <strong>64 Felder</strong>, jedes entweder
+            lebendig oder tot. Damit aber niemand das Feld einfach komplett
+            vollstopft, gilt eine <strong>Fair-Play-Regel</strong>: Die „Biomasse"
+            ist auf <strong>38 %</strong> begrenzt, also höchstens
+            <strong>24 lebende Zellen</strong> von 64 (genau das Limit, das der
+            Editor oben durchsetzt). Die spannende Frage lautet daher: Wie viele
+            <em>erlaubte</em> Spezies gibt es unter dieser Regel? Die Antwort ist
+            ein erstes echtes Aha-Erlebnis der Kombinatorik.</p>
+
+        <p>Dafür brauchen wir den <strong>Binomialkoeffizienten</strong>
+            („n über k"): Er zählt, auf wie viele Arten man <em>k</em> Zellen aus
+            64 Plätzen auswählen kann. Da ein Muster zwischen 0 und 24 Zellen
+            haben darf, addieren wir alle erlaubten Fälle auf:</p>
+
+        <div class="bignum">
+            <div class="value">&Sigma;<sub>k=0</sub><sup>24</sup> ( 64 über k ) = 552&nbsp;859&nbsp;891&nbsp;708&nbsp;071&nbsp;949</div>
+            <div class="label">≈ 553 Billiarden erlaubte Spezies</div>
+        </div>
+
+        <p>Diese Zahl ist schwer zu fassen: Es gibt mehr erlaubte Spezies, als es
+            <em>Sekunden seit dem Urknall</em> gegeben hat. „Alle durchprobieren"
+            ist also keine Option – weder für uns noch für den schnellsten Rechner.
+            Genau das macht das Turnier spannend: Es gibt keine Tabelle „bester
+            Muster", die man auswendig lernen könnte. Man muss bauen, simulieren
+            und mutig sein.</p>
+
+        <div class="answer-box">
+            <strong>Antwort:</strong> Unter der Fair-Play-Grenze von höchstens
+            24 lebenden Zellen gibt es rund <strong>553 Billiarden</strong>
+            (552&nbsp;859&nbsp;891&nbsp;708&nbsp;071&nbsp;949) mögliche Biotope –
+            astronomisch viel. Brute Force ist chancenlos; Kreativität gewinnt.
+        </div>
+    </div>
+
+    <!-- ===================== FRAGE 3 ===================== -->
+    <div class="question-block">
+        <span class="question-tag">Frage 3</span>
+        <h2>Ist die rechte oder die linke Seite im Vorteil?</h2>
+
+        <p>Im Match treten zwei Spezies an. Die eine startet links, die andere
+            rechts; zusammen bilden sie ein 8×16-Feld. Ursprünglich waren wir
+            überzeugt: Die Seite muss einen Unterschied machen. Deshalb spielte
+            jedes Paar <strong>zwei Runden</strong> – einmal so, einmal mit
+            getauschten Seiten, damit es „gerecht" zugeht. Doch beim Zuschauen
+            fiel etwas auf: Runde 2 sah <em>jedes Mal</em> aus wie ein Spiegelbild
+            von Runde 1, mit vertauschten Farben – gleicher Sieger, gleicher
+            Abstand, gleiche Endgeneration. Zufall? Oder steckt da ein Gesetz
+            dahinter?</p>
+
+        <p>Wir haben es nicht beim Beobachten belassen, sondern es
+            <strong>bewiesen</strong>. Der Schlüssel ist Frage 1: Weil das Feld
+            ein Torus ist, gibt es <em>keinen</em> Rand und keinen ausgezeichneten
+            Ort. „Die rechte Hälfte" um 8 Spalten zu verschieben, ist auf dem
+            Donut dieselbe Operation wie „die linke Hälfte" – das Feld merkt den
+            Unterschied gar nicht. Verschiebt man die Startaufstellung um eine
+            halbe Torusbreite und tauscht zusätzlich die beiden Farben, erhält man
+            <strong>exakt</strong> die Aufstellung der zweiten Runde.</p>
+
+        <p>Entscheidend ist nun ein winziges Detail der Spielregeln: Eine neue
+            Zelle entsteht nur bei <strong>genau 3</strong> lebenden Nachbarn.
+            Und 3 ist eine <em>ungerade</em> Zahl. Das heißt: Unter drei Nachbarn
+            kann es niemals ein perfektes Unentschieden „2 rot gegen 2 blau"
+            geben – eine Farbe ist immer in der Mehrheit. Es gibt also keinen
+            versteckten Münzwurf, der eine Farbe bevorzugen könnte. Die Regel ist
+            <strong>vollkommen farb-symmetrisch</strong>.</p>
+
+        <p>Aus diesen beiden Bausteinen – randloser Torus + farb-symmetrische
+            Regel – folgt mathematisch zwingend: Runde 2 ist nicht nur ähnlich,
+            sondern eine <strong>exakte</strong>, vorhersagbare Kopie von Runde 1.
+            Jeder Spieler endet in beiden Runden mit <em>derselben</em> Population,
+            egal ob er links oder rechts gestartet ist. Die Seite ist für das
+            Ergebnis vollständig bedeutungslos.</p>
+
+        <div class="rules-wrapper">
+            <h4>Die schöne Konsequenz</h4>
+            <p style="margin:0;">Wenn Runde 2 beweisbar nichts Neues liefert, kann
+                man sie weglassen – das Ranking bleibt identisch. Genau das haben
+                wir getan und damit die <strong>Rechenzeit des Turniers
+                halbiert</strong> (bei 50 Teilnehmern: 1225 statt 2450 Simulationen).
+                Ein mathematischer Beweis hat also ganz handfest unsere Server
+                entlastet.</p>
+        </div>
+
+        <div class="answer-box">
+            <strong>Antwort:</strong> Nein – weder links noch rechts ist im
+            Vorteil. Auf einem randlosen Torus mit farb-symmetrischer Regel sind
+            die Siegchancen <em>beweisbar</em> positionsunabhängig. Die zweite
+            Runde war überflüssig und wurde gestrichen.
+        </div>
+    </div>
+
+    <hr>
+
+    <h3>Was diese drei Fragen verbindet</h3>
+    <p>Auffällig ist, wie eng die drei zusammenhängen. Frage 1 (der Torus) ist die
+        Voraussetzung dafür, dass Frage 3 (kein Seitenvorteil) überhaupt „nein"
+        lauten kann – auf einem Feld <em>mit</em> Rand sähe die Sache anders aus.
+        Und Frage 2 (die schiere Zahl der Möglichkeiten) erklärt, warum dieses
+        Turnier nie „gelöst" sein wird: Es gibt zu viele Biotope, um sie
+        auszurechnen – man muss sie leben lassen. Genau dafür bauen wir Biotop.</p>
+
+    <h3>Auf dem Weg zum Jubiläum</h3>
+    <p>Bis zur WIAI25-Feier bringen wir das Ausstellungsstück in Form: ein großer
+        Bildschirm voller lebender, kämpfender Spezies, eine globale Rangliste und
+        am Ende die Krönung eines Community-„Biotop-Champions". Zeichnet ruhig
+        schon im Editor oben Eure erste Spezies – und seid dabei, wenn aus
+        553 Billiarden Möglichkeiten Eure ganz persönliche Lebensform wird.</p>
+
+</div>
+
+<!-- KI-Agent unterstützt: Recovery-code card overlay shown on first claim (ADR-0027) -->
+<div id="recovery-overlay" class="overlay">
+    <div class="overlay-box">
+        <div id="recovery-card" class="recovery-card">
+            <div class="rc-title">Biotop · Recovery-Code</div>
+            <div class="rc-species" id="rc-species"></div>
+            <div class="rc-code" id="rc-code"></div>
+            <div class="rc-date" id="rc-date"></div>
+            <div class="rc-note">
+                Bewahre diesen Code auf! Nur damit kannst du deine Spezies auf einem
+                anderen Gerät zurückholen.
+            </div>
+        </div>
+        <div class="controls">
+            <button id="btn-save-png" class="btn-submit">Als Bild speichern</button>
+            <button id="btn-close-overlay" class="btn-clear">Verstanden</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // KI-Agent unterstützt: ambient red-vs-blue Game of Life backdrop (from landing).
+    (function lifeBackdrop() {
+        const reduce = window.matchMedia &&
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduce) return;
+
+        const canvas = document.getElementById('life-bg');
+        const ctx = canvas.getContext('2d');
+        const CELL = 18;
+        const RED = '#ff3c64', BLUE = '#00dcff';
+        let cols, rows, cur, nxt;
+
+        function seed() {
+            cols = Math.ceil(canvas.width / CELL) + 1;
+            rows = Math.ceil(canvas.height / CELL) + 1;
+            cur = new Uint8Array(cols * rows);
+            nxt = new Uint8Array(cols * rows);
+            for (let i = 0; i < cur.length; i++) {
+                cur[i] = Math.random() < 0.14 ? (Math.random() < 0.5 ? 1 : 2) : 0;
+            }
+        }
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            seed();
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function step() {
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    let n = 0, red = 0, blue = 0;
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            if (!dx && !dy) continue;
+                            const nx = (x + dx + cols) % cols;
+                            const ny = (y + dy + rows) % rows;
+                            const v = cur[ny * cols + nx];
+                            if (v) { n++; if (v === 1) red++; else blue++; }
+                        }
+                    }
+                    const idx = y * cols + x;
+                    const alive = cur[idx];
+                    if (alive) {
+                        nxt[idx] = (n === 2 || n === 3) ? alive : 0;
+                    } else {
+                        nxt[idx] = (n === 3) ? (red >= blue ? 1 : 2) : 0;
+                    }
+                }
+            }
+            [cur, nxt] = [nxt, cur];
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    const v = cur[y * cols + x];
+                    if (!v) continue;
+                    ctx.fillStyle = v === 1 ? RED : BLUE;
+                    ctx.fillRect(x * CELL, y * CELL, CELL - 2, CELL - 2);
+                }
+            }
+        }
+
+        let live = 0;
+        function tick() {
+            live = cur.reduce((a, v) => a + (v ? 1 : 0), 0);
+            if (live < cols * rows * 0.02) seed();
+            draw();
+            step();
+        }
+        tick();
+        setInterval(tick, 280);
+    })();
+
+    // ============ Embedded editor logic (web/editor/editor.html) ============
+    const GRID_SIZE = 8;
+    const MAX_BIOMASS = 24;
+    let grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(0));
+    let initialGrid = null;
+    let isRunning = false;
+    let timer = null;
+    let generation = 0;
+    function generateUUID() {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+            const r = Math.random() * 16 | 0;
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+    }
+    let playerId = localStorage.getItem('biotope_player_id') || generateUUID();
+    localStorage.setItem('biotope_player_id', playerId);
+
+    const gridEl = document.getElementById('grid');
+    const biomassEl = document.getElementById('biomass-count');
+    const genEl = document.getElementById('gen-count');
+    const statusEl = document.getElementById('status');
+    const submitBtn = document.getElementById('btn-submit');
+    const toggleBtn = document.getElementById('btn-toggle');
+    const nicknameInput = document.getElementById('nickname');
+    const recoveryGroup = document.getElementById('recovery-group');
+    const recoveryInput = document.getElementById('recovery-input');
+    const recoveryOverlay = document.getElementById('recovery-overlay');
+
+    function createGrid() {
+        gridEl.innerHTML = '';
+        for(let y=0; y<GRID_SIZE; y++) {
+            for(let x=0; x<GRID_SIZE; x++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.x = x;
+                cell.dataset.y = y;
+                cell.onclick = () => handleCellClick(x, y);
+                gridEl.appendChild(cell);
+            }
+        }
+    }
+
+    function handleCellClick(x, y) {
+        if(isRunning) return;
+        const currentBiomass = grid.flat().filter(c => c).length;
+        if(!grid[y][x] && currentBiomass >= MAX_BIOMASS) {
+            showStatus("Limit von 24 Zellen erreicht!", "error");
+            return;
+        }
+        grid[y][x] = grid[y][x] ? 0 : 1;
+        updateUI();
+    }
+
+    function updateUI() {
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach(c => {
+            const x = c.dataset.x;
+            const y = c.dataset.y;
+            c.className = grid[y][x] ? 'cell alive' : 'cell';
+        });
+        const count = grid.flat().filter(c => c).length;
+        biomassEl.innerText = `Zellen: ${count}/${MAX_BIOMASS}`;
+        genEl.innerText = `Gen: ${generation}`;
+        submitBtn.disabled = count === 0 || nicknameInput.value.trim().length < 2 || isRunning;
+    }
+
+    // GOL Logic (Toroidal) — das Modulo faltet das 8x8-Blatt zum Donut (Frage 1)
+    function nextGen() {
+        let next = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(0));
+        for(let y=0; y<GRID_SIZE; y++) {
+            for(let x=0; x<GRID_SIZE; x++) {
+                let neighbors = 0;
+                for(let i=-1; i<=1; i++) {
+                    for(let j=-1; j<=1; j++) {
+                        if(i===0 && j===0) continue;
+                        let ny = (y + i + GRID_SIZE) % GRID_SIZE;
+                        let nx = (x + j + GRID_SIZE) % GRID_SIZE;
+                        neighbors += grid[ny][nx];
+                    }
+                }
+                if(grid[y][x] === 1 && (neighbors === 2 || neighbors === 3)) next[y][x] = 1;
+                else if(grid[y][x] === 0 && neighbors === 3) next[y][x] = 1;
+            }
+        }
+        grid = next;
+        generation++;
+        updateUI();
+    }
+
+    toggleBtn.onclick = () => {
+        if(!isRunning) {
+            initialGrid = JSON.parse(JSON.stringify(grid));
+            isRunning = true;
+            toggleBtn.innerText = "Stopp";
+            toggleBtn.className = "btn-stop";
+            timer = setInterval(nextGen, 200);
+        } else {
+            clearInterval(timer);
+            isRunning = false;
+            toggleBtn.innerText = "Simulieren";
+            toggleBtn.className = "btn-play";
+        }
+        updateUI();
+    };
+
+    document.getElementById('btn-reset').onclick = () => {
+        if(initialGrid) {
+            grid = JSON.parse(JSON.stringify(initialGrid));
+            generation = 0;
+            updateUI();
+        }
+    };
+
+    document.getElementById('btn-clear').onclick = () => {
+        grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(0));
+        generation = 0;
+        initialGrid = null;
+        if(isRunning) toggleBtn.onclick();
+        updateUI();
+    };
+
+    nicknameInput.oninput = updateUI;
+
+    function showStatus(txt, cls) {
+        statusEl.innerText = txt;
+        statusEl.className = "status-msg " + cls;
+        setTimeout(() => { statusEl.innerText = ""; }, 3000);
+    }
+
+    // KI-Agent unterstützt: Submit with name-claiming + reclaim flow (ADR-0027)
+    submitBtn.onclick = async () => {
+        const cells = [];
+        const snap = initialGrid || grid;
+        for(let y=0; y<GRID_SIZE; y++) {
+            for(let x=0; x<GRID_SIZE; x++) {
+                if(snap[y][x]) cells.push([x, y]);
+            }
+        }
+
+        const reclaimCode = recoveryGroup.style.display === 'block'
+            ? (recoveryInput.value.trim() || null)
+            : null;
+
+        const speciesName = nicknameInput.value.trim();
+        const payload = {
+            metadata: {
+                player_id: playerId,
+                nickname: speciesName,
+                league: "einsteiger"
+            },
+            config: {
+                bounding_box_x: 8,
+                bounding_box_y: 8,
+                cells: cells
+            },
+            auth: { recovery_code: reclaimCode }
+        };
+
+        submitBtn.disabled = true;
+        showStatus("Übertrage Spezies...", "");
+
+        try {
+            const res = await fetch('/api/v1/submit_config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json().catch(() => ({}));
+
+            if(res.status === 201) {
+                localStorage.setItem('biotope_nickname', speciesName);
+                if(data.recovery_code) {
+                    showRecoveryOverlay(speciesName, data.recovery_code);
+                    showStatus("Spezies eingereicht!", "success");
+                } else if(data.reclaimed) {
+                    showStatus("Spezies zurückgeholt!", "success");
+                    hideRecoveryGroup();
+                } else {
+                    showStatus("Erfolgreich eingereicht!", "success");
+                }
+                nicknameInput.value = '';
+                fetchGlobalCount();
+                updateUI();
+            } else if(res.status === 409) {
+                showRecoveryGroup();
+                showStatus("Name bereits vergeben — siehe Hinweis.", "error");
+                submitBtn.disabled = false;
+            } else if(res.status === 403) {
+                showStatus("Code falsch — bitte erneut.", "error");
+                submitBtn.disabled = false;
+            } else {
+                const detail = data.detail;
+                const msg = typeof detail === 'string' ? detail
+                    : (detail && detail.error) || "Serverfehler";
+                showStatus("Fehler: " + msg, "error");
+                submitBtn.disabled = false;
+            }
+        } catch(e) {
+            showStatus("Server nicht erreichbar.", "error");
+            submitBtn.disabled = false;
+        }
+    };
+
+    // KI-Agent unterstützt: Reveal/hide the reclaim input group (ADR-0027)
+    function showRecoveryGroup() {
+        recoveryGroup.style.display = 'block';
+        recoveryInput.focus();
+    }
+    function hideRecoveryGroup() {
+        recoveryGroup.style.display = 'none';
+        recoveryInput.value = '';
+    }
+
+    // KI-Agent unterstützt: Show the recovery-code card overlay (ADR-0027)
+    function showRecoveryOverlay(species, code) {
+        document.getElementById('rc-species').innerText = species;
+        document.getElementById('rc-code').innerText = code;
+        document.getElementById('rc-date').innerText =
+            new Date().toLocaleDateString('de-DE');
+        recoveryOverlay.classList.add('visible');
+        hideRecoveryGroup();
+    }
+
+    document.getElementById('btn-close-overlay').onclick = () => {
+        recoveryOverlay.classList.remove('visible');
+    };
+
+    // KI-Agent unterstützt: Render the recovery card to a PNG download (ADR-0027).
+    const savePngBtn = document.getElementById('btn-save-png');
+    (function setupPngExport() {
+        const canvas = document.createElement('canvas');
+        if(!canvas.getContext || !canvas.toBlob) {
+            savePngBtn.style.display = 'none';
+            return;
+        }
+        savePngBtn.onclick = () => {
+            const species = document.getElementById('rc-species').innerText;
+            const code = document.getElementById('rc-code').innerText;
+            const date = document.getElementById('rc-date').innerText;
+            const W = 600, H = 360;
+            canvas.width = W; canvas.height = H;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#0d0f13';
+            ctx.fillRect(0, 0, W, H);
+            ctx.strokeStyle = '#ffb84d';
+            ctx.lineWidth = 4;
+            ctx.setLineDash([10, 8]);
+            ctx.strokeRect(18, 18, W - 36, H - 36);
+            ctx.setLineDash([]);
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#ffb84d';
+            ctx.font = 'bold 22px "Courier New", monospace';
+            ctx.fillText('BIOTOP · RECOVERY-CODE', W / 2, 82);
+            ctx.fillStyle = '#e7eaf0';
+            ctx.font = 'bold 30px Arial';
+            ctx.fillText(species, W / 2, 152);
+            ctx.fillStyle = '#ffb84d';
+            ctx.font = 'bold 54px "Courier New", monospace';
+            ctx.fillText(code, W / 2, 232);
+            ctx.fillStyle = '#8b97a8';
+            ctx.font = '18px Arial';
+            ctx.fillText(date, W / 2, 292);
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'biotop-recovery-' + code + '.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+        };
+    })();
+
+    async function fetchGlobalCount() {
+        try {
+            const res = await fetch('/api/v1/stats/count');
+            if(res.ok) {
+                const data = await res.json();
+                document.getElementById('global-counter').innerText = data.count || "0";
+            }
+        } catch(e) {
+            console.error("Could not fetch global count", e);
+        }
+    }
+
+    createGrid();
+    updateUI();
+    fetchGlobalCount();
+</script>
+
+</body>
+</html>

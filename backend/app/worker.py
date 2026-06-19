@@ -325,9 +325,28 @@ async def execute_epoch(db):
                 # epoch retries on the next tick.
                 return
 
+            # KI-Agent unterstützt: Integrity guard (ADR-0032). The C worker must
+            # return exactly one result per requested pairing. A mismatch means the
+            # invoked binary does not support pairings mode (e.g. a stale
+            # biotope_hyper_worker that ignores the "pairings" array and emits no
+            # "match_results"). Abort WITHOUT aggregating — otherwise every pair
+            # would be uncached and the leaderboard would be silently overwritten
+            # with zeros — and WITHOUT updating the fingerprint, so the epoch
+            # retries once the correct binary is in place.
+            computed = results.get("match_results", [])
+            if len(computed) != len(pairings):
+                logger.error(
+                    "Hyper-Worker returned %d match results for %d requested "
+                    "pairings. The binary likely does not support pairings mode "
+                    "(stale build?). Aborting epoch without touching the leaderboard.",
+                    len(computed),
+                    len(pairings),
+                )
+                return
+
             # 3. Upsert newly computed results into the cache.
             ops = []
-            for m in results.get("match_results", []):
+            for m in computed:
                 ia, ib = m["idx_a"], m["idx_b"]
                 ha, hb = competitors[ia]["hash"], competitors[ib]["hash"]
                 doc = {

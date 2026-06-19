@@ -108,27 +108,27 @@ warnings required) after every C change; Python backend tests are self-running
 
 *Goal: Compute only missing pairs each epoch, cache them, and aggregate the full ranking + highlights from the cache.*
 
-- [ ] **Step 4.1: Build the missing-pairs set from the cache**
-    - [ ] **Action:** In `execute_epoch()`, after computing each submission's `seed_hash`, enumerate all unordered competitor pairs and their `pair_key`s, query `match_results` for those keys, and build the list of **uncached** pairs (mapping back to competitor indices for the batch). Mark `# KI-Agent unterstützt`.
-    - [ ] **Verification:**
-        1.  Add a unit test (`test_match_cache.py`) with a fake/stubbed cache asserting: empty cache → all pairs missing; fully populated cache → empty missing set; one new competitor among N → exactly N missing pairs.
-        2.  Run the test file.
-        3.  **Expected Result:** All assertions pass.
+- [x] **Step 4.1: Build the missing-pairs set from the cache**
+    - [x] **Action:** Extracted a pure helper `enumerate_needed_pairs(hashes)` (pair_key → representative indices, dedups identical patterns) used by `execute_epoch()`; the cache `find({"pair_key": {"$in": ...}})` and the `missing` delta are computed inline. `# KI-Agent unterstützt`.
+    - [x] **Verification:**
+        1.  Added `backend/tests/test_match_cache.py`: empty cache → all missing; full cache → none missing; one new competitor among N → exactly N missing; duplicate pattern dedups; plus `cells_to_seed64` layout tests.
+        2.  Ran the test file (stub harness).
+        3.  **Expected Result:** All assertions pass. ✅
 
-- [ ] **Step 4.2: Invoke the C worker on missing pairs and upsert results**
-    - [ ] **Action:** Build the batch with the `pairings` array of uncached index pairs, invoke `biotope_hyper_worker`, parse the `match_results` output, and upsert each into `db.match_results` keyed by `pair_key`. Skip the C call entirely when the missing set is empty. Mark `# KI-Agent unterstützt`.
-    - [ ] **Verification:**
-        1.  Run the worker against a roster of 3 active submissions on an empty cache; then add a 4th and watch the next epoch.
-        2.  **Expected Result:** First epoch computes 3 pairs; after adding the 4th, the next epoch computes exactly 3 new pairs (4 vs each existing), and `match_results` now holds 6 documents.
+- [x] **Step 4.2: Invoke the C worker on missing pairs and upsert results**
+    - [x] **Action:** `execute_epoch` builds the batch with a `pairings` array (canonical hash order), calls the extracted `run_hyper_worker(...)`, parses `match_results`, and `bulk_write`s `UpdateOne(..., upsert=True)` into `db.match_results` keyed by `pair_key`. The C call is skipped when the missing set is empty ("All pairs cached — aggregating from cache only."). `# KI-Agent unterstützt`.
+    - [ ] **Verification (Interactive — needs live stack):**
+        1.  Run the worker against 3 active submissions on an empty cache; then add a 4th and watch the next epoch.
+        2.  **Expected Result:** first epoch computes 3 pairs; after adding the 4th, the next epoch computes exactly 3 new pairs and `match_results` holds 6 docs. *(Logic pre-validated autonomously; runtime check pending developer.)*
 
-- [ ] **Step 4.3: Aggregate ranking + highlights from the cache**
-    - [ ] **Action:** Replace the C-`rankings`-driven update (`worker.py:240-262`) with a Python aggregation over the cached results for the **currently active** set: per player accumulate wins/draws/losses, `total_score`, `matches_played`, and `sum_stable_gen`; derive `win_rate` and `avg_stable_generation`. Write the same fields to `submissions` and `players` as today.
-    - [ ] **Action:** Derive highlight candidates (top `activity_sum`) from the cached results for the active set, then run the existing `filter_highlights_by_oscillation(...)` (ADR-0023) unchanged before storing.
-    - [ ] **Action:** Add the **determinism tripwire** comment at the cache read/write boundary referencing ADR-0032 and ADR-0026. Mark new blocks `# KI-Agent unterstützt`.
-    - [ ] **Verification:**
-        1.  Run `python backend/tests/test_ranking.py` and `python backend/tests/test_oscillator_detection.py`.
-        2.  Compare the cached-aggregation ranking for a fixed roster against a one-shot full round-robin (status-quo path) for the same roster.
-        3.  **Expected Result:** Existing tests pass; the cached ranking is **identical** to the full-recompute ranking (positions, win_rate, total_score, avg_stable_generation).
+- [x] **Step 4.3: Aggregate ranking + highlights from the cache**
+    - [x] **Action:** Replaced the C-`rankings`-driven update with a Python aggregation over the cached results for the active set (wins/draws/losses, `total_score`, `matches_played`, `sum_stable_gen` → `win_rate`, `avg_stable_generation`); writes the same fields to `submissions` and `players`. Deterministic rank sort (score, wins, id).
+    - [x] **Action:** Highlight candidates (top `activity_sum`) are derived from the cache; seeds reconstructed via `cells_to_seed64` (mirrors `grid_to_bitboard`); `filter_highlights_by_oscillation(...)` (ADR-0023) applied unchanged before storing.
+    - [x] **Action:** Added the **determinism tripwire** comment at the cache boundary referencing ADR-0032 and ADR-0026. `# KI-Agent unterstützt`.
+    - [x] **Verification (autonomous logic check):**
+        1.  `test_match_cache.py` passes. (`test_ranking.py` / `test_oscillator_detection.py` need `bson`/`motor` → run in container.)
+        2.  Replicated `execute_epoch`'s aggregation against a **C full round-robin** for a 6-competitor roster including a duplicated pattern: the delta path computed 11 distinct pairs (vs 15) and reproduced the full-mode ranking **exactly** (score/W/D/L/avg_stable for all 6, incl. the duplicate pair). ✅
+        3.  Live DB compare pending developer (interactive).
 
 ---
 

@@ -10,6 +10,7 @@ from datetime import datetime
 
 import numpy as np
 from bson import ObjectId
+from pymongo import UpdateOne
 
 # Path management MUST be first
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -50,6 +51,81 @@ def roster_fingerprint(submissions) -> str:
 def pair_key(h_a: str, h_b: str) -> str:
     lo, hi = (h_a, h_b) if h_a <= h_b else (h_b, h_a)
     return f"{lo}:{hi}"
+
+
+# KI-Agent unterstützt: Map every distinct unordered seed-pair to one representative
+# pair of competitor indices (ADR-0032). Identical patterns (equal hash) collapse
+# to a single pair_key via setdefault, so a duplicated pattern is computed once.
+def enumerate_needed_pairs(hashes) -> dict:
+    needed = {}
+    n = len(hashes)
+    for i in range(n):
+        for j in range(i + 1, n):
+            needed.setdefault(pair_key(hashes[i], hashes[j]), (i, j))
+    return needed
+
+
+# KI-Agent unterstützt: Reproduce the C highlight seed layout (ADR-0032). The C
+# hyper-worker stores a flat 64-entry seed where bit (r*8 + c) is set; its parser
+# fills cells[y][x] from a sparse [x, y] pair, so the flat index is y*8 + x.
+# Mirrors grid_to_bitboard() in game_logic.c.
+def cells_to_seed64(cells) -> list:
+    seed = [0] * 64
+    for pair in cells:
+        x, y = pair[0], pair[1]
+        if 0 <= x < 8 and 0 <= y < 8:
+            seed[y * 8 + x] = 1
+    return seed
+
+
+# KI-Agent unterstützt: Locate and run biotope_hyper_worker on a batch dict,
+# returning the parsed results (or None on failure). Centralises temp-file and
+# binary-path handling shared by full and incremental (pairings) runs.
+async def run_hyper_worker(batch_input: dict):
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f_in:
+        json.dump(batch_input, f_in)
+        input_path = f_in.name
+    output_path = input_path + ".out.json"
+
+    possible_paths = [
+        "./build/biotope_hyper_worker",
+        "/app/build/biotope_hyper_worker",
+        "./biotope_hyper_worker",
+    ]
+    binary_path = next((p for p in possible_paths if os.path.exists(p)), None)
+    if not binary_path:
+        logger.error(
+            f"Binary not found. Checked: {possible_paths}. "
+            f"Did you run 'make' before starting docker-compose?"
+        )
+        _safe_remove(input_path, output_path)
+        return None
+
+    try:
+        process = await asyncio.create_subprocess_exec(
+            binary_path,
+            input_path,
+            output_path,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _stdout, stderr = await process.communicate()
+        if process.returncode != 0:
+            logger.error(f"Hyper-Worker failed: {stderr.decode()}")
+            return None
+        if not os.path.exists(output_path):
+            logger.error("Output file from Hyper-Worker missing.")
+            return None
+        with open(output_path, "r") as f_out:
+            return json.load(f_out)
+    finally:
+        _safe_remove(input_path, output_path)
+
+
+def _safe_remove(*paths):
+    for p in paths:
+        if p and os.path.exists(p):
+            os.remove(p)
 
 
 # ---------------------------------------------------------------------------
@@ -188,89 +264,225 @@ async def execute_epoch(db):
         logger.info("Roster unchanged since last epoch — skipping.")
         return
 
-    # 2. Prepare input batch
-    batch_input = {"max_generations": 1000, "competitors": []}
-
+    # KI-Agent unterstützt: Build the competitor list in a stable index order and
+    # compute each seed's content hash (ADR-0032 Stage 2).
+    competitors = []
     for s in submissions:
-        batch_input["competitors"].append(
-            {"player_id": str(s["_id"]), "cells": s["config"]["cells"]}
+        cells = s["config"]["cells"]
+        competitors.append(
+            {
+                "id": str(s["_id"]),
+                "cells": cells,
+                "hash": seed_hash(cells),
+                "nickname": s["metadata"]["nickname"],
+            }
         )
+    n = len(competitors)
+    max_generations = 1000
 
-    # Create temp files
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f_in:
-        json.dump(batch_input, f_in)
-        input_path = f_in.name
-
-    output_path = input_path + ".out.json"
-
+    # KI-Agent unterstützt: DETERMINISM TRIPWIRE (ADR-0032 / ADR-0026). The match
+    # cache below is valid ONLY because run_isolated_match is deterministic and the
+    # torus colour-swap symmetry makes a match result a function of the unordered
+    # seed pair. If randomness or a topology/birth-rule change is ever introduced,
+    # drop the match_results collection and re-evaluate this optimisation.
     try:
-        # 3. Run biotope_hyper_worker
-        # KI-Agent unterstützt: Check in multiple locations for Docker/Local flexibility
-        possible_paths = [
-            "./build/biotope_hyper_worker",
-            "/app/build/biotope_hyper_worker",
-            "./biotope_hyper_worker",
-        ]
-        binary_path = next((p for p in possible_paths if os.path.exists(p)), None)
+        # 1. Enumerate every distinct unordered seed-pair needed for the ranking.
+        needed = enumerate_needed_pairs([c["hash"] for c in competitors])
 
-        if not binary_path:
-            logger.error(
-                f"Binary not found. Checked: {possible_paths}. "
-                f"Did you run 'make' before starting docker-compose?"
-            )
-            return
+        # 2. Look up the cache; compute only the missing pairs.
+        cached = {}
+        async for doc in db.match_results.find({"pair_key": {"$in": list(needed)}}):
+            cached[doc["pair_key"]] = doc
 
-        process = await asyncio.create_subprocess_exec(
-            binary_path,
-            input_path,
-            output_path,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-
-        stdout, stderr = await process.communicate()
-
-        if process.returncode != 0:
-            logger.error(f"Hyper-Worker failed: {stderr.decode()}")
-            return
-
-        # 4. Parse results and Update Database
-        if not os.path.exists(output_path):
-            logger.error("Output file from Hyper-Worker missing.")
-            return
-
-        with open(output_path, "r") as f_out:
-            results = json.load(f_out)
-
+        missing = [(k, ij) for k, ij in needed.items() if k not in cached]
         logger.info(
-            f"Epoch finished. Matches played: {results['total_matches_played']}"
+            "Tournament: %d competitors, %d distinct pairs, %d cached, %d to compute.",
+            n,
+            len(needed),
+            len(cached),
+            len(missing),
         )
 
-        # Store Highlights
-        epoch_id = f"epoch_{int(datetime.utcnow().timestamp())}"
-        # KI-Agent unterstützt: Resolve UUID player_ids to human-readable
-        # nicknames (ADR-0021 bugfix)
-        id_to_nickname = {str(s["_id"]): s["metadata"]["nickname"] for s in submissions}
-        highlights_data = []
-        # KI-Agent unterstützt: Filter oscillating patterns before storing
-        # highlights (ADR-0023)
-        _raw_highlights = results.get("highlights", [])
-        _filtered_highlights = filter_highlights_by_oscillation(
-            _raw_highlights, batch_input["max_generations"]
+        if missing:
+            # Send pairings in canonical hash order so C's idx_a is always the
+            # lower-hash seed → the stored 'a'/'b' winner needs no remapping.
+            pairings = []
+            for _k, (i, j) in missing:
+                if competitors[i]["hash"] <= competitors[j]["hash"]:
+                    pairings.append([i, j])
+                else:
+                    pairings.append([j, i])
+            batch_input = {
+                "max_generations": max_generations,
+                "competitors": [
+                    {"player_id": c["id"], "cells": c["cells"]} for c in competitors
+                ],
+                "pairings": pairings,
+            }
+            results = await run_hyper_worker(batch_input)
+            if results is None:
+                # Error already logged; do NOT update the fingerprint so the
+                # epoch retries on the next tick.
+                return
+
+            # 3. Upsert newly computed results into the cache.
+            ops = []
+            for m in results.get("match_results", []):
+                ia, ib = m["idx_a"], m["idx_b"]
+                ha, hb = competitors[ia]["hash"], competitors[ib]["hash"]
+                doc = {
+                    "pair_key": pair_key(ha, hb),
+                    "hash_a": ha,  # lower hash (canonical send order)
+                    "hash_b": hb,
+                    "winner": m["winner"],
+                    "pop_a": m["pop_a"],
+                    "pop_b": m["pop_b"],
+                    "activity_sum": m["activity_sum"],
+                    "stable_at_generation": m["stable_at_generation"],
+                    "computed_at": datetime.utcnow(),
+                }
+                cached[doc["pair_key"]] = doc
+                ops.append(
+                    UpdateOne(
+                        {"pair_key": doc["pair_key"]}, {"$set": doc}, upsert=True
+                    )
+                )
+            if ops:
+                await db.match_results.bulk_write(ops, ordered=False)
+            logger.info("Cached %d newly computed matches.", len(ops))
+        else:
+            logger.info("All pairs cached — aggregating from cache only.")
+
+        # 4. Aggregate the ranking from the cache over ALL active competitor pairs.
+        #    (Cheap arithmetic; the expensive simulations were the cached part.)
+        stats = [
+            {
+                "score": 0.0,
+                "wins": 0,
+                "draws": 0,
+                "losses": 0,
+                "played": 0,
+                "stable_sum": 0,
+            }
+            for _ in range(n)
+        ]
+        for i in range(n):
+            for j in range(i + 1, n):
+                hi, hj = competitors[i]["hash"], competitors[j]["hash"]
+                doc = cached.get(pair_key(hi, hj))
+                if doc is None:
+                    continue  # defensive; should not happen
+                stable = doc["stable_at_generation"] or max_generations
+                stats[i]["played"] += 1
+                stats[j]["played"] += 1
+                stats[i]["stable_sum"] += stable
+                stats[j]["stable_sum"] += stable
+                if doc["winner"] == "draw":
+                    stats[i]["draws"] += 1
+                    stats[j]["draws"] += 1
+                    stats[i]["score"] += 0.5
+                    stats[j]["score"] += 0.5
+                else:
+                    # doc 'a' == lower hash; i is the 'a' side iff hi <= hj.
+                    i_won = (doc["winner"] == "a") == (hi <= hj)
+                    if i_won:
+                        stats[i]["wins"] += 1
+                        stats[i]["score"] += 1.0
+                        stats[j]["losses"] += 1
+                    else:
+                        stats[j]["wins"] += 1
+                        stats[j]["score"] += 1.0
+                        stats[i]["losses"] += 1
+
+        # Rank by score desc, then wins, then id for a deterministic order.
+        ranked = sorted(
+            range(n),
+            key=lambda idx: (
+                -stats[idx]["score"],
+                -stats[idx]["wins"],
+                competitors[idx]["id"],
+            ),
         )
-        for h in _filtered_highlights:
-            highlights_data.append(
+
+        now = datetime.utcnow()
+        for position, idx in enumerate(ranked, start=1):
+            c = competitors[idx]
+            st = stats[idx]
+            played = st["played"]
+            win_rate = st["score"] / played if played else 0
+            avg_stable = st["stable_sum"] / played if played else 0
+            await db.submissions.update_one(
+                {"_id": ObjectId(c["id"])},
                 {
-                    "metric_type": "activity_sum",
-                    "red_name": id_to_nickname.get(h["red_name"], h["red_name"]),
-                    "blue_name": id_to_nickname.get(h["blue_name"], h["blue_name"]),
-                    "red_seed": h["red_seed"],
-                    "blue_seed": h["blue_seed"],
-                    "metric_value": h["metric_value"],
+                    "$set": {
+                        "rank": position,
+                        "win_rate": win_rate,
+                        "wins": st["wins"],
+                        "draws": st["draws"],
+                        "losses": st["losses"],
+                        "total_score": st["score"],
+                        "matches_played": played,
+                        "avg_stable_generation": avg_stable,
+                        "last_epoch_at": now,
+                    }
+                },
+            )
+            await db.players.update_one(
+                {"nickname": c["nickname"]},
+                {
+                    "$set": {
+                        "rank": position,
+                        "win_rate": win_rate,
+                        "wins": st["wins"],
+                        "draws": st["draws"],
+                        "losses": st["losses"],
+                        "avg_stable_generation": avg_stable,
+                        "matches_played": played,
+                    }
+                },
+            )
+        logger.info("Database updated with Epoch results (%d players).", n)
+
+        # 5. Highlights: top activity_sum pairs from the active set's cache.
+        #    Seeds are reconstructed from the active submissions (hash_a -> red,
+        #    hash_b -> blue; orientation is irrelevant by the ADR-0026 symmetry).
+        hash_to_comp = {}
+        for c in competitors:
+            hash_to_comp.setdefault(c["hash"], c)
+        candidates = []
+        for k, _ij in needed.items():
+            doc = cached.get(k)
+            if doc is None:
+                continue
+            ca = hash_to_comp.get(doc["hash_a"])
+            cb = hash_to_comp.get(doc["hash_b"])
+            if not ca or not cb:
+                continue
+            candidates.append(
+                {
+                    "red_name": ca["nickname"],
+                    "blue_name": cb["nickname"],
+                    "red_seed": cells_to_seed64(ca["cells"]),
+                    "blue_seed": cells_to_seed64(cb["cells"]),
+                    "metric_value": doc["activity_sum"],
                 }
             )
-
+        candidates.sort(key=lambda h: h["metric_value"], reverse=True)
+        # KI-Agent unterstützt: Filter oscillating patterns before storing (ADR-0023)
+        filtered = filter_highlights_by_oscillation(candidates[:10], max_generations)
+        highlights_data = [
+            {
+                "metric_type": "activity_sum",
+                "red_name": h["red_name"],
+                "blue_name": h["blue_name"],
+                "red_seed": h["red_seed"],
+                "blue_seed": h["blue_seed"],
+                "metric_value": h["metric_value"],
+            }
+            for h in filtered
+        ]
         if highlights_data:
+            epoch_id = f"epoch_{int(datetime.utcnow().timestamp())}"
             await db.epoch_highlights.insert_one(
                 {
                     "epoch_id": epoch_id,
@@ -278,53 +490,10 @@ async def execute_epoch(db):
                     "highlights": highlights_data,
                 }
             )
-            logger.info(f"Stored {len(highlights_data)} highlights for {epoch_id}")
+            logger.info("Stored %d highlights for %s", len(highlights_data), epoch_id)
 
-        # KI-Agent unterstützt: Epoch-fresh ranking — no historical Elo, full
-        # round-robin data resets each epoch
-        for position, rank in enumerate(results["rankings"], start=1):
-            submission = next(
-                (s for s in submissions if str(s["_id"]) == rank["player_id"]), None
-            )
-
-            await db.submissions.update_one(
-                {"_id": ObjectId(rank["player_id"])},
-                {
-                    "$set": {
-                        "rank": position,
-                        "win_rate": rank["win_rate"],
-                        "wins": rank["wins"],
-                        "draws": rank["draws"],
-                        "losses": rank["losses"],
-                        "total_score": rank["total_score"],
-                        "matches_played": rank["matches_played"],
-                        "avg_stable_generation": rank["avg_stable_generation"],
-                        "last_epoch_at": datetime.utcnow(),
-                    }
-                },
-            )
-
-            if submission:
-                await db.players.update_one(
-                    {"nickname": submission["metadata"]["nickname"]},
-                    {
-                        "$set": {
-                            "rank": position,
-                            "win_rate": rank["win_rate"],
-                            "wins": rank["wins"],
-                            "draws": rank["draws"],
-                            "losses": rank["losses"],
-                            "avg_stable_generation": rank["avg_stable_generation"],
-                            "matches_played": rank["matches_played"],
-                        }
-                    },
-                )
-
-        logger.info("Database updated with Epoch results.")
-
-        # KI-Agent unterstützt: Record the roster fingerprint only after a
-        # successful epoch, so a failed epoch retries on the next tick
-        # (ADR-0032 Stage 1).
+        # 6. Record the roster fingerprint only after a fully successful epoch, so
+        #    a failed epoch retries on the next tick (ADR-0032 Stage 1).
         await db.worker_state.update_one(
             {"_id": "epoch_guard"},
             {"$set": {"fingerprint": current_fp, "updated_at": datetime.utcnow()}},
@@ -333,12 +502,6 @@ async def execute_epoch(db):
 
     except Exception as e:
         logger.error(f"Error during Epoch execution: {e}")
-    finally:
-        # Cleanup
-        if os.path.exists(input_path):
-            os.remove(input_path)
-        if os.path.exists(output_path):
-            os.remove(output_path)
 
 
 async def worker_loop():

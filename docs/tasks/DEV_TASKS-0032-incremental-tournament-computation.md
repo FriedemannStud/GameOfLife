@@ -155,3 +155,11 @@ warnings required) after every C change; Python backend tests are self-running
     - [x] **Action:** Updated `docs/CHANGELOG.md` with the Stage 2 entry; flipped ADR-0032 **Status** `proposed` → `accepted`.
     - [x] **Action:** Updated `CLAUDE.md`'s Backend section — worker is now incremental/cache-backed; documented `match_results`/`worker_state` collections and the C `pairings` mode.
     - [x] **Verification:** `git diff` shows the changelog entry, ADR status change, and CLAUDE.md update; build is clean and all autonomous tests pass. ✅
+
+- [x] **Step 5.4: Hardening — stale-binary integrity guard**
+    - *Found during live testing: a stale `biotope_hyper_worker` (without pairings mode) ignored the `pairings` array and returned no `match_results`. `execute_epoch` then aggregated an empty cache, silently overwrote every player's stats with zeros, and wrote the fingerprint — freezing the broken state.*
+    - [x] **Action:** In `execute_epoch` (`backend/app/worker.py`), after `run_hyper_worker`, assert `len(results["match_results"]) == len(pairings)`. On mismatch, log an error and `return` **without** aggregating, **without** overwriting `submissions`/`players`, and **without** writing the `epoch_guard` fingerprint (so the epoch retries next tick). `# KI-Agent unterstützt`.
+    - [x] **Action (ops note):** Rebuild only the worker with `make build/biotope_hyper_worker` (no Raylib dependency, works on headless boxes lacking `raylib.h`); then `docker compose up -d --force-recreate --no-deps matchmaker` and clear the stale guard via `db.worker_state.deleteOne({_id:"epoch_guard"})`.
+    - [x] **Verification:**
+        1.  `python3 -m py_compile backend/app/worker.py` → syntax OK. ✅
+        2.  Live: with the rebuilt binary the next changed-roster epoch logs `Cached <N> newly computed matches.` instead of `Cached 0`; with a stale binary it now logs `returned 0 match results for <N> requested pairings … Aborting` and leaves the leaderboard untouched. *(Live confirmation pending developer.)*

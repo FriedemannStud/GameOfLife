@@ -95,9 +95,9 @@ Key states: `STATE_CONFIG` → `STATE_EDIT_RED` → `STATE_EDIT_BLUE` → `STATE
 ### Backend (Multiplayer Tournament)
 
 - **FastAPI** (`backend/app/main.py`): Accepts pattern submissions at `POST /api/v1/submit_config`, serves `/api/leaderboard` and `/api/epoch/highlights`.
-- **MongoDB** (`backend/app/database.py`): Collections `submissions`, `players`, `epoch_highlights`.
-- **Python worker** (`backend/app/worker.py`): Runs every 60 s, fetches active submissions, serialises them to a temp JSON batch, invokes `build/biotope_hyper_worker`, parses results, and updates Elo ratings in the DB.
-- **C Hyper-Worker** (`src/apps/hyper/main_hyper.c`): O(N²) round-robin tournament with OpenMP parallelisation. Reads a batch JSON, runs all pairings, outputs rankings + highlight seeds.
+- **MongoDB** (`backend/app/database.py`): Collections `submissions`, `players`, `epoch_highlights`, plus `match_results` (deterministic match cache) and `worker_state` (epoch guard) — see ADR-0032.
+- **Python worker** (`backend/app/worker.py`): Runs every 60 s. **Incremental** (ADR-0032): it skips entirely when the active roster is unchanged (fingerprint guard), otherwise computes only the *uncached* seed-pairs via the C worker's pairings mode, upserts them into `match_results`, and aggregates the ranking + highlights from the cache. The optimisation relies on matches being deterministic (determinism tripwire at the cache boundary).
+- **C Hyper-Worker** (`src/apps/hyper/main_hyper.c`): O(N²) round-robin tournament with OpenMP parallelisation. Reads a batch JSON, runs all pairings, outputs rankings + highlight seeds. When the batch includes an optional `pairings` array (ADR-0032), it instead computes only those pairs and emits a per-pair `match_results` array.
 
 ### Web Editor
 

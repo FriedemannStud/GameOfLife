@@ -151,7 +151,7 @@ warnings required) after every C change; Python backend tests are self-running
         1.  The integration test (which invokes the C binaries) passes.
         2.  **Expected Result:** Exit code 0; rankings populated end-to-end.
 
-- [ ] **Step 5.3: Finalise documentation**
-    - [ ] **Action:** Update `docs/CHANGELOG.md` with the Stage 2 entry; flip ADR-0032 **Status** from `proposed` to `accepted`.
-    - [ ] **Action:** (Optional) add a short note in `CLAUDE.md`'s Backend section that the worker is now incremental and cache-backed.
-    - [ ] **Verification:** `git diff` shows the changelog entry and the ADR status change; the build is clean and all tests pass.
+- [x] **Step 5.3: Finalise documentation**
+    - [x] **Action:** Updated `docs/CHANGELOG.md` with the Stage 2 entry; flipped ADR-0032 **Status** `proposed` → `accepted`.
+    - [x] **Action:** Updated `CLAUDE.md`'s Backend section — worker is now incremental/cache-backed; documented `match_results`/`worker_state` collections and the C `pairings` mode.
+    - [x] **Verification:** `git diff` shows the changelog entry, ADR status change, and CLAUDE.md update; build is clean and all autonomous tests pass. ✅

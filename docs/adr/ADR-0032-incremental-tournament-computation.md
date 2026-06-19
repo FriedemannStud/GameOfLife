@@ -1,6 +1,6 @@
 ### **ADR-0032: Incremental Tournament Computation via a Deterministic Match Cache**
 
-**Status:** proposed
+**Status:** accepted
 
 **Date:** 2026-06-19
 

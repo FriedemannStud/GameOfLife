@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 import logging
 import os
@@ -19,6 +20,27 @@ from app.database import get_db
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("epoch_worker")
+
+
+# ---------------------------------------------------------------------------
+# Incremental Tournament Computation (ADR-0032)
+# ---------------------------------------------------------------------------
+# KI-Agent unterstützt: Content hash of an 8x8 seed pattern. Keying by content
+# (not player_id) gives edit-invalidation and duplicate-pattern dedup for free.
+def seed_hash(cells) -> str:
+    canonical = json.dumps(cells, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
+
+
+# KI-Agent unterstützt: Stable fingerprint of the active roster. Captures
+# additions, removals, deactivations, and edits (an edited seed hashes
+# differently). Order-independent via sorting.
+def roster_fingerprint(submissions) -> str:
+    parts = sorted(
+        f"{str(s['_id'])}:{seed_hash(s['config']['cells'])}" for s in submissions
+    )
+    return hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()
+
 
 # ---------------------------------------------------------------------------
 # Oscillator Detection (ADR-0023)
@@ -143,6 +165,17 @@ async def execute_epoch(db):
             f"Not enough submissions for a tournament "
             f"(Found: {len(submissions)}). Skipping."
         )
+        return
+
+    # KI-Agent unterstützt: Roster-change early-exit guard (ADR-0032 Stage 1).
+    # Matches are deterministic (see run_isolated_match in game_logic.c), so an
+    # unchanged roster yields a bit-for-bit identical ranking — recomputing is
+    # pure waste. Skip unless the active set changed since the last successful
+    # epoch.
+    current_fp = roster_fingerprint(submissions)
+    guard = await db.worker_state.find_one({"_id": "epoch_guard"})
+    if guard and guard.get("fingerprint") == current_fp:
+        logger.info("Roster unchanged since last epoch — skipping.")
         return
 
     # 2. Prepare input batch
@@ -278,6 +311,15 @@ async def execute_epoch(db):
                 )
 
         logger.info("Database updated with Epoch results.")
+
+        # KI-Agent unterstützt: Record the roster fingerprint only after a
+        # successful epoch, so a failed epoch retries on the next tick
+        # (ADR-0032 Stage 1).
+        await db.worker_state.update_one(
+            {"_id": "epoch_guard"},
+            {"$set": {"fingerprint": current_fp, "updated_at": datetime.utcnow()}},
+            upsert=True,
+        )
 
     except Exception as e:
         logger.error(f"Error during Epoch execution: {e}")

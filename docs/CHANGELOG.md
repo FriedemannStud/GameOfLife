@@ -1,3 +1,10 @@
+2026-06-19 — ADR-0032: Incremental tournament computation — Stage 1 (roster-change early-exit guard)
+
+- Optimization: the tournament worker no longer re-runs the full O(N²) round-robin every 60 s when nothing changed. Matches are deterministic (`run_isolated_match`, `src/core/game_logic.c`; the only `rand()` is in `init_world`, GUI-only), so an unchanged active roster yields a bit-for-bit identical ranking — recomputing is pure waste.
+- `backend/app/worker.py`: new pure helpers `seed_hash(cells)` (SHA-256/16 over canonical JSON of the 8×8 pattern) and `roster_fingerprint(submissions)` (order-independent hash over `id:seed_hash` pairs — detects additions, removals, deactivations, and edits). `execute_epoch` computes the current fingerprint after loading active submissions and early-returns ("Roster unchanged since last epoch — skipping.") when it matches the last successful epoch's fingerprint stored in the new `worker_state` singleton (`_id: "epoch_guard"`). The fingerprint is written only after a successful epoch, so a failed epoch retries next tick.
+- `backend/tests/test_epoch_guard.py` (new): unit tests for `seed_hash` (deterministic, edit-sensitive) and `roster_fingerprint` (identical/reordered rosters equal; edit/add/remove differ). All pass.
+- Foundation for Stage 2 (deterministic match cache with delta computation); see ADR-0032 and DEV_TASKS-0032.
+
 2026-06-15 — ADR-0031: Auto-paging rotation for the Kiosk Global Leaderboard
 
 - Feature: the Kiosk "Global Leaderboard" no longer shows only the top ~9 players. Within its slot it now auto-pages through all ranked players at full row size (ranks 1–9, 10–18, …) and then hands off to Multicam as before. Page index is derived purely from `state_timer`, so no new mutable controller state is introduced.

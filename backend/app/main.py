@@ -45,8 +45,16 @@ async def startup_db_client():
         print("Successfully connected to MongoDB!")
         await _ensure_nickname_index(get_db().players)
         await _ensure_duel_indexes(get_db())
+        await _ensure_match_cache_indexes(get_db())
     else:
         print("CRITICAL: Could not connect to MongoDB. Check your .env file.")
+
+
+# KI-Agent unterstützt: Match-cache index (ADR-0032 Stage 2). The unique index on
+# `pair_key` backs the content-addressed lookup of deterministic match outcomes
+# and prevents duplicate cache rows under concurrent upserts.
+async def _ensure_match_cache_indexes(db):
+    await db.match_results.create_index("pair_key", unique=True)
 
 
 # KI-Agent unterstützt: Shoulder-Duel indexes (ADR-0028). The TTL index on

@@ -42,6 +42,16 @@ def roster_fingerprint(submissions) -> str:
     return hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()
 
 
+# KI-Agent unterstützt: Canonical (unordered) cache key for a pair of seeds.
+# The orientation in which a pair is played (which seed is RED/left) does not
+# change the winning seed or per-seed populations on the torus — see ADR-0026 —
+# so the cached result is a well-defined function of the unordered pair.
+# A self-pair (h_a == h_b, two identical patterns) is a valid mirror match.
+def pair_key(h_a: str, h_b: str) -> str:
+    lo, hi = (h_a, h_b) if h_a <= h_b else (h_b, h_a)
+    return f"{lo}:{hi}"
+
+
 # ---------------------------------------------------------------------------
 # Oscillator Detection (ADR-0023)
 # World config mirrors run_isolated_match() in game_logic.c and

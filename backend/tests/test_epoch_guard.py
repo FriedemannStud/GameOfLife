@@ -10,7 +10,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "backend"))
 
-from app.worker import roster_fingerprint, seed_hash
+from app.worker import pair_key, roster_fingerprint, seed_hash
 
 
 def _cells(fill=0):
@@ -80,6 +80,26 @@ def test_removed_submission_changes_fingerprint():
     print("PASS: test_removed_submission_changes_fingerprint")
 
 
+# ---------------------------------------------------------------------------
+# pair_key tests (ADR-0032 Stage 2)
+# ---------------------------------------------------------------------------
+
+
+def test_pair_key_order_independent():
+    assert pair_key("aaa", "bbb") == pair_key("bbb", "aaa")
+    print("PASS: test_pair_key_order_independent")
+
+
+def test_pair_key_canonical_form():
+    assert pair_key("bbb", "aaa") == "aaa:bbb"
+    print("PASS: test_pair_key_canonical_form")
+
+
+def test_pair_key_self_pair():
+    assert pair_key("aaa", "aaa") == "aaa:aaa"
+    print("PASS: test_pair_key_self_pair")
+
+
 if __name__ == "__main__":
     print("=== seed_hash tests ===")
     test_seed_hash_deterministic()
@@ -91,5 +111,10 @@ if __name__ == "__main__":
     test_edited_cell_changes_fingerprint()
     test_added_submission_changes_fingerprint()
     test_removed_submission_changes_fingerprint()
+
+    print("\n=== pair_key tests ===")
+    test_pair_key_order_independent()
+    test_pair_key_canonical_form()
+    test_pair_key_self_pair()
 
     print("\nAll epoch guard tests passed.")

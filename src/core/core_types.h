@@ -112,6 +112,29 @@ typedef struct {
     long long sum_stable_gen;
 } RankingScore;
 
+// KI-Agent unterstützt: Explicit pairing (competitor indices) for the
+// incremental match cache (ADR-0032 Stage 2). When the batch supplies a
+// "pairings" array, the hyper-worker plays only these pairs instead of the
+// full round-robin.
+typedef struct {
+    int a;
+    int b;
+} Pairing;
+
+// KI-Agent unterstützt: Per-pair match outcome echoed back to the orchestrator
+// (ADR-0032 Stage 2). Keyed by competitor index; Python maps indices to seed
+// hashes and the canonical pair_key. winner: 0 = draw, 1 = a (RED/left) won,
+// 2 = b (BLUE/right) won.
+typedef struct {
+    int idx_a;
+    int idx_b;
+    int winner;
+    int pop_a;
+    int pop_b;
+    long activity_sum;
+    int stable_at_generation;
+} PairOutcome;
+
 // KI-Agent unterstützt: SimulationContext encapsulating match instances
 typedef struct {
     int rows;

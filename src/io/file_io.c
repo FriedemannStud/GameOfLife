@@ -444,7 +444,11 @@ bool initialize_world_from_file(const char* filepath, World* world, Team team, c
 }
 
 // KI-Agent unterstützt: Parse the batch JSON file
-int parse_batch_file(const char* filepath, Competitor** competitors, int* count, int* max_gen) {
+int parse_batch_file(const char* filepath, Competitor** competitors, int* count, int* max_gen, Pairing** pairings, int* pairing_count) {
+    // KI-Agent unterstützt: pairings default to "absent" (full round-robin).
+    *pairings = NULL;
+    *pairing_count = -1;
+
     char *json_str = read_file_to_string(filepath);
     if (!json_str) return 0;
     cJSON *root = cJSON_Parse(json_str);
@@ -485,14 +489,43 @@ int parse_batch_file(const char* filepath, Competitor** competitors, int* count,
             }
         }
     }
+
+    // KI-Agent unterstützt: Optional explicit pairings (ADR-0032 Stage 2). Each
+    // entry is [idx_a, idx_b]; out-of-range indices are skipped defensively.
+    cJSON *pairings_array = cJSON_GetObjectItemCaseSensitive(root, "pairings");
+    if (cJSON_IsArray(pairings_array)) {
+        int raw = cJSON_GetArraySize(pairings_array);
+        Pairing *list = calloc(raw > 0 ? raw : 1, sizeof(Pairing));
+        int n = 0;
+        for (int p = 0; p < raw; p++) {
+            cJSON *pair = cJSON_GetArrayItem(pairings_array, p);
+            if (cJSON_IsArray(pair) && cJSON_GetArraySize(pair) >= 2) {
+                int a = cJSON_GetArrayItem(pair, 0)->valueint;
+                int b = cJSON_GetArrayItem(pair, 1)->valueint;
+                if (a >= 0 && a < *count && b >= 0 && b < *count) {
+                    list[n].a = a;
+                    list[n].b = b;
+                    n++;
+                }
+            }
+        }
+        *pairings = list;
+        *pairing_count = n;
+    }
+
     cJSON_Delete(root); free(json_str);
     return 1;
 }
 
 // KI-Agent unterstützt: Generate output JSON for batch results including highlights
-int save_batch_results(const char* filepath, RankingScore* scores, int count, double cpu_time_used, HighlightEntry* highlights, int highlight_count) {
+int save_batch_results(const char* filepath, RankingScore* scores, int count, double cpu_time_used, HighlightEntry* highlights, int highlight_count, PairOutcome* pair_outcomes, int pair_outcome_count) {
     cJSON *output_root = cJSON_CreateObject();
-    cJSON_AddNumberToObject(output_root, "total_matches_played", (long long)count * (count - 1));
+    // KI-Agent unterstützt: in pairings mode the count of computed matches is the
+    // number of supplied pairs; otherwise the directed full round-robin count.
+    long long total_played = (pair_outcome_count >= 0)
+        ? (long long)pair_outcome_count
+        : (long long)count * (count - 1);
+    cJSON_AddNumberToObject(output_root, "total_matches_played", total_played);
     cJSON_AddNumberToObject(output_root, "execution_time_cpu_s", cpu_time_used);
 
     cJSON *rankings_array = cJSON_CreateArray();
@@ -530,6 +563,27 @@ int save_batch_results(const char* filepath, RankingScore* scores, int count, do
         cJSON_AddItemToArray(highlights_array, h_item);
     }
     cJSON_AddItemToObject(output_root, "highlights", highlights_array);
+
+    // KI-Agent unterstützt: Per-pair results for the incremental cache (ADR-0032).
+    // Emitted in pairings mode only (count >= 0, possibly empty), so the
+    // full-round-robin output (count == -1) is unchanged.
+    if (pair_outcome_count >= 0) {
+        cJSON *matches_array = cJSON_CreateArray();
+        for (int i = 0; i < pair_outcome_count; i++) {
+            cJSON *m = cJSON_CreateObject();
+            cJSON_AddNumberToObject(m, "idx_a", pair_outcomes[i].idx_a);
+            cJSON_AddNumberToObject(m, "idx_b", pair_outcomes[i].idx_b);
+            const char *w = (pair_outcomes[i].winner == 1) ? "a"
+                          : (pair_outcomes[i].winner == 2) ? "b" : "draw";
+            cJSON_AddStringToObject(m, "winner", w);
+            cJSON_AddNumberToObject(m, "pop_a", pair_outcomes[i].pop_a);
+            cJSON_AddNumberToObject(m, "pop_b", pair_outcomes[i].pop_b);
+            cJSON_AddNumberToObject(m, "activity_sum", pair_outcomes[i].activity_sum);
+            cJSON_AddNumberToObject(m, "stable_at_generation", pair_outcomes[i].stable_at_generation);
+            cJSON_AddItemToArray(matches_array, m);
+        }
+        cJSON_AddItemToObject(output_root, "match_results", matches_array);
+    }
 
     char *output_str = cJSON_Print(output_root);
     FILE *out_f = fopen(filepath, "w");

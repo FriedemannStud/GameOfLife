@@ -34,8 +34,13 @@ void append_protocol_result(const char *filename, GameConfig *c, int winner);
 // KI-Agent unterstützt: JSON I/O
 bool load_config_from_json(const char* filepath, GameConfig* config);
 bool initialize_world_from_file(const char* filepath, World* world, Team team, char* out_player_id, char* out_nickname);
-int parse_batch_file(const char* filepath, Competitor** competitors, int* count, int* max_gen);
-int save_batch_results(const char* filepath, RankingScore* scores, int count, double cpu_time_used, HighlightEntry* highlights, int highlight_count);
+// KI-Agent unterstützt: `pairings`/`pairing_count` are optional outputs (ADR-0032).
+// When the batch JSON contains no "pairings" array, *pairings is set to NULL and
+// *pairing_count to -1, signalling the caller to run the full round-robin.
+int parse_batch_file(const char* filepath, Competitor** competitors, int* count, int* max_gen, Pairing** pairings, int* pairing_count);
+// KI-Agent unterstützt: `pair_outcomes`/`pair_outcome_count` are optional (ADR-0032).
+// When pair_outcome_count > 0 a "match_results" array is appended to the output.
+int save_batch_results(const char* filepath, RankingScore* scores, int count, double cpu_time_used, HighlightEntry* highlights, int highlight_count, PairOutcome* pair_outcomes, int pair_outcome_count);
 void save_headless_results(const char* filepath, const char* winner, int gens, const char* rp_id, const char* rp_nick, int rp_pop, const char* bp_id, const char* bp_nick, int bp_pop);
 
 // Lists .bio files in a directory. Returns count.

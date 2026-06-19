@@ -89,6 +89,8 @@
                 grid-template-columns: repeat(8, 8vw);
                 grid-template-rows: repeat(8, 8vw);
             }
+            /* KI-Agent unterstützt: Formel auf schmalen Displays verkleinern */
+            .bignum math { font-size: 1.1rem; }
         }
 
         .cell {
@@ -261,6 +263,11 @@
             line-height: 1.2;
             word-break: break-all;
         }
+        /* KI-Agent unterstützt: MathML an den Look der Box angleichen */
+        .bignum math {
+            font-size: 1.7rem;
+            color: var(--cell-alive);
+        }
         .bignum .label {
             font-size: 0.8rem;
             color: #bbb;
@@ -378,7 +385,7 @@
         <p>Geometrisch entsteht dabei etwas Schönes: Klebt man zuerst links und
             rechts zusammen, wird aus dem Blatt ein <strong>Zylinder</strong>.
             Klebt man dann noch oben und unten zusammen, biegt sich der Zylinder
-            zu einem <strong>Donut</strong> – Mathematiker:innen sagen
+            zu einem <strong>Donut</strong> – in der Mathematik heißt das
             <strong>Torus</strong>. Auf dieser Oberfläche gibt es keinen Rand
             mehr. Jede Zelle hat exakt 8 Nachbarn, egal wo sie sitzt. Das endliche
             Schachbrett verhält sich für die Spielregeln, als wäre es unendlich
@@ -442,7 +449,7 @@
         <span class="question-tag">Frage 2</span>
         <h2>Wie viele verschiedene Biotope kann es auf einem 8×8 geben?</h2>
 
-        <p>Beim Turnier zeichnet jede:r Teilnehmer:in eine Start-Spezies auf ein
+        <p>Beim Turnier zeichnet jedes Team eine Start-Spezies auf ein
             8×8-Feld – das sind <strong>64 Felder</strong>, jedes entweder
             lebendig oder tot. Damit aber niemand das Feld einfach komplett
             vollstopft, gilt eine <strong>Fair-Play-Regel</strong>: Die „Biomasse"
@@ -458,7 +465,23 @@
             haben darf, addieren wir alle erlaubten Fälle auf:</p>
 
         <div class="bignum">
-            <div class="value" style="font-size: 1.3rem;">&Sigma;<sub>k=0</sub><sup>24</sup> ( 64 über k ) = 552&nbsp;859&nbsp;891&nbsp;708&nbsp;071&nbsp;949</div>
+            <!-- KI-Agent unterstützt: native MathML statt Text-Behelf (offline-fähig, kein CDN) -->
+            <div class="value">
+                <math display="block">
+                    <munderover>
+                        <mo>&#x2211;</mo>
+                        <mrow><mi>k</mi><mo>=</mo><mn>0</mn></mrow>
+                        <mn>24</mn>
+                    </munderover>
+                    <mrow>
+                        <mo>(</mo>
+                        <mfrac linethickness="0"><mn>64</mn><mi>k</mi></mfrac>
+                        <mo>)</mo>
+                    </mrow>
+                    <mo>=</mo>
+                    <mn>552&#x202F;859&#x202F;891&#x202F;708&#x202F;071&#x202F;949</mn>
+                </math>
+            </div>
             <div class="label">≈ 553 Billiarden erlaubte Spezies</div>
         </div>
 

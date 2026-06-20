@@ -320,7 +320,12 @@ void DrawGridAndCellsCtx(RenderContext *r_ctx, const GameConfig *config, const W
         SetShaderValueTexture(biotopeShader, r_ctx->loc_prev_frame, r_ctx->ping_pong_target[1 - r_ctx->ping_pong_index].texture);
 
         // Set uniforms
-        float fade = 0.95f;
+        // KI-Agent unterstützt: frame-rate-independent fossil fade (ADR-0033 FR-2)
+        float dt = GetFrameTime();
+        if (dt > KIOSK_FADE_DT_MAX) dt = KIOSK_FADE_DT_MAX;  // clamp stall spikes
+        float fade = (dt > 0.0f)
+            ? powf(KIOSK_FADE_PER_REF_FRAME, dt * KIOSK_FADE_REF_FPS)
+            : KIOSK_FADE_PER_REF_FRAME;
         SetShaderValue(biotopeShader, r_ctx->loc_fade_rate, &fade, SHADER_UNIFORM_FLOAT);
 
         DrawTexturePro(r_ctx->grid_texture, source, fboDest, origin, 0.0f, WHITE);

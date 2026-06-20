@@ -1,8 +1,20 @@
 ### **ADR-0033: Kiosk Mode Render Budget for Office-Laptop Operation**
 
-**Status:** proposed
+**Status:** accepted
 
 **Date:** 2026-06-20
+
+> **Implementation note (2026-06-20):** Implemented as the minimal set A+B+E+H.
+> During on-device interactive testing on the target office laptop the developer
+> confirmed 30 fps is visually acceptable for the exhibition loop, so the
+> committed default of `KIOSK_TARGET_FPS` is **30** (not the 60 originally
+> proposed below). Because the fossil fade is now wall-clock-based (B), trail
+> length is identical at 30, 60, or 120 fps — only motion smoothness differs.
+> At 30 fps the sustained Multicam render load is roughly **quartered** versus
+> the old 120 fps baseline. 60 remains a one-line config change for a smoother
+> look on stronger hardware. A header-dependency caveat surfaced during
+> implementation: the Makefile does not track `.h` dependencies, so the
+> `RenderContext` field additions required `make clean && make`.
 
 #### **1. Context and Problem Statement**
 
@@ -58,10 +70,12 @@ Reduce the Kiosk render budget through four contained, low-risk changes (the
 
 1. **Configurable frame-rate cap (A).** Replace the hard-coded
    `SetTargetFPS(120)` with a named constant in `config.h`
-   (`KIOSK_TARGET_FPS`, default **60**). The cap is configurable so a specific
-   deployment device can be lowered (e.g. to 30) or raised without touching
-   logic. At 60 fps the render load is halved versus 120 fps while remaining
-   perfectly fluid; 2.5 generations/s leaves ample temporal headroom.
+   (`KIOSK_TARGET_FPS`, committed default **30** — see implementation note;
+   60 was the originally proposed value). The cap is configurable so a specific
+   deployment device can be raised (e.g. to 60) for smoother motion without
+   touching logic. At 30 fps the render load is roughly quartered versus 120 fps
+   while remaining fluid for an attract loop; 2.5 generations/s leaves ample
+   temporal headroom.
 
 2. **Frame-rate-independent fossil fade (B).** Make the shader `fadeRate`
    compensate for the actual frame time so the trail decay stays constant in

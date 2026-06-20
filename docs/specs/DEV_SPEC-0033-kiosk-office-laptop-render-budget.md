@@ -21,8 +21,10 @@ the Multicam appearance on existing hardware**.
 #### Functional Requirements
 
 - **FR-1 (Configurable frame cap).** The render frame-rate cap must be defined
-  by a single named constant `KIOSK_TARGET_FPS` in `src/core/config.h`, default
-  value `60`. `SetTargetFPS` must use this constant instead of a literal.
+  by a single named constant `KIOSK_TARGET_FPS` in `src/core/config.h`,
+  committed default value `30` (60 was the originally proposed value; lowered to
+  30 after on-device testing — see ADR-0033 implementation note). `SetTargetFPS`
+  must use this constant instead of a literal.
 - **FR-2 (Frame-rate-independent fade).** The fossil-trail fade applied by the
   shader must decay at a constant rate in **wall-clock time**, independent of
   the actual frame rate. The per-frame fade factor must be derived from a
@@ -80,9 +82,9 @@ the Multicam appearance on existing hardware**.
         on a normal office laptop without the fan ramping up or the chassis
         getting hot, **so that** I can deploy it on hardware I already own.
     *   **Acceptance Criteria:**
-        *   With the default `KIOSK_TARGET_FPS = 60`, the Multicam view renders
-            at ≤ 60 fps (verifiable via FPS readout / `GetFPS()` instrumentation
-            or vendor GPU monitor).
+        *   With the committed default `KIOSK_TARGET_FPS = 30`, the Multicam view
+            renders at ≤ 30 fps (verifiable via FPS readout / `GetFPS()`
+            instrumentation or vendor GPU monitor).
         *   VSync is active: with no work to do the process does not busy-spin a
             CPU core to 100 %.
         *   Over a sustained Multicam run the GPU load is visibly lower than the
@@ -129,7 +131,7 @@ the Multicam appearance on existing hardware**.
     *   **Must-Have (MVP):**
         *   FR-2 frame-rate-independent fade (prerequisite — without it any cap
             change alters the look).
-        *   FR-1 configurable frame cap (default 60).
+        *   FR-1 configurable frame cap (committed default 30).
         *   FR-4 VSync hint.
         *   NFR-1 visual parity, NFR-4 warning-free build.
     *   **Should-Have:**
@@ -164,7 +166,7 @@ the Multicam appearance on existing hardware**.
 
 | ID | Epic | User Story / Task | Priority |
 | :-- | :--- | :--- | :--- |
-| K1 | Run unattended | Add `KIOSK_TARGET_FPS` (default 60) + fade reference constants to `config.h` | Must |
+| K1 | Run unattended | Add `KIOSK_TARGET_FPS` (committed default 30) + fade reference constants to `config.h` | Must |
 | K2 | Run unattended | Make shader `fadeRate` frame-time-based in `DrawGridAndCellsCtx` (FR-2) | Must |
 | K3 | Run unattended | Verify visual parity at 120 fps after K2 (interactive) | Must |
 | K4 | Run unattended | Replace `SetTargetFPS(120)` with `KIOSK_TARGET_FPS` (FR-1) | Must |

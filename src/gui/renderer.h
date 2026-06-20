@@ -16,6 +16,8 @@ typedef struct {
     int tex_h;
     int last_draw_w;
     int last_draw_h;
+    int fbo_w;          // KI-Agent unterstützt: capped ping-pong FBO width  (ADR-0033)
+    int fbo_h;          // KI-Agent unterstützt: capped ping-pong FBO height (ADR-0033)
 
     RenderTexture2D ping_pong_target[2];
     int ping_pong_index;

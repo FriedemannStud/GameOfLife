@@ -140,6 +140,19 @@ KioskLayout compute_kiosk_layout(int screen_w, int screen_h, int match_count) {
 // --- NEW SHADER PIPELINE GLOBALS ---
 static Shader biotopeShader;
 
+// KI-Agent unterstützt: Aspect-preserving FBO resolution cap (ADR-0033 FR-3)
+static void compute_fbo_size(int draw_w, int draw_h, int *out_w, int *out_h) {
+    if (draw_h <= KIOSK_MAX_FBO_HEIGHT) {
+        *out_w = draw_w;
+        *out_h = draw_h;
+        return;
+    }
+    float scale = (float)KIOSK_MAX_FBO_HEIGHT / (float)draw_h;
+    *out_h = KIOSK_MAX_FBO_HEIGHT;
+    *out_w = (int)(draw_w * scale + 0.5f);
+    if (*out_w < 1) *out_w = 1;
+}
+
 // KI-Agent unterstützt: Initialize render context
 void init_render_context(RenderContext *ctx, int cols, int rows, Rectangle bounds) {
     if (!ctx) return;
@@ -160,8 +173,12 @@ void init_render_context(RenderContext *ctx, int cols, int rows, Rectangle bound
     UnloadImage(img);
     SetTextureFilter(ctx->grid_texture, TEXTURE_FILTER_POINT);
 
-    ctx->ping_pong_target[0] = LoadRenderTexture(bounds.width, bounds.height);
-    ctx->ping_pong_target[1] = LoadRenderTexture(bounds.width, bounds.height);
+    // KI-Agent unterstützt: cap ping-pong FBO resolution, bilinear-upscale on blit (ADR-0033 FR-3)
+    compute_fbo_size(bounds.width, bounds.height, &ctx->fbo_w, &ctx->fbo_h);
+    ctx->ping_pong_target[0] = LoadRenderTexture(ctx->fbo_w, ctx->fbo_h);
+    ctx->ping_pong_target[1] = LoadRenderTexture(ctx->fbo_w, ctx->fbo_h);
+    SetTextureFilter(ctx->ping_pong_target[0].texture, TEXTURE_FILTER_BILINEAR);
+    SetTextureFilter(ctx->ping_pong_target[1].texture, TEXTURE_FILTER_BILINEAR);
     ctx->ping_pong_index = 0;
 
     // Theme Colors
@@ -273,8 +290,12 @@ void DrawGridAndCellsCtx(RenderContext *r_ctx, const GameConfig *config, const W
         SetTextureFilter(r_ctx->grid_texture, TEXTURE_FILTER_POINT);
 
         // Init Ping-Pong Targets
-        r_ctx->ping_pong_target[0] = LoadRenderTexture(drawWidth, drawHeight);
-        r_ctx->ping_pong_target[1] = LoadRenderTexture(drawWidth, drawHeight);
+        // KI-Agent unterstützt: cap ping-pong FBO resolution, bilinear-upscale on blit (ADR-0033 FR-3)
+        compute_fbo_size(drawWidth, drawHeight, &r_ctx->fbo_w, &r_ctx->fbo_h);
+        r_ctx->ping_pong_target[0] = LoadRenderTexture(r_ctx->fbo_w, r_ctx->fbo_h);
+        r_ctx->ping_pong_target[1] = LoadRenderTexture(r_ctx->fbo_w, r_ctx->fbo_h);
+        SetTextureFilter(r_ctx->ping_pong_target[0].texture, TEXTURE_FILTER_BILINEAR);
+        SetTextureFilter(r_ctx->ping_pong_target[1].texture, TEXTURE_FILTER_BILINEAR);
 
         // Clear both targets to background color
         BeginTextureMode(r_ctx->ping_pong_target[0]);
@@ -310,7 +331,8 @@ void DrawGridAndCellsCtx(RenderContext *r_ctx, const GameConfig *config, const W
     UpdateTexture(r_ctx->grid_texture, r_ctx->pixel_buffer);
 
     Rectangle source = { 0.0f, 0.0f, (float)r_ctx->tex_w, (float)r_ctx->tex_h };
-    Rectangle fboDest = { 0.0f, 0.0f, (float)drawWidth, (float)drawHeight };
+    // KI-Agent unterstützt: render into capped FBO, upscale on screen blit (ADR-0033 FR-3)
+    Rectangle fboDest = { 0.0f, 0.0f, (float)r_ctx->fbo_w, (float)r_ctx->fbo_h };
     Vector2 origin = { 0.0f, 0.0f };
 
     BeginTextureMode(r_ctx->ping_pong_target[r_ctx->ping_pong_index]);
@@ -334,7 +356,8 @@ void DrawGridAndCellsCtx(RenderContext *r_ctx, const GameConfig *config, const W
     EndTextureMode();
 
     // Draw the current FBO to the screen
-    Rectangle screenSource = { 0.0f, 0.0f, (float)drawWidth, -(float)drawHeight };
+    // KI-Agent unterstützt: source = capped FBO size, dest = true viewport pixels (ADR-0033 FR-3)
+    Rectangle screenSource = { 0.0f, 0.0f, (float)r_ctx->fbo_w, -(float)r_ctx->fbo_h };
     Rectangle screenDest = { (float)startX, (float)startY, (float)drawWidth, (float)drawHeight };
 
     // Wrap rendering in Scissor Mode to prevent quadrant bleeding during pan/zoom
@@ -485,7 +508,8 @@ static float statusTimer = 0.0f;
 // KI-Agent unterstützt: ignitionStartTime moved to app_state_manager.c (ADR-0020 Phase 1)
 
 void init_renderer(int window_width, int window_height, const char* title) {
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    // KI-Agent unterstützt: VSync hint to stop busy-wait, yield GPU between frames (ADR-0033 FR-4)
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
     InitWindow(window_width, window_height, title);
 
     // KI-Agent unterstützt: Ensure results directory exists
@@ -496,7 +520,8 @@ void init_renderer(int window_width, int window_height, const char* title) {
 #endif
 
 #ifndef PLATFORM_WEB
-    SetTargetFPS(120);
+    // KI-Agent unterstützt: configurable render cap, halves sustained load (ADR-0033 FR-1)
+    SetTargetFPS(KIOSK_TARGET_FPS);
     biotopeShader = LoadShader(0, "assets/shaders/biotope_base.fs");
 #else
     // KI-Agent unterstützt: WASM Persistent Storage Setup

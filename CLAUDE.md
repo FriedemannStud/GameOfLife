@@ -90,6 +90,8 @@ Key states: `STATE_CONFIG` → `STATE_EDIT_RED` → `STATE_EDIT_BLUE` → `STATE
 
 **Kiosk mode** (`STATE_KIOSK_MODE`): `KioskController` (in `app_state_manager.h`) drives a 15 s/30 s display cycle between a leaderboard view and a 2×2 Multicam grid showing four simultaneous live matches. It holds four `SimulationContext` + four `RenderContext` instances. API data is fetched asynchronously via `network_io.c`.
 
+**Render budget tuning (ADR-0033):** `KIOSK_TARGET_FPS` in `src/core/config.h` is the single per-device knob for the GUI frame cap (committed default **30** for cool office-laptop operation; raise to 60 for smoother motion). The fossil-trail fade is frame-rate-independent (`pow(0.95, dt·120)`), so trail length is identical at any cap. Per-quadrant ping-pong FBOs are capped at ≤1080p (`KIOSK_MAX_FBO_HEIGHT`) and upscaled — a no-op on ≤1080p panels.
+
 **`SessionOrigin`** tracks how the current session started (`ORIGIN_INTERACTIVE` vs. `ORIGIN_KIOSK_REPLAY`) to enable correct back-navigation (ADR-0020).
 
 ### Backend (Multiplayer Tournament)

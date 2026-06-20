@@ -63,8 +63,8 @@ Diese Daten stammen aus dem Performance-Monitor (`performance_metrics`, ADR-0034
 | Zweck | Datei |
 |---|---|
 | Win-Rate-vs-Zellzahl-Kurve | `260619_F2.3_winrate_vs_cells_study.svg` |
-| Belegungs-Heatmap (Zufall, 3000) | `260619_F2.3_heatmap_study.svg` |
-| Top-5-Seeds (Zufall, 3000) | `260619_F2.3_top_seeds_study.svg` |
+| Belegungs-Heatmap (Zufall) | `260619_F2.3_heatmap_study.svg` (⚠ inzwischen auf 10k neu erzeugt) |
+| Top-5-Seeds (Zufall) | `260619_F2.3_top_seeds_study.svg` (⚠ inzwischen auf 10k neu erzeugt) |
 | Mensch-vs-Zufall-Vergleich | `260619_F2.3_Datenvergleich_db_vs_study.md` |
 
-> **Hinweis:** Dies ist der **3.000er-Zwischenstand**. Der 10.000er-Lauf läuft anschließend; eine analoge Auswertung folgt in `260619_Poster_Auswertung_study_10000.md`. Erwartung: Die Win-Rate-vs-Zellzahl-Kurve sollte sich bestätigen und glätten; Performance ~57 min Wall-Clock bei ~100 Mio. Matches.
+> **Hinweis:** Dies ist der **3.000er-Zwischenstand**. Der 10.000er-Lauf ist inzwischen abgeschlossen — finale Auswertung in [260620_Poster_Auswertung_study_10000.md](260620_Poster_Auswertung_study_10000.md). Befund bestätigt: die Win-Rate-vs-Zellzahl-Kurve ist bei 3k und 10k nahezu deckungsgleich. Die `*_study.svg`-Heatmap/Seeds wurden auf 10k neu erzeugt (3.000er-Versionen liegen in Git-Commit `77be329`); die 3.000er-Win-Rate-Kurve `260619_F2.3_winrate_vs_cells_study.svg` bleibt erhalten.

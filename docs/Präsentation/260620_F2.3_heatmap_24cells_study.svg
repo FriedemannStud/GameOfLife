@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="536" height="670" viewBox="0 0 536 670" font-family="Helvetica,Arial,sans-serif">
+<rect width="536" height="670" fill="white"/>
+<text x="268.0" y="34" text-anchor="middle" font-size="26" font-weight="bold">Wo gewinnen Muster? — bei exakt 24 Startzellen</text>
+<text x="268.0" y="60" text-anchor="middle" font-size="15" fill="#555">Ø Win-Rate je Feld (430 Muster · biotope_study) · Spanne nur 63.6–64.6 %</text>
+<rect x="28" y="98" width="60" height="60" fill="#b30000" stroke="#ddd" stroke-width="1"/>
+<rect x="88" y="98" width="60" height="60" fill="#b0c7de" stroke="#ddd" stroke-width="1"/>
+<rect x="148" y="98" width="60" height="60" fill="#bacee1" stroke="#ddd" stroke-width="1"/>
+<rect x="208" y="98" width="60" height="60" fill="#8aadd0" stroke="#ddd" stroke-width="1"/>
+<rect x="268" y="98" width="60" height="60" fill="#2166ac" stroke="#ddd" stroke-width="1"/>
+<rect x="328" y="98" width="60" height="60" fill="#94b4d4" stroke="#ddd" stroke-width="1"/>
+<rect x="388" y="98" width="60" height="60" fill="#bacee1" stroke="#ddd" stroke-width="1"/>
+<rect x="448" y="98" width="60" height="60" fill="#d8e2ec" stroke="#ddd" stroke-width="1"/>
+<rect x="28" y="158" width="60" height="60" fill="#edd6d6" stroke="#ddd" stroke-width="1"/>
+<rect x="88" y="158" width="60" height="60" fill="#b9cde1" stroke="#ddd" stroke-width="1"/>
+<rect x="148" y="158" width="60" height="60" fill="#bbcee2" stroke="#ddd" stroke-width="1"/>
+<rect x="208" y="158" width="60" height="60" fill="#eceff3" stroke="#ddd" stroke-width="1"/>
+<rect x="268" y="158" width="60" height="60" fill="#90b1d3" stroke="#ddd" stroke-width="1"/>
+<rect x="328" y="158" width="60" height="60" fill="#85a9cf" stroke="#ddd" stroke-width="1"/>
+<rect x="388" y="158" width="60" height="60" fill="#f5f2f2" stroke="#ddd" stroke-width="1"/>
+<rect x="448" y="158" width="60" height="60" fill="#d7e1ec" stroke="#ddd" stroke-width="1"/>
+<rect x="28" y="218" width="60" height="60" fill="#e5b8b8" stroke="#ddd" stroke-width="1"/>
+<rect x="88" y="218" width="60" height="60" fill="#8dafd2" stroke="#ddd" stroke-width="1"/>
+<rect x="148" y="218" width="60" height="60" fill="#6393c3" stroke="#ddd" stroke-width="1"/>
+<rect x="208" y="218" width="60" height="60" fill="#84a9cf" stroke="#ddd" stroke-width="1"/>
+<rect x="268" y="218" width="60" height="60" fill="#6a97c5" stroke="#ddd" stroke-width="1"/>
+<rect x="328" y="218" width="60" height="60" fill="#b3c9df" stroke="#ddd" stroke-width="1"/>
+<rect x="388" y="218" width="60" height="60" fill="#e3e9f0" stroke="#ddd" stroke-width="1"/>
+<rect x="448" y="218" width="60" height="60" fill="#cb5959" stroke="#ddd" stroke-width="1"/>
+<rect x="28" y="278" width="60" height="60" fill="#d5e0eb" stroke="#ddd" stroke-width="1"/>
+<rect x="88" y="278" width="60" height="60" fill="#96b5d5" stroke="#ddd" stroke-width="1"/>
+<rect x="148" y="278" width="60" height="60" fill="#87abcf" stroke="#ddd" stroke-width="1"/>
+<rect x="208" y="278" width="60" height="60" fill="#b8cce1" stroke="#ddd" stroke-width="1"/>
+<rect x="268" y="278" width="60" height="60" fill="#5488be" stroke="#ddd" stroke-width="1"/>
+<rect x="328" y="278" width="60" height="60" fill="#99b7d6" stroke="#ddd" stroke-width="1"/>
+<rect x="388" y="278" width="60" height="60" fill="#79a2cb" stroke="#ddd" stroke-width="1"/>
+<rect x="448" y="278" width="60" height="60" fill="#ecd1d1" stroke="#ddd" stroke-width="1"/>
+<rect x="28" y="338" width="60" height="60" fill="#c74b4b" stroke="#ddd" stroke-width="1"/>
+<rect x="88" y="338" width="60" height="60" fill="#749ec9" stroke="#ddd" stroke-width="1"/>
+<rect x="148" y="338" width="60" height="60" fill="#c9d8e7" stroke="#ddd" stroke-width="1"/>
+<rect x="208" y="338" width="60" height="60" fill="#6a98c5" stroke="#ddd" stroke-width="1"/>
+<rect x="268" y="338" width="60" height="60" fill="#f5f2f2" stroke="#ddd" stroke-width="1"/>
+<rect x="328" y="338" width="60" height="60" fill="#93b3d4" stroke="#ddd" stroke-width="1"/>
+<rect x="388" y="338" width="60" height="60" fill="#d57e7e" stroke="#ddd" stroke-width="1"/>
+<rect x="448" y="338" width="60" height="60" fill="#e3e9f0" stroke="#ddd" stroke-width="1"/>
+<rect x="28" y="398" width="60" height="60" fill="#b3c9df" stroke="#ddd" stroke-width="1"/>
+<rect x="88" y="398" width="60" height="60" fill="#598cbf" stroke="#ddd" stroke-width="1"/>
+<rect x="148" y="398" width="60" height="60" fill="#cedbe8" stroke="#ddd" stroke-width="1"/>
+<rect x="208" y="398" width="60" height="60" fill="#6b98c6" stroke="#ddd" stroke-width="1"/>
+<rect x="268" y="398" width="60" height="60" fill="#c5d5e5" stroke="#ddd" stroke-width="1"/>
+<rect x="328" y="398" width="60" height="60" fill="#d78383" stroke="#ddd" stroke-width="1"/>
+<rect x="388" y="398" width="60" height="60" fill="#92b2d3" stroke="#ddd" stroke-width="1"/>
+<rect x="448" y="398" width="60" height="60" fill="#efdddd" stroke="#ddd" stroke-width="1"/>
+<rect x="28" y="458" width="60" height="60" fill="#f5f1f1" stroke="#ddd" stroke-width="1"/>
+<rect x="88" y="458" width="60" height="60" fill="#e2acac" stroke="#ddd" stroke-width="1"/>
+<rect x="148" y="458" width="60" height="60" fill="#3e7ab6" stroke="#ddd" stroke-width="1"/>
+<rect x="208" y="458" width="60" height="60" fill="#4981ba" stroke="#ddd" stroke-width="1"/>
+<rect x="268" y="458" width="60" height="60" fill="#b2c8de" stroke="#ddd" stroke-width="1"/>
+<rect x="328" y="458" width="60" height="60" fill="#dbe4ed" stroke="#ddd" stroke-width="1"/>
+<rect x="388" y="458" width="60" height="60" fill="#b3c9df" stroke="#ddd" stroke-width="1"/>
+<rect x="448" y="458" width="60" height="60" fill="#aec5dd" stroke="#ddd" stroke-width="1"/>
+<rect x="28" y="518" width="60" height="60" fill="#eed7d7" stroke="#ddd" stroke-width="1"/>
+<rect x="88" y="518" width="60" height="60" fill="#5187bd" stroke="#ddd" stroke-width="1"/>
+<rect x="148" y="518" width="60" height="60" fill="#b3c9df" stroke="#ddd" stroke-width="1"/>
+<rect x="208" y="518" width="60" height="60" fill="#85a9cf" stroke="#ddd" stroke-width="1"/>
+<rect x="268" y="518" width="60" height="60" fill="#5086bc" stroke="#ddd" stroke-width="1"/>
+<rect x="328" y="518" width="60" height="60" fill="#f5f2f2" stroke="#ddd" stroke-width="1"/>
+<rect x="388" y="518" width="60" height="60" fill="#f6f6f6" stroke="#ddd" stroke-width="1"/>
+<rect x="448" y="518" width="60" height="60" fill="#b4c9df" stroke="#ddd" stroke-width="1"/>
+<defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#2166ac"/><stop offset="0.5" stop-color="#f7f7f7"/><stop offset="1" stop-color="#b30000"/></linearGradient></defs>
+<rect x="28" y="600" width="480" height="18" fill="url(#g)" stroke="#ccc"/>
+<text x="28" y="638" font-size="14" fill="#555">63.6 %</text>
+<text x="508" y="638" text-anchor="end" font-size="14" fill="#555">64.6 %</text>
+</svg>

@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="536" height="666" viewBox="0 0 536 666" font-family="Helvetica,Arial,sans-serif">
+<rect width="536" height="666" fill="white"/>
+<text x="268.0" y="34" text-anchor="middle" font-size="26" font-weight="bold">Wo gewinnen Muster?</text>
+<text x="268.0" y="60" text-anchor="middle" font-size="15" fill="#555">Belegung der Felder, gewichtet nach Win-Rate (29 Einreichungen · biotope_db)</text>
+<rect x="28" y="98" width="60" height="60" fill="#f3d9d9" stroke="#ddd" stroke-width="1"/>
+<rect x="88" y="98" width="60" height="60" fill="#eabbbb" stroke="#ddd" stroke-width="1"/>
+<rect x="148" y="98" width="60" height="60" fill="#f8e9e9" stroke="#ddd" stroke-width="1"/>
+<rect x="208" y="98" width="60" height="60" fill="#ffffff" stroke="#ddd" stroke-width="1"/>
+<rect x="268" y="98" width="60" height="60" fill="#df9494" stroke="#ddd" stroke-width="1"/>
+<rect x="328" y="98" width="60" height="60" fill="#e09898" stroke="#ddd" stroke-width="1"/>
+<rect x="388" y="98" width="60" height="60" fill="#ebbebe" stroke="#ddd" stroke-width="1"/>
+<rect x="448" y="98" width="60" height="60" fill="#e4a6a6" stroke="#ddd" stroke-width="1"/>
+<rect x="28" y="158" width="60" height="60" fill="#faefef" stroke="#ddd" stroke-width="1"/>
+<rect x="88" y="158" width="60" height="60" fill="#e3a1a1" stroke="#ddd" stroke-width="1"/>
+<rect x="148" y="158" width="60" height="60" fill="#e8b2b2" stroke="#ddd" stroke-width="1"/>
+<rect x="208" y="158" width="60" height="60" fill="#db8787" stroke="#ddd" stroke-width="1"/>
+<rect x="268" y="158" width="60" height="60" fill="#d77b7b" stroke="#ddd" stroke-width="1"/>
+<rect x="328" y="158" width="60" height="60" fill="#ce5b5b" stroke="#ddd" stroke-width="1"/>
+<rect x="388" y="158" width="60" height="60" fill="#d98080" stroke="#ddd" stroke-width="1"/>
+<rect x="448" y="158" width="60" height="60" fill="#eec7c7" stroke="#ddd" stroke-width="1"/>
+<rect x="28" y="218" width="60" height="60" fill="#f4dada" stroke="#ddd" stroke-width="1"/>
+<rect x="88" y="218" width="60" height="60" fill="#f7e7e7" stroke="#ddd" stroke-width="1"/>
+<rect x="148" y="218" width="60" height="60" fill="#efcccc" stroke="#ddd" stroke-width="1"/>
+<rect x="208" y="218" width="60" height="60" fill="#b60a0a" stroke="#ddd" stroke-width="1"/>
+<rect x="268" y="218" width="60" height="60" fill="#b30000" stroke="#ddd" stroke-width="1"/>
+<rect x="328" y="218" width="60" height="60" fill="#dc8989" stroke="#ddd" stroke-width="1"/>
+<rect x="388" y="218" width="60" height="60" fill="#e3a1a1" stroke="#ddd" stroke-width="1"/>
+<rect x="448" y="218" width="60" height="60" fill="#e4a5a5" stroke="#ddd" stroke-width="1"/>
+<rect x="28" y="278" width="60" height="60" fill="#f9eded" stroke="#ddd" stroke-width="1"/>
+<rect x="88" y="278" width="60" height="60" fill="#f5dfdf" stroke="#ddd" stroke-width="1"/>
+<rect x="148" y="278" width="60" height="60" fill="#b91515" stroke="#ddd" stroke-width="1"/>
+<rect x="208" y="278" width="60" height="60" fill="#cb5252" stroke="#ddd" stroke-width="1"/>
+<rect x="268" y="278" width="60" height="60" fill="#f8e9e9" stroke="#ddd" stroke-width="1"/>
+<rect x="328" y="278" width="60" height="60" fill="#f6e2e2" stroke="#ddd" stroke-width="1"/>
+<rect x="388" y="278" width="60" height="60" fill="#c74444" stroke="#ddd" stroke-width="1"/>
+<rect x="448" y="278" width="60" height="60" fill="#eec7c7" stroke="#ddd" stroke-width="1"/>
+<rect x="28" y="338" width="60" height="60" fill="#edc3c3" stroke="#ddd" stroke-width="1"/>
+<rect x="88" y="338" width="60" height="60" fill="#f1d0d0" stroke="#ddd" stroke-width="1"/>
+<rect x="148" y="338" width="60" height="60" fill="#d26969" stroke="#ddd" stroke-width="1"/>
+<rect x="208" y="338" width="60" height="60" fill="#ce5c5c" stroke="#ddd" stroke-width="1"/>
+<rect x="268" y="338" width="60" height="60" fill="#e2a0a0" stroke="#ddd" stroke-width="1"/>
+<rect x="328" y="338" width="60" height="60" fill="#ce5d5d" stroke="#ddd" stroke-width="1"/>
+<rect x="388" y="338" width="60" height="60" fill="#ebbcbc" stroke="#ddd" stroke-width="1"/>
+<rect x="448" y="338" width="60" height="60" fill="#ecc2c2" stroke="#ddd" stroke-width="1"/>
+<rect x="28" y="398" width="60" height="60" fill="#e9b7b7" stroke="#ddd" stroke-width="1"/>
+<rect x="88" y="398" width="60" height="60" fill="#f4dada" stroke="#ddd" stroke-width="1"/>
+<rect x="148" y="398" width="60" height="60" fill="#e8b4b4" stroke="#ddd" stroke-width="1"/>
+<rect x="208" y="398" width="60" height="60" fill="#f1d3d3" stroke="#ddd" stroke-width="1"/>
+<rect x="268" y="398" width="60" height="60" fill="#f3d6d6" stroke="#ddd" stroke-width="1"/>
+<rect x="328" y="398" width="60" height="60" fill="#e19c9c" stroke="#ddd" stroke-width="1"/>
+<rect x="388" y="398" width="60" height="60" fill="#f3d9d9" stroke="#ddd" stroke-width="1"/>
+<rect x="448" y="398" width="60" height="60" fill="#e8b2b2" stroke="#ddd" stroke-width="1"/>
+<rect x="28" y="458" width="60" height="60" fill="#f5dede" stroke="#ddd" stroke-width="1"/>
+<rect x="88" y="458" width="60" height="60" fill="#d98080" stroke="#ddd" stroke-width="1"/>
+<rect x="148" y="458" width="60" height="60" fill="#e5a8a8" stroke="#ddd" stroke-width="1"/>
+<rect x="208" y="458" width="60" height="60" fill="#e5abab" stroke="#ddd" stroke-width="1"/>
+<rect x="268" y="458" width="60" height="60" fill="#f7e6e6" stroke="#ddd" stroke-width="1"/>
+<rect x="328" y="458" width="60" height="60" fill="#eec7c7" stroke="#ddd" stroke-width="1"/>
+<rect x="388" y="458" width="60" height="60" fill="#e19c9c" stroke="#ddd" stroke-width="1"/>
+<rect x="448" y="458" width="60" height="60" fill="#f8e9e9" stroke="#ddd" stroke-width="1"/>
+<rect x="28" y="518" width="60" height="60" fill="#f3d9d9" stroke="#ddd" stroke-width="1"/>
+<rect x="88" y="518" width="60" height="60" fill="#d77b7b" stroke="#ddd" stroke-width="1"/>
+<rect x="148" y="518" width="60" height="60" fill="#f7e7e7" stroke="#ddd" stroke-width="1"/>
+<rect x="208" y="518" width="60" height="60" fill="#f7e6e6" stroke="#ddd" stroke-width="1"/>
+<rect x="268" y="518" width="60" height="60" fill="#e5a8a8" stroke="#ddd" stroke-width="1"/>
+<rect x="328" y="518" width="60" height="60" fill="#e3a1a1" stroke="#ddd" stroke-width="1"/>
+<rect x="388" y="518" width="60" height="60" fill="#edc3c3" stroke="#ddd" stroke-width="1"/>
+<rect x="448" y="518" width="60" height="60" fill="#f8e8e8" stroke="#ddd" stroke-width="1"/>
+<defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#b30000"/></linearGradient></defs>
+<rect x="28" y="600" width="480" height="18" fill="url(#g)" stroke="#ccc"/>
+<text x="28" y="638" font-size="14" fill="#555">selten</text>
+<text x="508" y="638" text-anchor="end" font-size="14" fill="#555">häufig bei Gewinnern</text>
+</svg>

@@ -285,3 +285,31 @@ async def get_epoch_highlights():
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Highlights error: {str(e)}")
+
+
+# KI-Agent unterstützt: Performance monitoring feed (ADR-0032). Serves the most
+# recent tournament-performance metrics written by backend/scripts/perf_tournament.py
+# into the `performance_metrics` collection. Powers the live ops dashboard during
+# the fair (is any submitted pattern dragging match throughput down?) and doubles
+# as a queryable history for later analysis.
+@app.get("/api/performance")
+async def get_performance(limit: int = 50):
+    try:
+        db = get_db()
+        limit = max(1, min(limit, 500))
+        docs = (
+            await db.performance_metrics.find({})
+            .sort("timestamp", -1)
+            .limit(limit)
+            .to_list(length=limit)
+        )
+        runs = []
+        for d in docs:
+            d.pop("_id", None)
+            if isinstance(d.get("timestamp"), datetime):
+                d["timestamp"] = d["timestamp"].isoformat()
+            runs.append(d)
+        latest = runs[0] if runs else None
+        return {"latest": latest, "runs": runs, "count": len(runs)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Performance error: {str(e)}")

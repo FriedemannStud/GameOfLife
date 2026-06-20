@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<!-- KI-Agent unterstützt: Live performance dashboard (ADR-0032).
+     Polls GET /api/performance and renders tournament throughput + the most
+     expensive (longest-living) start patterns. Use during the fair to spot
+     submitted patterns that drag match performance down. -->
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Biotop — Performance-Monitor</title>
+  <style>
+    :root { --bg:#0f1115; --card:#191d26; --line:#2a2f3a; --txt:#e6e9ef;
+            --muted:#9aa3b2; --accent:#4da3ff; --warn:#ff5d5d; --ok:#43d17a; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--txt);
+           font-family: system-ui, Helvetica, Arial, sans-serif; }
+    header { padding:18px 24px; border-bottom:1px solid var(--line);
+             display:flex; align-items:center; justify-content:space-between; }
+    h1 { font-size:20px; margin:0; }
+    .sub { color:var(--muted); font-size:13px; }
+    main { padding:24px; max-width:1100px; margin:0 auto; }
+    .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+            gap:14px; margin-bottom:24px; }
+    .kpi { background:var(--card); border:1px solid var(--line); border-radius:12px;
+           padding:16px; }
+    .kpi .label { color:var(--muted); font-size:12px; text-transform:uppercase;
+                  letter-spacing:.04em; }
+    .kpi .value { font-size:28px; font-weight:700; margin-top:6px; }
+    .kpi .unit { font-size:14px; color:var(--muted); font-weight:400; }
+    .kpi.warn .value { color:var(--warn); }
+    .kpi.ok .value { color:var(--ok); }
+    section { background:var(--card); border:1px solid var(--line); border-radius:12px;
+              padding:16px 18px; margin-bottom:20px; }
+    section h2 { font-size:15px; margin:0 0 12px; }
+    table { width:100%; border-collapse:collapse; font-size:14px; }
+    th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); }
+    th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; }
+    td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+    .dot { display:inline-block; width:8px; height:8px; border-radius:50%;
+           background:var(--ok); margin-right:6px; }
+    .stale { background:var(--warn); }
+    .pill { font-size:11px; padding:2px 8px; border-radius:99px; background:#222836;
+            color:var(--muted); }
+    #err { color:var(--warn); font-size:13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Biotop — Performance-Monitor</h1>
+      <div class="sub" id="meta">verbinde …</div>
+    </div>
+    <div class="sub"><span class="dot" id="livedot"></span><span id="status">live</span></div>
+  </header>
+  <main>
+    <div id="err"></div>
+    <div class="kpis" id="kpis"></div>
+
+    <section>
+      <h2>Teuerste Start-Konfigurationen (längste Lebensdauer = teuerste Matches)</h2>
+      <table id="expensive">
+        <thead><tr><th>Name</th><th class="num">Zellen</th>
+          <th class="num">Ø stabile Gen.</th><th class="num">Win-Rate</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Verlauf (letzte Läufe)</h2>
+      <table id="history">
+        <thead><tr><th>Zeit</th><th>Datensatz</th><th class="num">Configs</th>
+          <th class="num">Matches</th><th class="num">Wall (s)</th>
+          <th class="num">Matches/s</th><th class="num">nie stabil %</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    // Same-origin by default; override with ?api=http://host:8000
+    const API = new URLSearchParams(location.search).get("api") || "";
+    const REFRESH_MS = 10000;
+
+    const fmt = (n) => (n == null ? "–" : Number(n).toLocaleString("de-DE"));
+    const kpi = (label, value, unit = "", cls = "") =>
+      `<div class="kpi ${cls}"><div class="label">${label}</div>
+       <div class="value">${value}<span class="unit"> ${unit}</span></div></div>`;
+
+    async function tick() {
+      const dot = document.getElementById("livedot");
+      const status = document.getElementById("status");
+      try {
+        const res = await fetch(`${API}/api/performance?limit=20`, { cache: "no-store" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        document.getElementById("err").textContent = "";
+        dot.classList.remove("stale"); status.textContent = "live";
+        render(data);
+      } catch (e) {
+        dot.classList.add("stale"); status.textContent = "offline";
+        document.getElementById("err").textContent =
+          "Keine Verbindung zu /api/performance (" + e.message +
+          "). Tipp: ?api=http://<host>:8000 anhängen.";
+      }
+    }
+
+    function render(data) {
+      const L = data.latest;
+      const meta = document.getElementById("meta");
+      if (!L) { meta.textContent = "noch keine Läufe in performance_metrics"; return; }
+      const ts = new Date(L.timestamp);
+      meta.textContent = `Datensatz "${L.dataset}" · letzter Lauf ${ts.toLocaleString("de-DE")}`;
+
+      const neverCls = L.pct_never_stabilized >= 5 ? "warn"
+                     : (L.pct_never_stabilized > 0 ? "" : "ok");
+      document.getElementById("kpis").innerHTML =
+        kpi("Configs", fmt(L.n_competitors)) +
+        kpi("Matches", fmt(L.total_matches_played)) +
+        kpi("Durchsatz", fmt(L.matches_per_s), "Matches/s") +
+        kpi("µs / Match", fmt(L.us_per_match)) +
+        kpi("Wall-Clock", fmt(L.wall_clock_s), "s") +
+        kpi("Parallel-Speedup", (L.parallel_speedup ?? "–") + "×") +
+        kpi("Ø stabil p95", fmt(L.stable_gen_p95), "Gen.") +
+        kpi("nie stabilisiert", (L.pct_never_stabilized ?? 0) + " %", "", neverCls);
+
+      const ex = document.querySelector("#expensive tbody");
+      ex.innerHTML = (L.top_expensive_configs || []).map(c =>
+        `<tr><td>${c.nickname}</td><td class="num">${fmt(c.cell_count)}</td>
+         <td class="num">${fmt(c.avg_stable_generation)}</td>
+         <td class="num">${fmt(c.win_rate)} %</td></tr>`).join("");
+
+      const hist = document.querySelector("#history tbody");
+      hist.innerHTML = (data.runs || []).map(r =>
+        `<tr><td>${new Date(r.timestamp).toLocaleString("de-DE")}</td>
+         <td><span class="pill">${r.dataset}</span></td>
+         <td class="num">${fmt(r.n_competitors)}</td>
+         <td class="num">${fmt(r.total_matches_played)}</td>
+         <td class="num">${fmt(r.wall_clock_s)}</td>
+         <td class="num">${fmt(r.matches_per_s)}</td>
+         <td class="num">${fmt(r.pct_never_stabilized)}</td></tr>`).join("");
+    }
+
+    tick();
+    setInterval(tick, REFRESH_MS);
+  </script>
+</body>
+</html>

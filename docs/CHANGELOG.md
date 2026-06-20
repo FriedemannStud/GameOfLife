@@ -1,3 +1,13 @@
+2026-06-20 — ADR-0034: Tournament performance monitoring (`performance_metrics`)
+
+- New feature: live + historical performance monitoring for the O(N²) round-robin tournament, so a crowd-submitted pattern that drags match throughput down is visible at a glance during the fair.
+- `backend/scripts/perf_tournament.py` (new): runs the C hyper-worker over all active submissions of the current `MONGODB_DB`, measures wall-clock + child CPU, parses results, and writes one metrics document per run into the new `performance_metrics` collection (throughput, `us_per_match`, parallel speedup, stable-generation p50/p95/max, `pct_never_stabilized`, `top_expensive_configs`). It also writes the rankings back into `submissions` (same fields as `worker.execute_epoch`).
+- `backend/scripts/generate_study_configs.py` (new): faithful rebuild of the uncommitted `exhaust_engine` generator (schema `metadata.player_id=exhaust_engine`, `exhaust#NNNNNNNN`, `league=study`, `config.cells_int` bitboard). Collision-safe against the **UNIQUE index on `config.cells_int`** discovered in `biotope_study`.
+- `backend/app/main.py`: `GET /api/performance?limit=N` serves the most recent metrics as `{ latest, runs, count }`.
+- `web/dashboard/performance.html` (new): standalone live ops dashboard polling `/api/performance` every 10 s (KPIs, most-expensive-patterns table, run history); `?api=http://host:8000` override for cross-host use.
+- Scaling experiment: filled `biotope_study` from 1 647 → 3 000 configs and ran the instrumented round-robin. Measured (20-core host): **3 000 competitors → 8 997 000 matches in 307.96 s wall** (5 997 s CPU, 19.5× speedup, 29 215 matches/s, 34.2 µs/match); stable-gen p50/p95/max 259.6/411.8/714.5; **0 % never-stabilized**. Extrapolation to 10 000 competitors: ~100 M matches, ~57 min wall-clock.
+- Docs: `docs/adr/ADR-0034-tournament-performance-monitoring.md`. Note: the `exhaust_engine` script that originally populated `biotope_study` is not present anywhere in the repo/history; only its data existed.
+
 2026-06-20 — ADR-0033: Kiosk Mode render budget for office-laptop operation
 
 - Reduced the sustained Kiosk Mode render/thermal load so the exhibition loop runs cool and quiet all day on an ordinary office laptop, **without changing the Multicam look** on existing hardware. Minimal set A+B+E+H; no architectural change to the state machine, ping-pong FBO scheme, or shader pipeline. The Conway simulation and the web build (`biotope_base_web.fs`) are untouched.

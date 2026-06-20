@@ -362,9 +362,7 @@ async def execute_epoch(db):
                 }
                 cached[doc["pair_key"]] = doc
                 ops.append(
-                    UpdateOne(
-                        {"pair_key": doc["pair_key"]}, {"$set": doc}, upsert=True
-                    )
+                    UpdateOne({"pair_key": doc["pair_key"]}, {"$set": doc}, upsert=True)
                 )
             if ops:
                 await db.match_results.bulk_write(ops, ordered=False)

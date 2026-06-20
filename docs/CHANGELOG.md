@@ -1,3 +1,12 @@
+2026-06-20 — Web frontend: German UI localization pass
+
+- All four served web pages (`web/landing/index.html`, `web/editor/editor.html`, `web/duel/duel.html`, `web/mission/mission.html`) had their remaining user-visible English strings translated to German, for a consistent German interface. Only display text was touched — code comments, identifiers, `console.*` messages, JSON field names, `localStorage` keys, CSS classes/ids and other wire values were left unchanged (the `'red'`/`'blue'` slot keys and `room.status` values in particular stay English so the duel polling protocol is unaffected).
+- `web/duel/duel.html`: the bulk of the work — `lang="en"` → `lang="de"`, `<title>`, all seven screens (home/join/lobby/choice/vs/result/my-duels), the footer, and ~25 JS-facing strings (alerts, verdicts, status/sync messages, fallback labels). Notable term choices: `Shoulder Duel` → **Schulter-Duell**, `FIGHT` → **KAMPF**, `Lock in`/`Locked in` → **Festlegen**/**Festgelegt**, `Quick-draw` → **Schnellzeichnung**, `Best bio` → **Beste Spezies**, `YOU WIN`/`YOU LOSE`/`DRAW` → **DU GEWINNST**/**DU VERLIERST**/**UNENTSCHIEDEN**, head-to-head draw suffix `(Nd)` → `(Nu)`. The `(you)` self-marker → `(du)`.
+- `web/landing/index.html`: `Conway Lab` → **Conway-Labor** (title + kicker), `Shoulder Duel` → **Schulter-Duell**, `Phone gegen Phone` → **Handy gegen Handy**, `Genom designen` → **Genom gestalten**.
+- `web/editor/editor.html`: `Clear` → **Leeren**, `Recovery-Code` → **Wiederherstellungs-Code** (input placeholder, hint, overlay title, and the downloadable PNG label — the `biotop-recovery-*.png` filename slug stays ASCII), `« Zurück zum Lab` → **« Zurück zum Labor**.
+- `web/mission/mission.html`: `« Zurück zum Lab` → **« Zurück zum Labor**.
+- Kept English by decision (established loanwords / proper names / titles): `Mission Statement`, `Mission Briefing`, `Sound`, `Reset`, `Scan`, `Limit`, `Code`, `Arena`, `Codex`, `VS`, `Gen`, plus brand/track names (`Biotop`, `Open Flow`, `Suno`). The C/Raylib GUI and the `docs/Präsentation/` report HTML were out of scope.
+
 2026-06-19 — ADR-0032: Incremental tournament computation — Stage 2 (deterministic match cache + delta computation)
 
 - Optimization: the tournament worker now computes only the *uncached* seed-pairs each epoch instead of the full O(N²) round-robin. Adding one player to a field of N costs ~N new matches instead of N(N−1)/2 (e.g. 49 vs 1225 at N=50). The expensive part (simulation) is incremental; ranking aggregation is cheap arithmetic.

@@ -419,7 +419,7 @@
 <div class="container">
     <div class="editor-section">
         <h3 class="editor-title">Erschaffe deine Spezies</h3>
-        <p class="panel-sub">8 × 8 Genom · max 24 Zellen</p>
+        <p class="panel-sub">8 × 8 Genom · max. 24 Zellen</p>
 
         <div class="stats-bar">
             <span id="biomass-count">Zellen: 0/24</span>
@@ -433,7 +433,7 @@
         <div class="controls">
             <button id="btn-toggle" class="btn-play">Simulieren</button>
             <button id="btn-reset" class="btn-clear">Reset</button>
-            <button id="btn-clear" class="btn-clear">Clear</button>
+            <button id="btn-clear" class="btn-clear">Leeren</button>
         </div>
 
         <div class="input-group">
@@ -442,12 +442,12 @@
 
         <!-- KI-Agent unterstützt: Reclaim input, revealed on 409 name_taken (ADR-0027) -->
         <div class="input-group" id="recovery-group">
-            <input type="text" id="recovery-input" placeholder="Recovery-Code (z.B. BIOTOP-7F3A)" maxlength="20">
+            <input type="text" id="recovery-input" placeholder="Wiederherstellungs-Code (z.B. BIOTOP-7F3A)" maxlength="20">
             <p class="counter-info" id="recovery-hint">
                 Dieser Name ist bereits vergeben.<br>
                 <strong>Ist das nicht deine Spezies?</strong> Wähle bitte oben einen anderen Namen.<br>
                 <strong>Hast du diesen Namen schon einmal auf einem anderen Gerät eingereicht?</strong>
-                Dann gib hier deinen Recovery-Code ein, um die Spezies zurückzuholen.
+                Dann gib hier deinen Wiederherstellungs-Code ein, um die Spezies zurückzuholen.
             </p>
         </div>
 
@@ -466,7 +466,7 @@
 
     <!-- KI-Agent unterstützt: back to the Conway Lab landing/title screen -->
     <footer class="lab-footer">
-        <a class="home-link" href="/">« Zurück zum Lab</a>
+        <a class="home-link" href="/">« Zurück zum Labor</a>
     </footer>
 
 </div>
@@ -475,7 +475,7 @@
 <div id="recovery-overlay" class="overlay">
     <div class="overlay-box">
         <div id="recovery-card" class="recovery-card">
-            <div class="rc-title">Biotop · Recovery-Code</div>
+            <div class="rc-title">Biotop · Wiederherstellungs-Code</div>
             <div class="rc-species" id="rc-species"></div>
             <div class="rc-code" id="rc-code"></div>
             <div class="rc-date" id="rc-date"></div>
@@ -761,7 +761,7 @@
             ctx.textAlign = 'center';
             ctx.fillStyle = '#ffb84d';
             ctx.font = 'bold 22px "Courier New", monospace';
-            ctx.fillText('BIOTOP · RECOVERY-CODE', W / 2, 82);
+            ctx.fillText('BIOTOP · WIEDERHERSTELLUNGS-CODE', W / 2, 82);
             ctx.fillStyle = '#e7eaf0';
             ctx.font = 'bold 30px Arial';
             ctx.fillText(species, W / 2, 152);

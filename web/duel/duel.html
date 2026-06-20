@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Biotop — Shoulder Duel</title>
+    <title>Biotop — Schulter-Duell</title>
     <!-- Shoulder-Duel Mode: on-demand 1:1 duel (ADR-0028) — Modern-Retro "Digital Lab" theme (matches kiosk A) -->
     <script src="/vendor/qrcode.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -468,68 +468,68 @@
 <body>
 <div id="app">
     <header>
-        <h1>SHOULDER DUEL</h1>
+        <h1>SCHULTER-DUELL</h1>
         <div class="subtitle">Biotop · 1 vs 1</div>
     </header>
 
     <!-- Screen: Home -->
     <section id="screen-home" class="screen active">
-        <button id="btn-start" class="btn btn-primary">Start Duel</button>
-        <button id="btn-scan" class="btn btn-ghost">Scan to Join</button>
-        <button id="btn-myduels-home" class="link-btn">My Duels</button>
+        <button id="btn-start" class="btn btn-primary">Duell starten</button>
+        <button id="btn-scan" class="btn btn-ghost">Scannen &amp; beitreten</button>
+        <button id="btn-myduels-home" class="link-btn">Meine Duelle</button>
     </section>
 
     <!-- Screen: Join (manual code entry) -->
     <section id="screen-join" class="screen">
         <div class="panel">
-            <p class="muted">Scan your opponent's QR with your phone camera,<br>or type the 4-character code:</p>
+            <p class="muted">Scanne den QR-Code deines Gegners mit der Handykamera,<br>oder gib den 4-stelligen Code ein:</p>
             <input id="code-input" class="code-input" maxlength="4" placeholder="····" autocomplete="off">
         </div>
-        <button id="btn-join" class="btn btn-primary">Join</button>
-        <button id="btn-join-back" class="btn btn-ghost btn-small">Back</button>
+        <button id="btn-join" class="btn btn-primary">Beitreten</button>
+        <button id="btn-join-back" class="btn btn-ghost btn-small">Zurück</button>
     </section>
 
     <!-- Screen: Lobby (creator waits) -->
     <section id="screen-lobby" class="screen">
         <div class="panel">
-            <p class="muted">Let your opponent scan this:</p>
+            <p class="muted">Lass deinen Gegner das hier scannen:</p>
             <div id="qr-box"></div>
-            <p class="muted" style="margin-bottom:4px">or type the code</p>
+            <p class="muted" style="margin-bottom:4px">oder gib den Code ein</p>
             <div class="room-code" id="lobby-code">····</div>
         </div>
-        <div class="status-line" id="lobby-status">Waiting for opponent…</div>
-        <button id="btn-lobby-cancel" class="btn btn-ghost btn-small">Cancel</button>
+        <div class="status-line" id="lobby-status">Warte auf Gegner…</div>
+        <button id="btn-lobby-cancel" class="btn btn-ghost btn-small">Abbrechen</button>
     </section>
 
     <!-- Screen: Choice -->
     <section id="screen-choice" class="screen">
         <div class="vs-bar" id="choice-vs">
-            <span class="red" id="choice-red">Red</span>
+            <span class="red" id="choice-red">Rot</span>
             <span class="vs">VS</span>
-            <span class="blue" id="choice-blue">Blue</span>
+            <span class="blue" id="choice-blue">Blau</span>
         </div>
         <div id="choice-controls">
-            <p class="muted" style="text-align:center">Pick one of your species…</p>
+            <p class="muted" style="text-align:center">Wähle eine deiner Spezies…</p>
             <div class="config-list" id="config-list"></div>
-            <p class="muted" style="text-align:center;margin-top:12px">…or quick-draw one (max 24 cells):</p>
+            <p class="muted" style="text-align:center;margin-top:12px">…oder zeichne schnell eine (max. 24 Zellen):</p>
             <div class="draw-grid" id="draw-grid"></div>
             <div class="status-line" id="choice-status"></div>
-            <button id="btn-lock" class="btn btn-primary">Lock in</button>
+            <button id="btn-lock" class="btn btn-primary">Festlegen</button>
         </div>
         <div id="choice-waiting" style="display:none;text-align:center">
             <p class="verdict draw">🔒</p>
-            <p class="muted">Locked in. Waiting for your opponent…</p>
+            <p class="muted">Festgelegt. Warte auf deinen Gegner…</p>
         </div>
     </section>
 
     <!-- Screen: VS splash + deterministic match replay (before the verdict) -->
     <section id="screen-vs" class="screen">
-        <div id="vs-fight" class="verdict fight" style="font-size:2.6rem;letter-spacing:10px" hidden>FIGHT</div>
+        <div id="vs-fight" class="verdict fight" style="font-size:2.6rem;letter-spacing:10px" hidden>KAMPF</div>
         <div class="panel">
             <div class="vs-bar" style="margin-bottom:12px">
-                <span class="red" id="vs-red">Red</span>
+                <span class="red" id="vs-red">Rot</span>
                 <span class="vs">VS</span>
-                <span class="blue" id="vs-blue">Blue</span>
+                <span class="blue" id="vs-blue">Blau</span>
             </div>
             <!-- KI-Agent unterstützt: relative stage so the 3-2-1 countdown can be
                  centered over the board (mirrors the C GUI's STATE_IGNITION). -->
@@ -543,8 +543,8 @@
                 <div class="seg blue" id="vs-pop-blue-bar"></div>
             </div>
             <p class="pop-bar" style="margin:6px 0 0">
-                <span class="red">Red: <span id="vs-pop-red">0</span></span>
-                <span class="blue">Blue: <span id="vs-pop-blue">0</span></span>
+                <span class="red">Rot: <span id="vs-pop-red">0</span></span>
+                <span class="blue">Blau: <span id="vs-pop-blue">0</span></span>
             </p>
             <!-- KI-Agent unterstützt: generation counter + timeline (replay 6.2) -->
             <div class="gen-line" style="margin:10px 0 0">
@@ -561,43 +561,43 @@
         <div class="verdict" id="verdict">—</div>
         <div class="panel">
             <div class="vs-bar" id="result-vs" style="margin-bottom:12px">
-                <span class="red" id="result-red">Red</span>
+                <span class="red" id="result-red">Rot</span>
                 <span class="vs">VS</span>
-                <span class="blue" id="result-blue">Blue</span>
+                <span class="blue" id="result-blue">Blau</span>
             </div>
             <div style="display:flex;justify-content:space-around;gap:12px">
                 <div class="seed" id="result-seed-red"></div>
                 <div class="seed" id="result-seed-blue"></div>
             </div>
             <p class="pop-bar" style="margin-bottom:0;margin-top:12px">
-                <span class="red">Red: <span id="pop-red">0</span></span>
-                <span class="blue">Blue: <span id="pop-blue">0</span></span>
+                <span class="red">Rot: <span id="pop-red">0</span></span>
+                <span class="blue">Blau: <span id="pop-blue">0</span></span>
             </p>
-            <p class="muted" style="margin-bottom:0">after <span id="gen-count">100</span> generations</p>
+            <p class="muted" style="margin-bottom:0">nach <span id="gen-count">100</span> Generationen</p>
         </div>
         <div class="status-line" id="result-status"></div>
-        <button id="btn-rematch" class="btn btn-primary">Rematch</button>
-        <button id="btn-myduels" class="btn btn-ghost btn-small">My Duels</button>
-        <button id="btn-result-home" class="btn btn-ghost btn-small">New Duel</button>
+        <button id="btn-rematch" class="btn btn-primary">Revanche</button>
+        <button id="btn-myduels" class="btn btn-ghost btn-small">Meine Duelle</button>
+        <button id="btn-result-home" class="btn btn-ghost btn-small">Neues Duell</button>
         <!-- Guest fallback: non-blocking post-match claim prompt (FR-4 / FR-20). -->
         <div id="claim-prompt" class="panel" style="display:none;border-color:rgba(255,184,77,0.5);margin-top:6px">
-            <p class="muted" style="margin:0 0 10px">You're playing as a guest. Claim a name so your duels count for real.</p>
-            <a id="link-claim" class="btn btn-ghost btn-small" href="/editor/editor.html" target="_blank" rel="noopener">Claim a name</a>
-            <button id="btn-claim-dismiss" class="link-btn" style="margin-top:8px">Maybe later</button>
+            <p class="muted" style="margin:0 0 10px">Du spielst als Gast. Sichere dir einen Namen, damit deine Duelle echt zählen.</p>
+            <a id="link-claim" class="btn btn-ghost btn-small" href="/editor/editor.html" target="_blank" rel="noopener">Namen sichern</a>
+            <button id="btn-claim-dismiss" class="link-btn" style="margin-top:8px">Vielleicht später</button>
         </div>
     </section>
 
     <!-- Screen: My Duels -->
     <section id="screen-duels" class="screen">
-        <h2 class="duels-title">My Duels</h2>
+        <h2 class="duels-title">Meine Duelle</h2>
         <div class="panel" id="duels-summary">
             <p class="verdict" id="tally" style="font-size:1.7rem;color:var(--text)">0 · 0 · 0</p>
-            <p class="muted" style="margin:0">Win · Loss · Draw</p>
+            <p class="muted" style="margin:0">Sieg · Niederlage · Unentschieden</p>
         </div>
         <div id="best-weapon"></div>
         <div id="hh-list"></div>
         <div class="status-line" id="duels-status"></div>
-        <button id="btn-duels-back" class="btn btn-ghost btn-small">Back</button>
+        <button id="btn-duels-back" class="btn btn-ghost btn-small">Zurück</button>
     </section>
 
     <!-- KI-Agent unterstützt: self-hosted Suno soundtrack (ADR-0028 §2.6). -->
@@ -607,13 +607,13 @@
         <div id="player-tag"></div>
         <!-- KI-Agent unterstützt: back to the Conway Lab landing/title screen -->
         <div style="margin-top:6px">
-            <a id="link-lab" class="link-btn" href="/">« Back to Lab</a>
+            <a id="link-lab" class="link-btn" href="/">« Zurück zum Labor</a>
         </div>
         <div style="margin-top:6px">
-            <button id="btn-mute" class="link-btn">♪ Sound: on</button>
+            <button id="btn-mute" class="link-btn">♪ Sound: an</button>
         </div>
         <div style="margin-top:6px">
-            ♪ Music: “Open Flow” — made with
+            ♪ Musik: „Open Flow“ — erstellt mit
             <a href="https://suno.com/s/82OAUnbHAxUlSSla" target="_blank" rel="noopener">Suno</a>
         </div>
     </footer>
@@ -775,7 +775,7 @@
     }
     document.getElementById('btn-mute').addEventListener('click', () => {
         soundOn = !soundOn;
-        document.getElementById('btn-mute').textContent = '♪ Sound: ' + (soundOn ? 'on' : 'off');
+        document.getElementById('btn-mute').textContent = '♪ Sound: ' + (soundOn ? 'an' : 'aus');
         if (!soundOn) stopAudio();
     });
     // KI-Agent unterstützt: fade the soundtrack out before following the "Back to
@@ -803,7 +803,7 @@
         if (!ok) {
             if (status === 404 || status === 410) {
                 stopPoll();
-                alert('This duel room is no longer available.');
+                alert('Dieser Duell-Raum ist nicht mehr verfügbar.');
                 leaveToHome();
             }
             return;
@@ -825,7 +825,7 @@
             return;
         }
         if (st === 'computing') {
-            document.getElementById('choice-status').textContent = 'Computing match…';
+            document.getElementById('choice-status').textContent = 'Berechne Duell…';
             return;
         }
         if (st === 'result') {
@@ -835,7 +835,7 @@
         }
         if (st === 'expired') {
             stopPoll();
-            alert('This duel room has expired.');
+            alert('Dieser Duell-Raum ist abgelaufen.');
             leaveToHome();
         }
     }
@@ -856,7 +856,7 @@
     async function createRoom() {
         const { ok, data } = await api('POST', '/api/v1/duel/rooms',
             { player_id: playerId, nickname });
-        if (!ok) { alert('Could not create a room.'); return; }
+        if (!ok) { alert('Raum konnte nicht erstellt werden.'); return; }
         roomId = data.room_id;
         mySlot = 'red';
         renderLobby(data.room_id, data.room_code);
@@ -883,9 +883,9 @@
 
     async function joinByCode() {
         const code = document.getElementById('code-input').value.trim().toUpperCase();
-        if (code.length !== 4) { alert('Enter the 4-character code.'); return; }
+        if (code.length !== 4) { alert('Gib den 4-stelligen Code ein.'); return; }
         const r = await api('GET', '/api/v1/duel/rooms/by-code/' + encodeURIComponent(code));
-        if (!r.ok) { alert('No active room with that code.'); return; }
+        if (!r.ok) { alert('Kein aktiver Raum mit diesem Code.'); return; }
         await joinRoom(r.data.room_id);
     }
 
@@ -894,10 +894,10 @@
             '/api/v1/duel/rooms/' + rid + '/join',
             { player_id: playerId, nickname });
         if (!ok) {
-            const msg = status === 409 ? 'That room is already full.'
-                : status === 410 ? 'That room has expired.'
-                : status === 404 ? 'Room not found.'
-                : errorMessage(data, 'Could not join.');
+            const msg = status === 409 ? 'Dieser Raum ist bereits voll.'
+                : status === 410 ? 'Dieser Raum ist abgelaufen.'
+                : status === 404 ? 'Raum nicht gefunden.'
+                : errorMessage(data, 'Beitreten fehlgeschlagen.');
             alert(msg);
             return;
         }
@@ -909,10 +909,10 @@
     // ---- Choice ------------------------------------------------------------
     // Absolute framing: RED left, BLUE right on both phones; "(you)" marks my side.
     function fillVsBar(redId, blueId, room) {
-        const red = room.red ? room.red.nickname : 'Red';
-        const blue = room.blue ? room.blue.nickname : 'Blue';
-        document.getElementById(redId).textContent = red + (mySlot === 'red' ? ' (you)' : '');
-        document.getElementById(blueId).textContent = blue + (mySlot === 'blue' ? ' (you)' : '');
+        const red = room.red ? room.red.nickname : 'Rot';
+        const blue = room.blue ? room.blue.nickname : 'Blau';
+        document.getElementById(redId).textContent = red + (mySlot === 'red' ? ' (du)' : '');
+        document.getElementById(blueId).textContent = blue + (mySlot === 'blue' ? ' (du)' : '');
     }
 
     function updateChoiceVs(room) {
@@ -956,7 +956,7 @@
     function toggleDrawCell(x, y, cell) {
         if (!drawGrid[y][x] && drawCount() >= MAX_BIOMASS) {
             document.getElementById('choice-status').textContent =
-                'Max ' + MAX_BIOMASS + ' cells.';
+                'Max. ' + MAX_BIOMASS + ' Zellen.';
             return;
         }
         drawGrid[y][x] = drawGrid[y][x] ? 0 : 1;
@@ -978,7 +978,7 @@
         list.innerHTML = '';
         const configs = (ok && data.configs) ? data.configs : [];
         if (configs.length === 0) {
-            list.innerHTML = '<span class="muted">No saved species — quick-draw below.</span>';
+            list.innerHTML = '<span class="muted">Keine gespeicherten Spezies — unten schnell zeichnen.</span>';
             return;
         }
         configs.forEach(cfg => {
@@ -1018,10 +1018,10 @@
                 for (let x = 0; x < GRID_SIZE; x++)
                     if (drawGrid[y][x]) cells.push([x, y]);
             body = { player_id: playerId, config: { cells } };
-            myConfigLabel = 'Quick-draw';
+            myConfigLabel = 'Schnellzeichnung';
         } else {
             document.getElementById('choice-status').textContent =
-                'Pick a species or draw one first.';
+                'Wähle zuerst eine Spezies oder zeichne eine.';
             return;
         }
         document.getElementById('btn-lock').disabled = true;
@@ -1030,7 +1030,7 @@
         document.getElementById('btn-lock').disabled = false;
         if (!ok) {
             document.getElementById('choice-status').textContent =
-                errorMessage(data, 'Could not lock in.');
+                errorMessage(data, 'Festlegen fehlgeschlagen.');
             return;
         }
         // Optimistic: hide controls now; the poll confirms via room[slot].locked.
@@ -1228,13 +1228,13 @@
         const myTeam = mySlot;
         const verdict = document.getElementById('verdict');
         if (r.winner === 'draw') {
-            verdict.textContent = 'DRAW';
+            verdict.textContent = 'UNENTSCHIEDEN';
             verdict.className = 'verdict draw';
         } else if (r.winner === myTeam) {
-            verdict.textContent = 'YOU WIN';
+            verdict.textContent = 'DU GEWINNST';
             verdict.className = 'verdict win';
         } else {
-            verdict.textContent = 'YOU LOSE';
+            verdict.textContent = 'DU VERLIERST';
             verdict.className = 'verdict lose';
         }
 
@@ -1273,14 +1273,14 @@
         fadeOutAudio();
         document.getElementById('btn-rematch').disabled = true;
         document.getElementById('result-status').textContent =
-            'Rematch requested — waiting for opponent…';
+            'Revanche angefragt — warte auf Gegner…';
         const { ok, data } = await api('POST',
             '/api/v1/duel/rooms/' + roomId + '/rematch', { player_id: playerId });
         if (!ok) {
             rematchRequested = false;
             document.getElementById('btn-rematch').disabled = false;
             document.getElementById('result-status').textContent =
-                errorMessage(data, 'Could not request a rematch.');
+                errorMessage(data, 'Revanche-Anfrage fehlgeschlagen.');
         }
         // The poll picks up status -> choosing and re-enters the choice screen.
     });
@@ -1315,7 +1315,7 @@
         if (duels.some(d => d.key === key)) return;
         duels.push({
             key,
-            opponent: room[opponentSlot()] ? room[opponentSlot()].nickname : 'Opponent',
+            opponent: room[opponentSlot()] ? room[opponentSlot()].nickname : 'Gegner',
             my_team: mySlot,
             winner: r.winner,
             my_config_label: myConfigLabel || '—',
@@ -1354,7 +1354,7 @@
             '/api/v1/duels?player_id=' + encodeURIComponent(playerId));
         if (ok && data && data.tally) {
             renderRecord(data, true);
-            document.getElementById('duels-status').textContent = 'Synced with server.';
+            document.getElementById('duels-status').textContent = 'Mit Server synchronisiert.';
         }
     }
 
@@ -1364,8 +1364,8 @@
 
         const bw = document.getElementById('best-weapon');
         if (rec.best_weapon && rec.best_weapon.seed) {
-            bw.innerHTML = '<p class="muted" style="text-align:center;margin:0 0 6px">Best bio ('
-                + rec.best_weapon.wins + ' wins)</p>';
+            bw.innerHTML = '<p class="muted" style="text-align:center;margin:0 0 6px">Beste Spezies ('
+                + rec.best_weapon.wins + ' Siege)</p>';
             const seed = document.createElement('div');
             seed.className = 'seed';
             renderSeed(seed, rec.best_weapon.seed);
@@ -1378,7 +1378,7 @@
         list.innerHTML = '';
         const head = rec.head_to_head || [];
         if (head.length === 0) {
-            list.innerHTML = '<p class="muted" style="text-align:center">No duels yet.</p>';
+            list.innerHTML = '<p class="muted" style="text-align:center">Noch keine Duelle.</p>';
             return;
         }
         head.forEach(h => {
@@ -1388,7 +1388,7 @@
             name.textContent = h.opponent;
             const score = document.createElement('span');
             score.className = 'score';
-            score.textContent = h.wins + ':' + h.losses + (h.draws ? ' (' + h.draws + 'd)' : '');
+            score.textContent = h.wins + ':' + h.losses + (h.draws ? ' (' + h.draws + 'u)' : '');
             row.appendChild(name);
             row.appendChild(score);
             list.appendChild(row);
@@ -1402,7 +1402,7 @@
     });
 
     // ---- Boot: handle a ?join=ROOM_ID deep link from a scanned QR -----------
-    document.getElementById('player-tag').textContent = nickname + ' · id ' + playerId.slice(0, 6);
+    document.getElementById('player-tag').textContent = nickname + ' · ID ' + playerId.slice(0, 6);
 
     (function boot() {
         const params = new URLSearchParams(location.search);

@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="480" viewBox="0 0 1320 480" font-family="Arial, Tahoma, Helvetica, sans-serif">
+<!-- KI-Agent unterstützt: schematische Faltung 8x8-Feld -> Zylinder -> Torus
+     (Frage 1). Palette wie die uebrigen Poster-SVGs (Uni-Bamberg Navy). -->
+<rect x="0" y="0" width="1320" height="480" fill="#FFFFFF"/>
+<text x="660" y="48" text-anchor="middle" font-size="38" font-weight="bold" fill="#1A1A1A">Vom Schachbrett zum randlosen Donut</text>
+
+<!-- ===== Panel 1: 8x8-Feld mit verklebten Raendern ===== -->
+<g>
+  <rect x="118" y="120" width="208" height="208" fill="#DFE4ED" stroke="#00457B" stroke-width="3"/>
+  <!-- Gitterlinien -->
+  <line x1="144" y1="120" x2="144" y2="328" stroke="#C6D0DE" stroke-width="1.5"/>
+  <line x1="170" y1="120" x2="170" y2="328" stroke="#C6D0DE" stroke-width="1.5"/>
+  <line x1="196" y1="120" x2="196" y2="328" stroke="#C6D0DE" stroke-width="1.5"/>
+  <line x1="222" y1="120" x2="222" y2="328" stroke="#C6D0DE" stroke-width="1.5"/>
+  <line x1="248" y1="120" x2="248" y2="328" stroke="#C6D0DE" stroke-width="1.5"/>
+  <line x1="274" y1="120" x2="274" y2="328" stroke="#C6D0DE" stroke-width="1.5"/>
+  <line x1="300" y1="120" x2="300" y2="328" stroke="#C6D0DE" stroke-width="1.5"/>
+  <line x1="118" y1="146" x2="326" y2="146" stroke="#C6D0DE" stroke-width="1.5"/>
+  <line x1="118" y1="172" x2="326" y2="172" stroke="#C6D0DE" stroke-width="1.5"/>
+  <line x1="118" y1="198" x2="326" y2="198" stroke="#C6D0DE" stroke-width="1.5"/>
+  <line x1="118" y1="224" x2="326" y2="224" stroke="#C6D0DE" stroke-width="1.5"/>
+  <line x1="118" y1="250" x2="326" y2="250" stroke="#C6D0DE" stroke-width="1.5"/>
+  <line x1="118" y1="276" x2="326" y2="276" stroke="#C6D0DE" stroke-width="1.5"/>
+  <line x1="118" y1="302" x2="326" y2="302" stroke="#C6D0DE" stroke-width="1.5"/>
+  <!-- Gleiter (lebende Zellen) -->
+  <rect x="144" y="120" width="26" height="26" fill="#D7263D"/>
+  <rect x="170" y="146" width="26" height="26" fill="#D7263D"/>
+  <rect x="118" y="172" width="26" height="26" fill="#1B6CA8"/>
+  <rect x="144" y="172" width="26" height="26" fill="#1B6CA8"/>
+  <rect x="170" y="172" width="26" height="26" fill="#1B6CA8"/>
+</g>
+<!-- Wrap-Pfeil oben: rechts = links -->
+<path d="M 130 104 C 175 78, 269 78, 314 104" fill="none" stroke="#D7263D" stroke-width="3.5" stroke-dasharray="7 5"/>
+<polygon points="130,104 142,96 140,110" fill="#D7263D"/>
+<polygon points="314,104 304,110 302,96" fill="#D7263D"/>
+<text x="222" y="74" text-anchor="middle" font-size="21" fill="#D7263D" font-weight="bold">rechts = links</text>
+<!-- Wrap-Pfeil links: oben = unten -->
+<path d="M 102 132 C 76 177, 76 271, 102 316" fill="none" stroke="#1B6CA8" stroke-width="3.5" stroke-dasharray="7 5"/>
+<polygon points="102,132 94,144, 108,142" fill="#1B6CA8"/>
+<polygon points="102,316 108,306, 94,304" fill="#1B6CA8"/>
+<text x="60" y="230" text-anchor="middle" font-size="21" fill="#1B6CA8" font-weight="bold" transform="rotate(-90 60 230)">oben = unten</text>
+<text x="222" y="364" text-anchor="middle" font-size="24" font-weight="bold" fill="#00457B">8×8-Feld</text>
+<text x="222" y="392" text-anchor="middle" font-size="20" fill="#52606E">Ränder paarweise verkleben</text>
+
+<!-- Pfeil 1 -->
+<line x1="404" y1="224" x2="470" y2="224" stroke="#1A1A1A" stroke-width="5"/>
+<polygon points="486,224 468,213 468,235" fill="#1A1A1A"/>
+
+<!-- ===== Panel 2: Zylinder ===== -->
+<g>
+  <path d="M 560 132 L 560 316 A 70 26 0 0 0 700 316 L 700 132" fill="#DFE4ED" stroke="#00457B" stroke-width="3"/>
+  <ellipse cx="630" cy="132" rx="70" ry="26" fill="#EDF1F7" stroke="#00457B" stroke-width="3"/>
+  <path d="M 590 134 L 590 320" stroke="#C6D0DE" stroke-width="1.5" fill="none"/>
+  <path d="M 630 138 L 630 326" stroke="#C6D0DE" stroke-width="1.5" fill="none"/>
+  <path d="M 670 134 L 670 320" stroke="#C6D0DE" stroke-width="1.5" fill="none"/>
+</g>
+<text x="630" y="392" text-anchor="middle" font-size="24" font-weight="bold" fill="#00457B">Zylinder</text>
+<text x="630" y="420" text-anchor="middle" font-size="20" fill="#52606E">links + rechts verklebt</text>
+
+<!-- Pfeil 2 -->
+<line x1="754" y1="224" x2="820" y2="224" stroke="#1A1A1A" stroke-width="5"/>
+<polygon points="836,224 818,213 818,235" fill="#1A1A1A"/>
+
+<!-- ===== Panel 3: Torus / Donut ===== -->
+<g>
+  <ellipse cx="1080" cy="224" rx="160" ry="96" fill="#00457B"/>
+  <ellipse cx="1080" cy="224" rx="150" ry="86" fill="none" stroke="#2E6699" stroke-width="2"/>
+  <ellipse cx="1080" cy="210" rx="62" ry="30" fill="#FFFFFF"/>
+  <ellipse cx="1080" cy="210" rx="62" ry="30" fill="#DFE4ED" opacity="0.5"/>
+  <!-- Ringlinien zur Plastik -->
+  <path d="M 1080 128 A 62 30 0 0 0 1080 240" fill="none" stroke="#7FB2D6" stroke-width="2.5" opacity="0.7"/>
+  <path d="M 1080 320 A 62 30 0 0 0 1080 240" fill="none" stroke="#7FB2D6" stroke-width="2.5" opacity="0.7"/>
+  <ellipse cx="1010" cy="205" rx="14" ry="9" fill="#7FB2D6" opacity="0.6"/>
+</g>
+<text x="1080" y="392" text-anchor="middle" font-size="24" font-weight="bold" fill="#00457B">Torus (Donut)</text>
+<text x="1080" y="420" text-anchor="middle" font-size="20" fill="#52606E">oben + unten verklebt → kein Rand</text>
+</svg>

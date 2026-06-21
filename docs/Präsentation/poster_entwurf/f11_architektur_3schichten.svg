@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1300" height="760" viewBox="0 0 1300 760" font-family="Arial, Tahoma, Helvetica, sans-serif">
+<rect x="0" y="0" width="1300" height="760" fill="#FFFFFF"/>
+<text x="650.0" y="58" font-size="40" fill="#1A1A1A" font-weight="bold" text-anchor="middle">Ein verteiltes System aus drei Schichten</text>
+<rect x="60" y="110" width="1180" height="170" rx="20" fill="#FFFFFF" stroke="#1B6CA8" stroke-width="6"/>
+<text x="88" y="162" font-size="32" fill="#1B6CA8" font-weight="bold" text-anchor="start">MITMACHEN  ·  Web</text>
+<rect x="88" y="188" width="544.0" height="66" rx="12" fill="#EAEEF4" stroke="#AAB4C0" stroke-width="3"/>
+<text x="360.0" y="230" font-size="28" fill="#1A1A1A" font-weight="bold" text-anchor="middle">Editor</text>
+<rect x="668.0" y="188" width="544.0" height="66" rx="12" fill="#EAEEF4" stroke="#AAB4C0" stroke-width="3"/>
+<text x="940.0" y="230" font-size="28" fill="#1A1A1A" font-weight="bold" text-anchor="middle">Kiosk</text>
+<line x1="650.0" y1="280" x2="650.0" y2="330" stroke="#5A6470" stroke-width="6"/>
+<polygon points="650.0,330 638.0,314 662.0,314" fill="#5A6470"/>
+<rect x="60" y="330" width="1180" height="170" rx="20" fill="#FFFFFF" stroke="#0F8B6C" stroke-width="6"/>
+<text x="88" y="382" font-size="32" fill="#0F8B6C" font-weight="bold" text-anchor="start">SERVER  ·  Python</text>
+<rect x="88" y="408" width="350.6666666666667" height="66" rx="12" fill="#EAEEF4" stroke="#AAB4C0" stroke-width="3"/>
+<text x="263.33333333333337" y="450" font-size="28" fill="#1A1A1A" font-weight="bold" text-anchor="middle">FastAPI</text>
+<rect x="474.6666666666667" y="408" width="350.6666666666667" height="66" rx="12" fill="#EAEEF4" stroke="#AAB4C0" stroke-width="3"/>
+<text x="650.0" y="450" font-size="28" fill="#1A1A1A" font-weight="bold" text-anchor="middle">Matchmaker-Worker</text>
+<rect x="861.3333333333334" y="408" width="350.6666666666667" height="66" rx="12" fill="#EAEEF4" stroke="#AAB4C0" stroke-width="3"/>
+<text x="1036.6666666666667" y="450" font-size="28" fill="#1A1A1A" font-weight="bold" text-anchor="middle">MongoDB</text>
+<line x1="650.0" y1="500" x2="650.0" y2="550" stroke="#5A6470" stroke-width="6"/>
+<polygon points="650.0,550 638.0,534 662.0,534" fill="#5A6470"/>
+<rect x="60" y="550" width="1180" height="170" rx="20" fill="#FFFFFF" stroke="#D7263D" stroke-width="6"/>
+<text x="88" y="602" font-size="32" fill="#D7263D" font-weight="bold" text-anchor="start">RECHENKERN  ·  C</text>
+<rect x="88" y="628" width="350.6666666666667" height="66" rx="12" fill="#EAEEF4" stroke="#AAB4C0" stroke-width="3"/>
+<text x="263.33333333333337" y="670" font-size="28" fill="#1A1A1A" font-weight="bold" text-anchor="middle">GUI</text>
+<rect x="474.6666666666667" y="628" width="350.6666666666667" height="66" rx="12" fill="#EAEEF4" stroke="#AAB4C0" stroke-width="3"/>
+<text x="650.0" y="670" font-size="28" fill="#1A1A1A" font-weight="bold" text-anchor="middle">Headless</text>
+<rect x="861.3333333333334" y="628" width="350.6666666666667" height="66" rx="12" fill="#EAEEF4" stroke="#AAB4C0" stroke-width="3"/>
+<text x="1036.6666666666667" y="670" font-size="28" fill="#1A1A1A" font-weight="bold" text-anchor="middle">Hyper-Worker</text>
+<text x="650.0" y="736" font-size="26" fill="#5A6470" font-weight="normal" text-anchor="middle">Mehrere Programme laufen gleichzeitig in Containern (Docker) und reden übers Netz.</text>
+</svg>

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<!-- KI-Agent unterstützt: A0-Hochkant-Druck-Proof des Biotop-Messeposters.
+     Layout & Corporate Design nach den echten Uni-Bamberg-Postern in ./vorlagen/
+     (GENIAL-Posterwettbewerb 2025) und der Richtlinie
+     "Poster wirkungsvoll gestalten – Weniger ist mehr!".
+
+     Übernommen aus den Vorlagen:
+       * KOPF:    durchgehender Navy-Banner (#00457B) mit abgerundeter
+                  oberer rechter Ecke; links die Projekt-Wortmarke, rechts der
+                  Schriftzug "Universität Bamberg" + das WAPPEN der Uni Bamberg
+                  (wappen_unibamberg.png, aus 8_GENIAL_Poster_Lehe.pdf extrahiert);
+                  darunter ein hellblaugrauer Titelbalken (#DFE4ED) mit navy Titel.
+       * HINTERGRÜNDE:  hellblaugrau #DFE4ED (Sektionsköpfe, Boxen).
+       * UMRANDUNGEN:   Uni-Navy #00457B.
+     Schriftgrößen >= Uni-Mindestwerte (Titel >=78pt fett, Zwischenüberschriften
+     & Text >=36pt; Zitate/Quellen/Bildunterschriften dürfen kleiner sein).
+     Wichtigstes ins ZENTRUM: die Mitmach-Station (F3.2) sitzt in der Poster-Mitte.
+     Roter Faden vertikal: Faszination -> Mitmachen -> Entstehung.
+     Druck: Browser -> Drucken -> "Als PDF speichern", A0 hochkant, Ränder: keine,
+     Hintergrundgrafiken: AN. Bildhöhen in mm gedeckelt -> passt auf EINE Seite. -->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>BIOTOP – Poster A0</title>
+<style>
+  :root{
+    --navy:#00457B;        /* Uni-Bamberg Hausfarbe (Banner, Umrandungen) */
+    --navy-d:#00335c;
+    --band:#DFE4ED;        /* hellblaugrau (Hintergründe, Sektionsköpfe) */
+    --band-d:#C6D0DE;
+    --ink:#1A1A1A; --mute:#52606E; --paper:#FFFFFF;
+    --red:#D7263D; --blue:#1B6CA8; --go:#0F8B6C;   /* semantische Akzente */
+  }
+  @page{ size: A0 portrait; margin:0; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family: Arial, Tahoma, Helvetica, sans-serif;
+    color:var(--ink); background:var(--paper);
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+
+  /* A0 portrait = 841 x 1189 mm. Feste Höhe + flex-Spalte -> EINE Seite. */
+  .poster{ width:841mm; height:1189mm; display:flex; flex-direction:column;
+           background:var(--paper); }
+
+  /* ============ KOPF (aus den Vorlagen übernommen) ============ */
+  .banner{ position:relative; background:var(--navy); height:100mm;
+           border-top-right-radius:60mm; margin-top:5mm; color:#fff; }
+  .brand{ position:absolute; left:22mm; top:50%; transform:translateY(-50%); }
+  .brand .logo{ font-size:62pt; font-weight:800; letter-spacing:2pt; line-height:1; }
+  .brand .logo .o{ color:#7FB2D6; }
+  .brand .sub{ font-size:26pt; font-weight:700; margin-top:3mm; color:#CFE0EE;
+               letter-spacing:.5pt; }
+  .uni-word{ position:absolute; right:130mm; top:50%; transform:translateY(-50%);
+             font-size:50pt; font-weight:400; letter-spacing:.5pt; white-space:nowrap; }
+  .wappen{ position:absolute; right:30mm; top:50%; transform:translateY(-50%);
+           height:82mm; width:auto; }
+
+  /* hellblaugrauer Titelbalken */
+  .titlebar{ background:var(--band); padding:9mm 24mm 8mm; text-align:center; }
+  .title{ font-size:80pt; font-weight:800; letter-spacing:.5pt; line-height:1.02;
+          color:var(--navy); margin:0; }
+  .author{ font-size:34pt; font-weight:700; color:var(--navy-d); margin:5mm 0 0;
+           line-height:1.1; }
+  .occasion{ font-size:26pt; font-weight:700; color:var(--mute); margin:3mm 0 0; }
+
+  /* ---------- Inhalt ---------- */
+  .content{ flex:1; display:flex; flex-direction:column; padding:8mm 22mm 12mm; }
+
+  .intro{ font-size:36pt; line-height:1.2; margin:0; }
+  .lead{ font-size:40pt; font-weight:700; font-style:italic; line-height:1.16;
+         margin:5mm 0 0; color:var(--navy); }
+
+  /* roter Faden (Mini-Wegweiser) im Bamberg-Stil */
+  .thread{ display:flex; align-items:stretch; gap:5mm; margin:7mm 0 0; }
+  .thread .step{ flex:1; display:flex; align-items:center; gap:5mm;
+                 background:var(--band); border:1.5mm solid var(--navy);
+                 border-radius:5mm; padding:4mm 7mm;
+                 font-size:30pt; font-weight:800; color:var(--navy); }
+  .thread .num{ display:inline-flex; align-items:center; justify-content:center;
+                width:15mm; height:15mm; border-radius:50%; background:var(--navy);
+                color:#fff; font-size:28pt; }
+  .thread .arrow{ align-self:center; font-size:42pt; font-weight:800; color:var(--navy); }
+
+  /* ---------- Sektionen ---------- */
+  .band{ margin-top:8mm; }
+  /* Sektionskopf: hellblaugraue Leiste + navy Nummernkreis (wie Vorlagen) */
+  .sechead{ display:flex; align-items:center; gap:7mm; background:var(--band);
+            border-left:6mm solid var(--navy); border-radius:0 5mm 5mm 0;
+            padding:5mm 9mm; }
+  .sechead .num{ display:inline-flex; align-items:center; justify-content:center;
+                 width:20mm; height:20mm; border-radius:50%; background:var(--navy);
+                 color:#fff; font-size:34pt; font-weight:800; flex:none; }
+  .sechead .num.diamond{ background:transparent; color:var(--navy); font-size:40pt; }
+  .sechead .lab{ font-size:34pt; font-weight:800; letter-spacing:2pt; color:var(--navy); }
+
+  h2{ font-size:44pt; font-weight:800; line-height:1.05; margin:5mm 0 0; color:var(--navy); }
+  .core{ font-size:37pt; font-weight:600; line-height:1.2; margin:4mm 0 5mm;
+         border-left:5mm solid var(--navy); padding-left:7mm; color:var(--ink); }
+  .core .hl-red{ color:var(--red); } .core .hl-blue{ color:var(--blue); }
+  .core .hl-go{ color:var(--go); }
+
+  ul{ font-size:36pt; line-height:1.22; margin:4mm 0 0; padding-left:11mm; }
+  li{ margin:2mm 0; }
+  .cap{ font-size:24pt; color:var(--mute); text-align:center; margin:3mm 0 0;
+        line-height:1.16; }
+
+  /* zentrale Mitmach-Sektion: gleicher Stil, aber stärkere navy Umrandung */
+  .center{ border:3mm solid var(--navy); border-radius:8mm; padding:7mm 12mm 9mm;
+           background:#F4F7FB; margin-top:8mm; }
+  .center .sechead{ margin-top:-2mm; }
+
+  /* ---------- Bilder / Raster ---------- */
+  .row{ display:flex; gap:9mm; align-items:flex-start; margin-top:6mm; }
+  figure{ margin:0; }
+  .full{ width:100%; height:auto; display:block; }
+  .svgwrap{ border:1.5px solid var(--band-d); border-radius:4mm; padding:4mm;
+            background:#fff; }
+  .photo{ display:block; margin:0 auto; max-width:100%;
+          border:2px solid var(--navy); border-radius:4mm; background:#0d1117; }
+
+  /* navy Stat-Box (Bamberg-konform statt schwarz) */
+  .statbox{ background:var(--navy); color:#fff; border-radius:6mm;
+            padding:9mm 10mm; text-align:center; }
+  .statbox .q{ font-size:30pt; color:#BFD3E5; margin:0 0 4mm; }
+  .statbox .big{ font-size:46pt; font-weight:800; color:#7FE3FF; margin:0 0 4mm; line-height:1.25; }
+  .statbox .note{ font-size:27pt; color:#CFE0EE; margin:0; }
+
+  /* ---------- Fuß ---------- */
+  .footer{ margin-top:auto; padding-top:6mm; border-top:2mm solid var(--navy);
+           display:flex; justify-content:space-between; align-items:center;
+           font-size:26pt; color:var(--mute); }
+  .footer strong{ color:var(--navy); }
+  .footer .qr{ width:44mm; height:44mm; border:none; background:#fff; }
+</style>
+</head>
+<body>
+<div class="poster">
+
+  <!-- ============ KOPF: Banner + Titelbalken (Uni-Bamberg-Vorlage) ============ -->
+  <header>
+    <div class="banner">
+      <div class="brand">
+        <div class="logo">BI<span class="o">O</span>TOP</div>
+        <div class="sub">Erstsemester-Projekt · Fakultät WIAI · Kurs WIAI25</div>
+      </div>
+      <div class="uni-word">Universität Bamberg</div>
+      <img class="wappen" src="wappen_unibamberg.png" alt="Wappen der Otto-Friedrich-Universität Bamberg">
+    </div>
+    <div class="titlebar">
+      <h1 class="title">BIOTOP – Conways Game of Life als Wettkampf</h1>
+      <p class="author">Friedemann Decker (Erstsemester) &nbsp;+&nbsp; KI-Agenten: Gemini CLI · Claude CLI</p>
+      <p class="occasion">25 Jahre Fakultät WIAI · Jubiläumsfeier 2026</p>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <p class="intro"><strong>Conways Game of Life</strong> erzeugt aus vier einfachen Regeln
+      verblüffend komplexe Muster. <strong>Biotop</strong> macht daraus einen Wettkampf:
+      <span style="color:var(--red);font-weight:700">Team Rot</span> und
+      <span style="color:var(--blue);font-weight:700">Team Blau</span> kämpfen auf einem Gitter
+      um die Vorherrschaft.</p>
+    <p class="lead">Wie entsteht aus vier Regeln ein faszinierendes Spiel?</p>
+
+    <!-- Roter Faden sichtbar machen -->
+    <nav class="thread">
+      <div class="step"><span class="num">1</span> FASZINATION</div>
+      <div class="arrow">→</div>
+      <div class="step"><span class="num">2</span> MITMACHEN</div>
+      <div class="arrow">→</div>
+      <div class="step"><span class="num">3</span> ENTSTEHUNG</div>
+    </nav>
+
+    <!-- ============ ① F2.1 FASZINATION ============ -->
+    <section class="band">
+      <div class="sechead"><span class="num">1</span><span class="lab">FASZINATION</span></div>
+      <h2>Komplexität aus vier Regeln: Wie entsteht Ordnung ganz von selbst?</h2>
+      <p class="core">Vier simple Regeln – und trotzdem entstehen Gleiter, Oszillatoren und Chaos. Das nennt man <strong>Emergenz</strong>.</p>
+
+      <div class="svgwrap"><img class="full" src="f21_vier_regeln.svg" alt="Die vier Regeln"></div>
+
+      <div class="row">
+        <figure style="flex:0 0 300mm">
+          <img class="photo" style="max-height:120mm" src="kiosk_live.png" alt="Live-Kiosk">
+          <figcaption class="cap">Live am Stand: vier Partien gleichzeitig.</figcaption>
+        </figure>
+        <ul style="flex:1; margin-top:0">
+          <li><strong>Emergenz:</strong> komplexes Verhalten aus einfachen lokalen Regeln – ohne zentrale Steuerung.</li>
+          <li><strong>Zellulärer Automat:</strong> jede Zelle „schaut" nur auf ihre 8 Nachbarn.</li>
+          <li>1970 von John Conway erfunden – sogar <strong>Turing-vollständig</strong> (man kann darin „rechnen").</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============ ② F3.2 MITMACHEN (ZENTRUM) ============ -->
+    <section class="center">
+      <div class="sechead"><span class="num">2</span><span class="lab">MITMACHEN</span></div>
+      <h2>Erschaffen Sie das stärkste Biotop!</h2>
+      <p class="core">Malen Sie in <strong>30 Sekunden</strong> Ihr eigenes 8×8-Muster – es tritt
+        sofort im Live-Turnier an, und Ihr BIOTOP erscheint in der Rangliste.</p>
+
+      <div class="svgwrap"><img class="full" style="max-height:128mm; width:auto; margin:0 auto" src="f32_mitmach_ablauf.svg" alt="Mitmach-Ablauf in 4 Schritten"></div>
+
+      <div class="row">
+        <figure style="flex:0 0 210mm; text-align:center">
+          <img class="photo" style="background:#fff; max-height:118mm" src="qr_editor.png" alt="QR zum Editor">
+          <figcaption class="cap">Hier scannen → mitmachen<br><strong style="font-size:1.4em; color:var(--navy)">biotop.wiai-lab.de</strong></figcaption>
+        </figure>
+        <figure style="flex:0 0 160mm; text-align:center">
+          <img class="photo" style="max-height:118mm" src="editor_tablet.png" alt="Editor am Tablet">
+          <figcaption class="cap">Muster malen, Team wählen, absenden.</figcaption>
+        </figure>
+        <figure style="flex:1; text-align:center">
+          <img class="photo" style="max-height:118mm" src="leaderboard.png" alt="Live-Rangliste">
+          <figcaption class="cap">Ihr Name in der Live-Rangliste.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ ◊ DATEN & METHODE · Dichte-Optimum ============ -->
+    <section class="band">
+      <div class="sechead"><span class="num diamond">◆</span><span class="lab">ECHTE TURNIERDATEN</span></div>
+      <h2>Wie dicht sollte ein Startmuster sein? – Es gibt ein Dichte-Optimum</h2>
+      <p class="core">Weder fast leer noch randvoll: Startmuster mit <strong>24–32 von 64 Zellen</strong> gewinnen am häufigsten.</p>
+
+      <div class="row">
+        <figure style="flex:1.25">
+          <div class="svgwrap"><img class="full" style="max-height:150mm; width:auto; margin:0 auto" src="f23_winrate_vs_cells.svg"
+            alt="Win-Rate über Startzellzahl: umgekehrte U-Kurve mit Optimum bei 24–32 Zellen"></div>
+          <figcaption class="cap">10.000 zufällige Startmuster im eigenen Turnier.</figcaption>
+        </figure>
+
+        <!-- Frage 2: Wie viele mögliche Muster? -->
+        <div class="statbox" style="flex:1; align-self:center">
+          <p class="q">Wie viele verschiedene Muster gibt es unter der Fair-Play-Grenze (max. 24 Zellen)?</p>
+          <p class="big">
+            <math display="inline">
+              <munderover>
+                <mo>&#x2211;</mo>
+                <mrow><mi>k</mi><mo>=</mo><mn>0</mn></mrow>
+                <mn>24</mn>
+              </munderover>
+              <mrow>
+                <mo>(</mo><mfrac linethickness="0"><mn>64</mn><mi>k</mi></mfrac><mo>)</mo>
+              </mrow>
+              <mo>&#x2248;</mo>
+              <mn>553&#x202F;Billiarden</mn>
+            </math>
+          </p>
+          <p class="note">über 25-mal so viele, wie es Ameisen auf der ganzen Erde gibt – stures Durchprobieren (Brute Force) chancenlos</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ③ F1.1 ENTSTEHUNG ============ -->
+    <section class="band">
+      <div class="sechead"><span class="num">3</span><span class="lab">WIE IST DAS ENTSTANDEN?</span></div>
+      <h2>Wie weit kommt ein Erstsemester, wenn Mensch und KI als Team programmieren?</h2>
+      <p class="core">Hinter BIOTOP steckt ein komplettes <strong>verteiltes System</strong>.</p>
+
+      <div class="row">
+        <figure style="flex:1.15"><div class="svgwrap"><img class="full" style="max-height:130mm; width:auto; margin:0 auto" src="f11_architektur_3schichten.svg" alt="3-Schichten-Architektur"></div></figure>
+        <ul style="flex:1; margin-top:0">
+          <li><strong>Werkzeug für jede Schicht:</strong> Tempo in C, Komfort in Python, Zugänglichkeit im Web.</li>
+          <li><strong>KI als Teampartner, nicht Autopilot:</strong> Entscheidungen in Architektur-Notizen (ADRs) begründet, Code getestet (Ziel: null Compiler-Warnungen).</li>
+          <li><strong>Verteiltes System:</strong> mehrere Programme laufen gleichzeitig in Containern (Docker) und tauschen über das Netz Daten aus.</li>
+        </ul>
+      </div>
+
+      <div class="row" style="align-items:center; margin-top:6mm">
+        <div class="svgwrap" style="flex:1.6"><img class="full" style="max-height:78mm; width:auto; margin:0 auto" src="f11_kennzahlen.svg" alt="Kennzahlen des Projekts"></div>
+        <figure style="flex:1">
+          <img class="photo" style="max-height:78mm" src="code_vignette.png" alt="Code mit KI-Agent-Konvention">
+          <figcaption class="cap">Projektweite Konvention: <code>// KI-Agent unterstützt</code>.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ FUSS ============ -->
+    <footer class="footer">
+      <div><strong>BIOTOP</strong> · kompetitives Game of Life · Fakultät WIAI · Kurs WIAI25 · 2026</div>
+      <img class="qr" src="qr_editor.png" alt="QR zum Projekt/Editor">
+    </footer>
+
+  </div>
+</div>
+</body>
+</html>

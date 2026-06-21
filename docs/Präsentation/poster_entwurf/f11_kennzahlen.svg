@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1300" height="300" viewBox="0 0 1300 300" font-family="Arial, Tahoma, Helvetica, sans-serif">
+<rect x="0" y="0" width="1300" height="300" fill="#FFFFFF"/>
+<rect x="40" y="96" width="280" height="130" rx="18" fill="#EAEEF4" stroke="#AAB4C0" stroke-width="3"/>
+<text x="180.0" y="166" font-size="54" fill="#D7263D" font-weight="bold" text-anchor="middle">≈ 13.300</text>
+<text x="180.0" y="200" font-size="24" fill="#1A1A1A" font-weight="normal" text-anchor="middle">Zeilen Code</text>
+<rect x="353.3333333333333" y="96" width="280" height="130" rx="18" fill="#EAEEF4" stroke="#AAB4C0" stroke-width="3"/>
+<text x="493.3333333333333" y="166" font-size="54" fill="#D7263D" font-weight="bold" text-anchor="middle">3</text>
+<text x="493.3333333333333" y="200" font-size="24" fill="#1A1A1A" font-weight="normal" text-anchor="middle">native C-Programme</text>
+<rect x="666.6666666666666" y="96" width="280" height="130" rx="18" fill="#EAEEF4" stroke="#AAB4C0" stroke-width="3"/>
+<text x="806.6666666666666" y="166" font-size="54" fill="#D7263D" font-weight="bold" text-anchor="middle">17</text>
+<text x="806.6666666666666" y="200" font-size="24" fill="#1A1A1A" font-weight="normal" text-anchor="middle">automatisierte Tests</text>
+<rect x="980.0" y="96" width="280" height="130" rx="18" fill="#EAEEF4" stroke="#AAB4C0" stroke-width="3"/>
+<text x="1120.0" y="166" font-size="54" fill="#D7263D" font-weight="bold" text-anchor="middle">35</text>
+<text x="1120.0" y="200" font-size="24" fill="#1A1A1A" font-weight="normal" text-anchor="middle">ADRs (Architektur-</text>
+<text x="1120.0" y="228" font-size="24" fill="#1A1A1A" font-weight="normal" text-anchor="middle">Entscheidungen)</text>
+<text x="650.0" y="270" font-size="22" fill="#5A6470" font-weight="normal" text-anchor="middle">C ≈ 4.400 · Python ≈ 3.100 · Web ≈ 5.800  (eingebettete cJSON-Bibliothek ~3.500 Zeilen nicht mitgezählt)</text>
+</svg>

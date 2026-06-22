@@ -202,6 +202,7 @@
             text-transform: uppercase;
             margin: 0 0 18px;
         }
+        .panel-sub strong { color: var(--cyan); }
 
         /* ---------- HUD stat readouts ---------- */
         .stats-bar {
@@ -526,7 +527,7 @@
          nickname exists in localStorage. -->
     <div id="ranking-section" class="editor-section ranking-section" style="display:none">
         <h3 class="editor-title">Deine Spezies im Ranking</h3>
-        <p class="panel-sub">Globale Rangliste · pro Konfiguration</p>
+        <p class="panel-sub" id="ranking-sub">Globale Rangliste · pro Konfiguration</p>
         <div id="ranking-body"></div>
     </div>
 
@@ -878,8 +879,15 @@
     async function fetchMyRanking() {
         const section = document.getElementById('ranking-section');
         const body = document.getElementById('ranking-body');
+        const sub = document.getElementById('ranking-sub');
         const nickname = localStorage.getItem('biotope_nickname');
         if(!nickname) { section.style.display = 'none'; return; }
+
+        // KI-Agent unterstützt: ranking is per name AND configuration — show the
+        // player's claimed name on the subtitle line so the panel header reads
+        // "Globale Rangliste · pro Konfiguration · <Name>".
+        sub.innerHTML = 'Globale Rangliste · pro Konfiguration · <strong>' +
+            escapeHtml(nickname) + '</strong>';
 
         try {
             const res = await fetch('/api/leaderboard');

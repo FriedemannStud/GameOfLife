@@ -1,6 +1,6 @@
 ### **ADR-0035: Password-Protected Admin Access for Configuration Deletion**
 
-**Status:** proposed
+**Status:** accepted
 
 **Date:** 2026-06-22
 

@@ -6,6 +6,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pymongo.errors import DuplicateKeyError, OperationFailure
 
+from .admin_router import router as admin_router
 from .auth_utils import (
     generate_recovery_code,
     hash_recovery_code,
@@ -102,6 +103,10 @@ async def root():
 # KI-Agent unterstützt: Serve web editor as static files
 app.mount("/editor", StaticFiles(directory="web/editor"), name="editor")
 
+# KI-Agent unterstützt: Serve the password-gated admin page (ADR-0035) as static
+# files; the page itself enforces auth via the X-Admin-Key header on every call.
+app.mount("/admin", StaticFiles(directory="web/admin", html=True), name="admin")
+
 # KI-Agent unterstützt: Serve the Mission Statement (rules of Biotop) static page.
 app.mount("/mission", StaticFiles(directory="web/mission"), name="mission")
 
@@ -114,6 +119,9 @@ app.mount("/vendor", StaticFiles(directory="web/vendor"), name="vendor")
 
 # KI-Agent unterstützt: Shoulder-Duel REST endpoints (ADR-0028)
 app.include_router(duel_router)
+
+# KI-Agent unterstützt: Admin config-deletion endpoints, password-gated (ADR-0035)
+app.include_router(admin_router)
 
 
 # KI-Agent unterstützt: Persist metadata + config only — the `auth` block (recovery

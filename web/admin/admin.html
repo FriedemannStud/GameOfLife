@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biotop · Admin</title>
+    <!-- KI-Agent unterstützt: Password-gated config-deletion admin page (ADR-0035).
+         Standalone, phone-usable; mirrors the editor's Digital-Lab theme. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:        #1a1a1a;
+            --bg-deep:   #0d0f13;
+            --panel:     #1f242c;
+            --panel-2:   #262c36;
+            --line:      rgba(140,160,190,0.14);
+            --grid-line: #2a2f3a;
+            --cyan:      #00dcff;
+            --red:       #ff3c64;
+            --amber:     #ffb84d;
+            --green:     #3df0a8;
+            --text:      #e7eaf0;
+            --muted:     #8b97a8;
+            --font-display: 'Orbitron', 'Segoe UI', sans-serif;
+            --font-ui: 'Rajdhani', 'Segoe UI', Roboto, sans-serif;
+            --font-mono: 'Share Tech Mono', 'Courier New', monospace;
+        }
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0; min-height: 100%;
+            color: var(--text); font-family: var(--font-ui);
+            font-size: 17px; line-height: 1.5;
+            background-color: var(--bg);
+            background-image:
+                radial-gradient(1100px 600px at 12% -8%, rgba(0,220,255,0.10), transparent 60%),
+                radial-gradient(1000px 620px at 100% 0%, rgba(255,60,100,0.09), transparent 55%),
+                linear-gradient(180deg, #1d2128, var(--bg) 40%);
+            -webkit-tap-highlight-color: transparent;
+        }
+        .container { max-width: 620px; margin: 0 auto; padding: 24px 16px 60px; }
+        h1 {
+            font-family: var(--font-display); font-weight: 900;
+            font-size: 1.4rem; letter-spacing: 1px; margin: 0 0 4px;
+        }
+        h1 .accent { color: var(--cyan); }
+        .sub { color: var(--muted); margin: 0 0 20px; font-size: 0.95rem; }
+        label { display: block; font-weight: 600; margin: 0 0 6px; color: var(--accent); }
+        input[type=password], input[type=text], input[type=number] {
+            width: 100%; padding: 12px 14px; font-size: 1.05rem;
+            background: var(--bg-deep); color: var(--text);
+            border: 1px solid var(--line); border-radius: 10px;
+            font-family: var(--font-mono);
+        }
+        button {
+            font-family: var(--font-ui); font-weight: 700; font-size: 1rem;
+            padding: 12px 18px; border-radius: 10px; border: 1px solid var(--line);
+            background: var(--panel-2); color: var(--text); cursor: pointer;
+            letter-spacing: 0.5px;
+        }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        button.primary { background: var(--cyan-deep, #073945); border-color: var(--cyan); color: var(--cyan); }
+        button.danger { background: #3a0f1a; border-color: var(--red); color: var(--red); }
+        button.ghost { background: transparent; }
+        .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .spacer { flex: 1; }
+        .hidden { display: none !important; }
+
+        /* Tabs */
+        .tabs { display: flex; gap: 6px; margin: 0 0 18px; flex-wrap: wrap; }
+        .tab-btn { flex: 1; min-width: 70px; text-align: center; padding: 10px 8px; }
+        .tab-btn.active { border-color: var(--cyan); color: var(--cyan); }
+        .panel {
+            background: var(--panel); border: 1px solid var(--line);
+            border-radius: 14px; padding: 18px; margin-bottom: 18px;
+        }
+        .panel h2 { font-family: var(--font-display); font-size: 1.05rem; margin: 0 0 4px; }
+        .panel p.hint { color: var(--muted); font-size: 0.9rem; margin: 0 0 14px; }
+
+        .headline {
+            font-family: var(--font-display); font-size: 1rem;
+            margin: 14px 0; color: var(--amber);
+        }
+        .rows { display: flex; flex-direction: column; gap: 8px; }
+        .item {
+            display: flex; align-items: center; gap: 12px;
+            background: var(--bg-deep); border: 1px solid var(--line);
+            border-radius: 10px; padding: 8px 10px;
+        }
+        .item.kept { border-color: rgba(61,240,168,0.4); }
+        .item.selectable { cursor: pointer; }
+        .item.selected { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan); }
+        .meta { flex: 1; min-width: 0; }
+        .meta .nick { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .meta .stat { color: var(--muted); font-size: 0.82rem; font-family: var(--font-mono); }
+        .badge { font-size: 0.72rem; color: var(--green); font-weight: 700; }
+        .pos { font-family: var(--font-display); font-weight: 700; color: var(--amber); min-width: 34px; text-align: center; }
+        canvas.seed { background: #11151b; border-radius: 4px; flex: 0 0 auto; image-rendering: pixelated; }
+        .msg { margin: 12px 0 0; font-weight: 600; }
+        .msg.ok { color: var(--green); }
+        .msg.err { color: var(--red); }
+        .toolbar { margin-top: 14px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>BIOTOP · <span class="accent">ADMIN</span></h1>
+    <p class="sub">Live curation of submitted configurations.</p>
+
+    <!-- ============ LOGIN GATE ============ -->
+    <div id="gate" class="panel">
+        <h2>Admin login</h2>
+        <p class="hint">Enter the admin password. It is stored on this device only.</p>
+        <label for="pw">Password</label>
+        <input type="password" id="pw" autocomplete="current-password" placeholder="••••••••••••••••">
+        <div class="toolbar row">
+            <button class="primary" id="unlock-btn">Unlock</button>
+            <span id="gate-msg" class="msg err"></span>
+        </div>
+    </div>
+
+    <!-- ============ APP ============ -->
+    <div id="app" class="hidden">
+        <div class="tabs">
+            <button class="tab-btn" data-tab="A">Dedupe</button>
+            <button class="tab-btn" data-tab="B">By name</button>
+            <button class="tab-btn" data-tab="C">By rank</button>
+            <button class="tab-btn" data-tab="T">Trash</button>
+        </div>
+
+        <!-- Tab A -->
+        <div class="panel tab-panel" data-panel="A">
+            <h2>De-duplicate (global)</h2>
+            <p class="hint">Keep each player's single best config; remove the rest.</p>
+            <div class="row">
+                <button class="primary" id="a-preview">Preview</button>
+                <button class="danger" id="a-confirm" disabled>Confirm delete</button>
+            </div>
+            <div id="a-result"></div>
+            <div id="a-msg" class="msg"></div>
+        </div>
+
+        <!-- Tab B -->
+        <div class="panel tab-panel hidden" data-panel="B">
+            <h2>Delete all of a name</h2>
+            <p class="hint">Soft-delete every config of one nickname (name stays reserved).</p>
+            <label for="b-nick">Nickname</label>
+            <input type="text" id="b-nick" placeholder="e.g. VibeMaster">
+            <div class="row toolbar">
+                <button class="primary" id="b-preview">Preview</button>
+                <button class="danger" id="b-confirm" disabled>Confirm delete</button>
+            </div>
+            <div id="b-result"></div>
+            <div id="b-msg" class="msg"></div>
+        </div>
+
+        <!-- Tab C -->
+        <div class="panel tab-panel hidden" data-panel="C">
+            <h2>Delete by leaderboard rank</h2>
+            <p class="hint">Pick a ranked row, preview it, then confirm.</p>
+            <div class="row">
+                <button class="ghost" id="c-reload">Reload leaderboard</button>
+                <button class="danger" id="c-confirm" disabled>Confirm delete</button>
+            </div>
+            <div id="c-list" class="rows toolbar"></div>
+            <div id="c-msg" class="msg"></div>
+        </div>
+
+        <!-- Tab Trash -->
+        <div class="panel tab-panel hidden" data-panel="T">
+            <h2>Trash</h2>
+            <p class="hint">Removed configs, newest first. Restore returns them to the ranking.</p>
+            <button class="ghost" id="t-reload">Reload</button>
+            <div id="t-list" class="rows toolbar"></div>
+            <div id="t-msg" class="msg"></div>
+        </div>
+
+        <div class="row">
+            <div class="spacer"></div>
+            <button class="ghost" id="logout-btn">Logout</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// KI-Agent unterstützt: Admin page client logic (ADR-0035 §5.2). The admin key is
+// kept in localStorage and attached as X-Admin-Key on every request; a 401 clears
+// it and returns to the login gate (handles a rotated password).
+const KEY_STORE = "biotop_admin_key";
+
+function getKey() { return localStorage.getItem(KEY_STORE) || ""; }
+function setKey(k) { localStorage.setItem(KEY_STORE, k); }
+function clearKey() { localStorage.removeItem(KEY_STORE); }
+
+// KI-Agent unterstützt: fetch wrapper that fails to the gate on 401.
+async function adminFetch(path, opts = {}) {
+    const headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {});
+    headers["X-Admin-Key"] = getKey();
+    const res = await fetch(path, Object.assign({}, opts, { headers }));
+    if (res.status === 401) {
+        clearKey();
+        showGate("Session rejected — please log in again.");
+        throw new Error("unauthorized");
+    }
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        const err = (body && body.detail && body.detail.error) || body.detail || res.status;
+        throw new Error(typeof err === "string" ? err : JSON.stringify(err));
+    }
+    return body;
+}
+
+// KI-Agent unterstützt: render a 64-int seed grid into a small canvas (index y*8+x).
+function seedCanvas(seed) {
+    const px = 4, n = 8;
+    const c = document.createElement("canvas");
+    c.className = "seed";
+    c.width = n * px; c.height = n * px;
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#11151b";
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.fillStyle = "#00dcff";
+    for (let i = 0; i < 64; i++) {
+        if (seed && seed[i]) {
+            const x = i % n, y = Math.floor(i / n);
+            ctx.fillRect(x * px, y * px, px, px);
+        }
+    }
+    return c;
+}
+
+// KI-Agent unterstützt: one affected/kept row (seed + nick + win-rate).
+function rowEl(view, opts = {}) {
+    const el = document.createElement("div");
+    el.className = "item" + (opts.kept ? " kept" : "") + (opts.selectable ? " selectable" : "");
+    if (opts.pos !== undefined) {
+        const pos = document.createElement("div");
+        pos.className = "pos"; pos.textContent = opts.pos;
+        el.appendChild(pos);
+    }
+    el.appendChild(seedCanvas(view.seed));
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    const nick = document.createElement("div");
+    nick.className = "nick"; nick.textContent = view.nickname || "(no name)";
+    const stat = document.createElement("div");
+    stat.className = "stat";
+    let line = `win ${view.win_rate}%`;
+    if (view.matches_played !== undefined) line += ` · ${view.matches_played} matches`;
+    if (view.removed_reason) line += ` · ${view.removed_reason}`;
+    stat.textContent = line;
+    meta.appendChild(nick); meta.appendChild(stat);
+    el.appendChild(meta);
+    if (opts.kept) {
+        const b = document.createElement("div");
+        b.className = "badge"; b.textContent = "KEPT";
+        el.appendChild(b);
+    }
+    if (opts.trailing) el.appendChild(opts.trailing);
+    return el;
+}
+
+function renderAffected(container, resp) {
+    container.innerHTML = "";
+    const head = document.createElement("div");
+    head.className = "headline";
+    const keptN = resp.kept ? resp.kept.length : 0;
+    head.textContent = resp.kept
+        ? `${resp.removed_count} will be removed · ${keptN} kept`
+        : `${resp.removed_count} will be removed`;
+    container.appendChild(head);
+
+    const rows = document.createElement("div");
+    rows.className = "rows";
+    (resp.affected || []).forEach(v => rows.appendChild(rowEl(v)));
+    if (resp.kept) resp.kept.forEach(v => rows.appendChild(rowEl(v, { kept: true })));
+    container.appendChild(rows);
+}
+
+// ---------------------------------------------------------------------------
+// Gate / tabs
+// ---------------------------------------------------------------------------
+function showGate(msg) {
+    document.getElementById("app").classList.add("hidden");
+    document.getElementById("gate").classList.remove("hidden");
+    document.getElementById("gate-msg").textContent = msg || "";
+}
+function showApp() {
+    document.getElementById("gate").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+    selectTab("A");
+}
+function selectTab(tab) {
+    document.querySelectorAll(".tab-btn").forEach(b =>
+        b.classList.toggle("active", b.dataset.tab === tab));
+    document.querySelectorAll(".tab-panel").forEach(p =>
+        p.classList.toggle("hidden", p.dataset.panel !== tab));
+    if (tab === "C") loadLeaderboard();
+    if (tab === "T") loadTrash();
+}
+
+document.getElementById("unlock-btn").addEventListener("click", () => {
+    const pw = document.getElementById("pw").value.trim();
+    if (!pw) { document.getElementById("gate-msg").textContent = "Enter a password."; return; }
+    setKey(pw);
+    // Validate by a harmless authenticated call (dry-run mode A).
+    adminFetch("/api/admin/delete", {
+        method: "POST",
+        body: JSON.stringify({ mode: "A", dry_run: true }),
+    }).then(() => { document.getElementById("pw").value = ""; showApp(); })
+      .catch(() => {}); // 401 path already returns to the gate with a message
+});
+document.getElementById("pw").addEventListener("keydown", e => {
+    if (e.key === "Enter") document.getElementById("unlock-btn").click();
+});
+document.getElementById("logout-btn").addEventListener("click", () => {
+    clearKey(); showGate("Logged out.");
+});
+document.querySelectorAll(".tab-btn").forEach(b =>
+    b.addEventListener("click", () => selectTab(b.dataset.tab)));
+
+// ---------------------------------------------------------------------------
+// Mode A
+// ---------------------------------------------------------------------------
+const aMsg = document.getElementById("a-msg");
+document.getElementById("a-preview").addEventListener("click", async () => {
+    aMsg.textContent = "";
+    try {
+        const resp = await adminFetch("/api/admin/delete", {
+            method: "POST", body: JSON.stringify({ mode: "A", dry_run: true }),
+        });
+        renderAffected(document.getElementById("a-result"), resp);
+        document.getElementById("a-confirm").disabled = resp.removed_count === 0;
+    } catch (e) { aMsg.className = "msg err"; aMsg.textContent = e.message; }
+});
+document.getElementById("a-confirm").addEventListener("click", async () => {
+    try {
+        const resp = await adminFetch("/api/admin/delete", {
+            method: "POST", body: JSON.stringify({ mode: "A", dry_run: false }),
+        });
+        document.getElementById("a-result").innerHTML = "";
+        document.getElementById("a-confirm").disabled = true;
+        aMsg.className = "msg ok";
+        aMsg.textContent = `Removed ${resp.removed_count} config(s). Leaderboard updates within ~60 s.`;
+    } catch (e) { aMsg.className = "msg err"; aMsg.textContent = e.message; }
+});
+
+// ---------------------------------------------------------------------------
+// Mode B
+// ---------------------------------------------------------------------------
+const bMsg = document.getElementById("b-msg");
+document.getElementById("b-preview").addEventListener("click", async () => {
+    bMsg.textContent = "";
+    const nickname = document.getElementById("b-nick").value.trim();
+    if (!nickname) { bMsg.className = "msg err"; bMsg.textContent = "Enter a nickname."; return; }
+    try {
+        const resp = await adminFetch("/api/admin/delete", {
+            method: "POST", body: JSON.stringify({ mode: "B", nickname, dry_run: true }),
+        });
+        renderAffected(document.getElementById("b-result"), resp);
+        document.getElementById("b-confirm").disabled = resp.removed_count === 0;
+    } catch (e) { bMsg.className = "msg err"; bMsg.textContent = e.message; }
+});
+document.getElementById("b-confirm").addEventListener("click", async () => {
+    const nickname = document.getElementById("b-nick").value.trim();
+    try {
+        const resp = await adminFetch("/api/admin/delete", {
+            method: "POST", body: JSON.stringify({ mode: "B", nickname, dry_run: false }),
+        });
+        document.getElementById("b-result").innerHTML = "";
+        document.getElementById("b-confirm").disabled = true;
+        bMsg.className = "msg ok";
+        bMsg.textContent = `Removed ${resp.removed_count} config(s) for "${nickname}".`;
+    } catch (e) { bMsg.className = "msg err"; bMsg.textContent = e.message; }
+});
+
+// ---------------------------------------------------------------------------
+// Mode C — pick a ranked row, preview by id, confirm by rank
+// ---------------------------------------------------------------------------
+const cMsg = document.getElementById("c-msg");
+let cSelectedRank = null;
+async function loadLeaderboard() {
+    cMsg.textContent = ""; cSelectedRank = null;
+    document.getElementById("c-confirm").disabled = true;
+    const list = document.getElementById("c-list");
+    list.innerHTML = "Loading…";
+    try {
+        const data = await (await fetch("/api/leaderboard")).json();
+        list.innerHTML = "";
+        (data.leaderboard || []).forEach(row => {
+            const view = { nickname: row.name, win_rate: row.win_rate, seed: row.seed };
+            const el = rowEl(view, { selectable: true, pos: row.rank });
+            el.addEventListener("click", () => {
+                document.querySelectorAll("#c-list .item").forEach(i => i.classList.remove("selected"));
+                el.classList.add("selected");
+                cSelectedRank = row.rank;
+                document.getElementById("c-confirm").disabled = false;
+                cMsg.className = "msg";
+                cMsg.textContent = `Selected rank ${row.rank}: ${row.name}`;
+            });
+            list.appendChild(el);
+        });
+        if (!list.children.length) list.textContent = "Leaderboard is empty.";
+    } catch (e) { list.innerHTML = ""; cMsg.className = "msg err"; cMsg.textContent = e.message; }
+}
+document.getElementById("c-reload").addEventListener("click", loadLeaderboard);
+document.getElementById("c-confirm").addEventListener("click", async () => {
+    if (cSelectedRank === null) return;
+    try {
+        const resp = await adminFetch("/api/admin/delete", {
+            method: "POST", body: JSON.stringify({ mode: "C", rank: cSelectedRank, dry_run: false }),
+        });
+        cMsg.className = "msg ok";
+        cMsg.textContent = `Removed ${resp.removed_count} config (rank ${cSelectedRank}).`;
+        loadLeaderboard();
+    } catch (e) { cMsg.className = "msg err"; cMsg.textContent = e.message; }
+});
+
+// ---------------------------------------------------------------------------
+// Trash
+// ---------------------------------------------------------------------------
+const tMsg = document.getElementById("t-msg");
+async function loadTrash() {
+    tMsg.textContent = "";
+    const list = document.getElementById("t-list");
+    list.innerHTML = "Loading…";
+    try {
+        const data = await adminFetch("/api/admin/removed");
+        list.innerHTML = "";
+        (data.removed || []).forEach(view => {
+            const btn = document.createElement("button");
+            btn.className = "primary"; btn.textContent = "Restore";
+            btn.addEventListener("click", async () => {
+                btn.disabled = true;
+                try {
+                    await adminFetch("/api/admin/restore", {
+                        method: "POST", body: JSON.stringify({ submission_id: view.submission_id }),
+                    });
+                    el.remove();
+                    tMsg.className = "msg ok";
+                    tMsg.textContent = "Restored. Reappears on the leaderboard within ~60 s.";
+                } catch (e) { btn.disabled = false; tMsg.className = "msg err"; tMsg.textContent = e.message; }
+            });
+            const el = rowEl(view, { trailing: btn });
+            list.appendChild(el);
+        });
+        if (!list.children.length) list.textContent = "Trash is empty.";
+    } catch (e) { list.innerHTML = ""; tMsg.className = "msg err"; tMsg.textContent = e.message; }
+}
+document.getElementById("t-reload").addEventListener("click", loadTrash);
+
+// ---------------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------------
+if (getKey()) showApp(); else showGate();
+</script>
+</body>
+</html>

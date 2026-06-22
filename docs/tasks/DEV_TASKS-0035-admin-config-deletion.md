@@ -23,20 +23,20 @@ Python with `black .` and lint with `ruff check .`. Python backend tests are sel
 
 *Goal: A constant-time, fail-closed admin password gate, with the secret in `.env`.*
 
-- [ ] **Step 1.1: Add the `ADMIN_PASSWORD` config key**
-    - [ ] **Action:** Add `ADMIN_PASSWORD=` (placeholder, no real value) to `.env.example`
+- [x] **Step 1.1: Add the `ADMIN_PASSWORD` config key**
+    - [x] **Action:** Add `ADMIN_PASSWORD=` (placeholder, no real value) to `.env.example`
         with a comment: ≥16 random chars, required for `/api/admin/*`.
-    - [ ] **Action:** Add a real strong value (≥16 random chars) to your local `.env`
+    - [x] **Action:** Add a real strong value (≥16 random chars) to your local `.env`
         (do **not** commit `.env`).
-    - [ ] **Verification:** `grep ADMIN_PASSWORD .env.example` shows the placeholder key;
+    - [x] **Verification:** `grep ADMIN_PASSWORD .env.example` shows the placeholder key;
         confirm `.env` has a real value locally. Report both.
 
-- [ ] **Step 1.2: Create the auth dependency `backend/app/admin_auth.py`**
-    - [ ] **Action:** Implement `require_admin(x_admin_key: str = Header(default=""))`
+- [x] **Step 1.2: Create the auth dependency `backend/app/admin_auth.py`**
+    - [x] **Action:** Implement `require_admin(x_admin_key: str = Header(default=""))`
         reading `ADMIN_PASSWORD` from env, comparing with `secrets.compare_digest`, raising
         `HTTPException(401, {"error":"unauthorized"})` when the var is unset/empty or the
         key mismatches. Mark the block `# KI-Agent unterstützt`.
-    - [ ] **Verification:** `python -c "import backend.app.admin_auth"` (from repo root,
+    - [x] **Verification:** `python -c "import backend.app.admin_auth"` (from repo root,
         with backend deps installed) imports without error. Run `ruff check
         backend/app/admin_auth.py` and `black --check backend/app/admin_auth.py`. Report.
 
@@ -45,64 +45,64 @@ Python with `black .` and lint with `ruff check .`. Python backend tests are sel
 *Goal: Pure, unit-testable selection logic shared by dry-run and execute, plus the
 soft-delete/restore mutations.*
 
-- [ ] **Step 2.1: Create `backend/app/admin_service.py` view helper + mode selectors**
-    - [ ] **Action:** Implement `_to_view(doc)` mapping a submission doc to
+- [x] **Step 2.1: Create `backend/app/admin_service.py` view helper + mode selectors**
+    - [x] **Action:** Implement `_to_view(doc)` mapping a submission doc to
         `{submission_id, nickname, win_rate (percent, 1dp), matches_played, seed}` using
         `cells_to_grid(doc["config"]["cells"])`.
-    - [ ] **Action:** Implement `select_mode_a(db) -> (kept, affected)`: fetch all
+    - [x] **Action:** Implement `select_mode_a(db) -> (kept, affected)`: fetch all
         `status != "removed"` submissions; group by `normalize_nickname(metadata.nickname)`;
         sort each group by `win_rate` desc, `avg_stable_generation` asc, `created_at` desc;
         first = kept, rest = affected; singleton groups yield only a kept entry.
-    - [ ] **Action:** Implement `select_mode_b(db, nickname) -> affected`: all `status !=
+    - [x] **Action:** Implement `select_mode_b(db, nickname) -> affected`: all `status !=
         "removed"` submissions whose normalized nickname matches.
-    - [ ] **Action:** Implement `select_mode_c(db, rank) -> affected`: query
+    - [x] **Action:** Implement `select_mode_c(db, rank) -> affected`: query
         `status:"active", matches_played>0` sorted `win_rate` desc, `avg_stable_generation`
         asc; pick the 1-based `rank`-th; raise `ValueError` if out of range.
-    - [ ] **Verification:** `python -c "import backend.app.admin_service"` imports clean;
+    - [x] **Verification:** `python -c "import backend.app.admin_service"` imports clean;
         `ruff`/`black --check` pass. Report.
 
-- [ ] **Step 2.2: Add mutation helpers**
-    - [ ] **Action:** Implement `soft_delete_ids(db, ids, reason)` →
+- [x] **Step 2.2: Add mutation helpers**
+    - [x] **Action:** Implement `soft_delete_ids(db, ids, reason)` →
         `update_many({_id $in ids, status:"active"}, {$set:{status:"removed",
         removed_at:utcnow, removed_reason:reason}})`, returning the modified count.
-    - [ ] **Action:** Implement `list_removed(db)` (status removed, sorted `removed_at`
+    - [x] **Action:** Implement `list_removed(db)` (status removed, sorted `removed_at`
         desc, mapped via `_to_view` + `removed_at`/`removed_reason`) and
         `restore_id(db, submission_id)` (`update_one` removed→active, `$unset removed_at,
         removed_reason`; return whether a row matched). Parse ids to `ObjectId` defensively.
-    - [ ] **Verification:** imports clean; `ruff`/`black --check` pass. Report.
+    - [x] **Verification:** imports clean; `ruff`/`black --check` pass. Report.
 
-- [ ] **Step 2.3: Unit tests for the service layer**
-    - [ ] **Action:** Create `backend/tests/test_admin_service.py` (self-running, per
+- [x] **Step 2.3: Unit tests for the service layer**
+    - [x] **Action:** Create `backend/tests/test_admin_service.py` (self-running, per
         CLAUDE.md) exercising: mode A keeps the best per nickname + correct tie-break
         (rated beats unrated; newest on pure tie); mode A no-op for singleton nicknames;
         mode B normalized matching incl. unrated; mode C rank resolution + out-of-range
         `ValueError`; `soft_delete_ids` idempotency (already-removed not re-touched). Use a
         fake/in-memory db or `mongomock` consistent with existing backend tests.
-    - [ ] **Verification:** `python backend/tests/test_admin_service.py` runs and all
+    - [x] **Verification:** `python backend/tests/test_admin_service.py` runs and all
         assertions pass. Report the output.
 
 ## Phase 3: Router & Wiring
 
 *Goal: The `/api/admin` REST surface, gated by `require_admin`, delegating to the service.*
 
-- [ ] **Step 3.1: Create `backend/app/admin_router.py`**
-    - [ ] **Action:** `APIRouter(prefix="/api/admin", tags=["admin"],
+- [x] **Step 3.1: Create `backend/app/admin_router.py`**
+    - [x] **Action:** `APIRouter(prefix="/api/admin", tags=["admin"],
         dependencies=[Depends(require_admin)])`. Implement `POST /delete` (dispatch on
         `mode`, validate mode-B nickname / mode-C rank → 400, run `select_*`; if not
         `dry_run`, run `soft_delete_ids` with the mode's reason tag), `GET /removed`,
         `POST /restore` (404 if id not in removed). Add request models to `models.py`
         (`AdminDeleteRequest{mode,dry_run,nickname?,rank?}`, `AdminRestoreRequest`).
-    - [ ] **Action:** In `main.py`, `from .admin_router import router as admin_router` and
+    - [x] **Action:** In `main.py`, `from .admin_router import router as admin_router` and
         `app.include_router(admin_router)` next to the duel router include.
-    - [ ] **Verification:** Start the backend (`uvicorn app.main:app --reload` from
+    - [x] **Verification:** Start the backend (`uvicorn app.main:app --reload` from
         `backend/`). Open `/docs` and confirm the three `/api/admin/*` endpoints appear.
         Report.
 
-- [ ] **Step 3.2: Auth + endpoint smoke tests**
-    - [ ] **Action:** Create `backend/tests/test_admin_endpoints.py` (or extend) covering:
+- [x] **Step 3.2: Auth + endpoint smoke tests**
+    - [x] **Action:** Create `backend/tests/test_admin_endpoints.py` (or extend) covering:
         missing key → 401, wrong key → 401, correct key + `dry_run` → 200 with `affected`
         present and DB unchanged; execute path transitions rows; restore round-trips.
-    - [ ] **Verification:** `python backend/tests/test_admin_endpoints.py` passes. Then
+    - [x] **Verification:** `python backend/tests/test_admin_endpoints.py` passes. Then
         manual curl: a dry-run with the correct `X-Admin-Key` returns counts; the same
         without the header returns 401. Report both outputs.
 
@@ -154,13 +154,13 @@ soft-delete/restore mutations.*
 
 *Goal: Tests green, docs updated, ADR finalised.*
 
-- [ ] **Step 5.1: Full regression + formatting**
-    - [ ] **Action:** Run all backend tests listed in CLAUDE.md plus the two new test files;
+- [x] **Step 5.1: Full regression + formatting**
+    - [x] **Action:** Run all backend tests listed in CLAUDE.md plus the two new test files;
         run `black .` and `ruff check .` in `backend/`.
-    - [ ] **Verification:** All tests pass, formatting/lint clean. Report the summary.
+    - [x] **Verification:** All tests pass, formatting/lint clean. Report the summary.
 
-- [ ] **Step 5.2: Documentation**
-    - [ ] **Action:** Set ADR-0035 status to `accepted`; add a `docs/CHANGELOG.md` entry;
+- [x] **Step 5.2: Documentation**
+    - [x] **Action:** Set ADR-0035 status to `accepted`; add a `docs/CHANGELOG.md` entry;
         confirm `.env.example` documents `ADMIN_PASSWORD`.
-    - [ ] **Verification:** `git status` shows the doc changes; review the CHANGELOG entry.
+    - [x] **Verification:** `git status` shows the doc changes; review the CHANGELOG entry.
         Report.

@@ -176,6 +176,26 @@ class RematchRequest(BaseModel):
     player_id: str
 
 
+# KI-Agent unterstützt: Admin config-deletion request schemas (ADR-0035 §4.1).
+
+
+class AdminDeleteRequest(BaseModel):
+    mode: str = Field(..., description="Selection mode: 'A', 'B', or 'C'")
+    dry_run: bool = Field(
+        ..., description="True = preview only (no mutation); False = execute"
+    )
+    nickname: Optional[str] = Field(None, description="Required for mode B")
+    rank: Optional[int] = Field(
+        None, description="Required for mode C: 1-based leaderboard rank"
+    )
+
+
+class AdminRestoreRequest(BaseModel):
+    submission_id: str = Field(
+        ..., description="Id of the removed submission to restore"
+    )
+
+
 class Highlight(BaseModel):
     metric_type: str = Field(
         ..., description="Type of metric (duration, volatility)", examples=["duration"]

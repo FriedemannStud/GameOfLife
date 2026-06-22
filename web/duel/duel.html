@@ -714,9 +714,9 @@
     const duelAudio = document.getElementById('duel-audio');
     let soundOn = true;
     let audioUnlocked = false;
-    // KI-Agent unterstützt: single soundtrack playback level — 25% of full volume,
+    // KI-Agent unterstützt: single soundtrack playback level — 20% of full volume,
     // applied to both the build-up start and the result swell (no loud payoff jump).
-    const AUDIO_TARGET_VOLUME = 0.25;
+    const AUDIO_TARGET_VOLUME = 0.20;
 
     function unlockAudio() {
         if (audioUnlocked || !duelAudio) return;
@@ -760,14 +760,14 @@
     // (REMATCH / MY DUELS / NEW DUEL / Back to Lab), instead of the abrupt stopAudio.
     // Restores the volume afterwards so the next playBuildup/playPayoff starts clean.
     let fadeTimer = null;
-    // KI-Agent unterstützt: gentle ~1000 ms volume ramp-up from silence to targetVol
+    // KI-Agent unterstützt: gentle ~2000 ms volume ramp-up from silence to targetVol
     // when the soundtrack starts (playBuildup). Shares fadeTimer with fadeOutAudio so
     // a fade-in and fade-out can never run at the same time.
     function fadeInAudio(targetVol) {
         if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
         if (!duelAudio) return;
         duelAudio.volume = 0;
-        const steps = 40, stepMs = 25;      // ~1000 ms total
+        const steps = 80, stepMs = 25;      // ~2000 ms total
         let i = 0;
         fadeTimer = setInterval(() => {
             i++;

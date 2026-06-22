@@ -714,6 +714,9 @@
     const duelAudio = document.getElementById('duel-audio');
     let soundOn = true;
     let audioUnlocked = false;
+    // KI-Agent unterstützt: single soundtrack playback level — 25% of full volume,
+    // applied to both the build-up start and the result swell (no loud payoff jump).
+    const AUDIO_TARGET_VOLUME = 0.25;
 
     function unlockAudio() {
         if (audioUnlocked || !duelAudio) return;
@@ -736,7 +739,9 @@
         if (!duelAudio || !soundOn) return;
         try {
             duelAudio.currentTime = 0;
-            duelAudio.volume = 0.55;
+            // KI-Agent unterstützt: start silent and ramp up to the target volume so
+            // the soundtrack fades in instead of snapping to full level.
+            fadeInAudio(AUDIO_TARGET_VOLUME);
             duelAudio.play().catch(() => {});
         } catch (e) { /* ignore */ }
     }
@@ -744,7 +749,7 @@
         if (!duelAudio || !soundOn) return;
         try {
             if (duelAudio.paused) duelAudio.play().catch(() => {});
-            duelAudio.volume = 0.9;
+            duelAudio.volume = AUDIO_TARGET_VOLUME;
         } catch (e) { /* ignore */ }
     }
     function stopAudio() {
@@ -755,6 +760,22 @@
     // (REMATCH / MY DUELS / NEW DUEL / Back to Lab), instead of the abrupt stopAudio.
     // Restores the volume afterwards so the next playBuildup/playPayoff starts clean.
     let fadeTimer = null;
+    // KI-Agent unterstützt: gentle ~1000 ms volume ramp-up from silence to targetVol
+    // when the soundtrack starts (playBuildup). Shares fadeTimer with fadeOutAudio so
+    // a fade-in and fade-out can never run at the same time.
+    function fadeInAudio(targetVol) {
+        if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
+        if (!duelAudio) return;
+        duelAudio.volume = 0;
+        const steps = 40, stepMs = 25;      // ~1000 ms total
+        let i = 0;
+        fadeTimer = setInterval(() => {
+            i++;
+            const v = targetVol * (i / steps);
+            duelAudio.volume = v < targetVol ? v : targetVol;
+            if (i >= steps) { clearInterval(fadeTimer); fadeTimer = null; }
+        }, stepMs);
+    }
     function fadeOutAudio(onDone) {
         if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
         if (!duelAudio || duelAudio.paused) { stopAudio(); if (onDone) onDone(); return; }

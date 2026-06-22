@@ -718,13 +718,46 @@
     // applied to both the build-up start and the result swell (no loud payoff jump).
     const AUDIO_TARGET_VOLUME = 0.20;
 
+    // KI-Agent unterstützt: mobile browsers (notably iOS Safari) IGNORE the <audio>
+    // element's `.volume` property — JS cannot change it, only the hardware buttons
+    // can. So both the 20% cap and the fade-in silently did nothing on phones. We
+    // route playback through a Web Audio GainNode, whose gain IS honoured on mobile,
+    // and control every level/fade through setLevel(). On a desktop browser without
+    // AudioContext we fall back to `.volume`, which works fine there.
+    let audioCtx = null;
+    let gainNode = null;
+    function setupWebAudio() {
+        if (audioCtx || !duelAudio) return;
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;                    // fall back to element .volume
+        try {
+            audioCtx = new AC();
+            const src = audioCtx.createMediaElementSource(duelAudio);
+            gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0;        // start silent until a fade ramps it up
+            src.connect(gainNode).connect(audioCtx.destination);
+        } catch (e) { audioCtx = null; gainNode = null; /* fall back to .volume */ }
+    }
+    function setLevel(v) {
+        const clamped = v < 0 ? 0 : (v > 1 ? 1 : v);
+        if (gainNode) { gainNode.gain.value = clamped; }
+        else if (duelAudio) { duelAudio.volume = clamped; }
+    }
+    function getLevel() {
+        if (gainNode) return gainNode.gain.value;
+        return duelAudio ? duelAudio.volume : 0;
+    }
+
     function unlockAudio() {
         if (audioUnlocked || !duelAudio) return;
-        // KI-Agent unterstützt: the play()/pause() unlock has an audible window on
-        // mobile (pause only runs once play() resolves, which is slow there), so the
-        // soundtrack would blip on the very first tap (e.g. "Start Duel"). Mute for
-        // the unlock and restore before the real start (playBuildup) after the count.
-        duelAudio.muted = true;
+        // KI-Agent unterstützt: set up Web Audio inside this user gesture (mobile
+        // requires it) and resume the context. The play()/pause() unlock has an
+        // audible window on mobile, so we keep the level at 0 during it; the real
+        // start (playBuildup) ramps it up after the count.
+        setupWebAudio();
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        setLevel(0);
+        duelAudio.muted = true;             // belt-and-suspenders for the .volume fallback path
         duelAudio.play().then(() => {
             duelAudio.pause();
             duelAudio.currentTime = 0;
@@ -738,6 +771,8 @@
     function playBuildup() {
         if (!duelAudio || !soundOn) return;
         try {
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+            duelAudio.muted = false;        // ensure the unlock mute was lifted
             duelAudio.currentTime = 0;
             // KI-Agent unterstützt: start silent and ramp up to the target volume so
             // the soundtrack fades in instead of snapping to full level.
@@ -748,8 +783,9 @@
     function playPayoff() {
         if (!duelAudio || !soundOn) return;
         try {
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
             if (duelAudio.paused) duelAudio.play().catch(() => {});
-            duelAudio.volume = AUDIO_TARGET_VOLUME;
+            setLevel(AUDIO_TARGET_VOLUME);
         } catch (e) { /* ignore */ }
     }
     function stopAudio() {
@@ -766,30 +802,30 @@
     function fadeInAudio(targetVol) {
         if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
         if (!duelAudio) return;
-        duelAudio.volume = 0;
+        setLevel(0);
         const steps = 80, stepMs = 25;      // ~2000 ms total
         let i = 0;
         fadeTimer = setInterval(() => {
             i++;
             const v = targetVol * (i / steps);
-            duelAudio.volume = v < targetVol ? v : targetVol;
+            setLevel(v < targetVol ? v : targetVol);
             if (i >= steps) { clearInterval(fadeTimer); fadeTimer = null; }
         }, stepMs);
     }
     function fadeOutAudio(onDone) {
         if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
         if (!duelAudio || duelAudio.paused) { stopAudio(); if (onDone) onDone(); return; }
-        const startVol = duelAudio.volume;
+        const startVol = getLevel();
         const steps = 24, stepMs = 25;      // ~600 ms total
         let i = 0;
         fadeTimer = setInterval(() => {
             i++;
             const v = startVol * (1 - i / steps);
-            duelAudio.volume = v > 0 ? v : 0;
+            setLevel(v > 0 ? v : 0);
             if (i >= steps) {
                 clearInterval(fadeTimer); fadeTimer = null;
                 stopAudio();
-                duelAudio.volume = startVol; // restore for the next match
+                setLevel(startVol); // restore for the next match
                 if (onDone) onDone();
             }
         }, stepMs);

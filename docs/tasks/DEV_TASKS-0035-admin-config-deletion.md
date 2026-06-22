@@ -110,41 +110,41 @@ soft-delete/restore mutations.*
 
 *Goal: A phone-usable page with login gate, three preview→confirm modes, and a trash tab.*
 
-- [ ] **Step 4.1: Page scaffold + login gate**
-    - [ ] **Action:** Create `web/admin/admin.html` (standalone, mirrors
+- [x] **Step 4.1: Page scaffold + login gate**
+    - [x] **Action:** Create `web/admin/admin.html` (standalone, mirrors
         `web/editor/editor.html`). Password input → store in
         `localStorage["biotop_admin_key"]`; reveal tabs; a Logout button clears it. All
         fetches attach `X-Admin-Key`; a `401` clears the key and returns to the gate.
-    - [ ] **Verification (Interactive Test):**
+    - [x] **Verification (Interactive Test):**
         1. Serve `web/` and open `web/admin/admin.html` on a phone/desktop browser.
         2. Enter the wrong password, trigger any action → expect return to the login gate.
         3. Enter the correct password → expect the tabs to appear.
         4. **Expected Result:** Auth gate works; correct key unlocks the UI.
 
-- [ ] **Step 4.2: Modes A and B panels (preview → confirm)**
-    - [ ] **Action:** Tab A: "Preview" → table of affected rows (seed thumbnail via
+- [x] **Step 4.2: Modes A and B panels (preview → confirm)**
+    - [x] **Action:** Tab A: "Preview" → table of affected rows (seed thumbnail via
         `<canvas>`, nickname, win-rate) + kept-per-nickname annotation + headline count;
         "Confirm" sends `dry_run:false`. Tab B: nickname input + same preview→confirm.
-    - [ ] **Verification (Interactive Test):**
+    - [x] **Verification (Interactive Test):**
         1. With seeded test data containing duplicates, open Tab A, click Preview.
         2. Confirm the count and the kept/removed rows look correct; click Confirm.
         3. Reload `/api/leaderboard` (or the kiosk) and check the removed configs are gone.
         4. **Expected Result:** Preview matches what gets removed; leaderboard updates
            (allow ≤60 s for the worker).
 
-- [ ] **Step 4.3: Mode C panel (rank selection)**
-    - [ ] **Action:** Tab C fetches `/api/leaderboard`, renders the ranked rows; selecting
+- [x] **Step 4.3: Mode C panel (rank selection)**
+    - [x] **Action:** Tab C fetches `/api/leaderboard`, renders the ranked rows; selecting
         a row previews that submission; Confirm sends `{mode:"C", rank:N, dry_run:false}`.
-    - [ ] **Verification (Interactive Test):**
+    - [x] **Verification (Interactive Test):**
         1. Open Tab C, select a known rank, confirm the preview shows that exact config.
         2. Confirm deletion; verify that config leaves the leaderboard.
         3. **Expected Result:** The previewed config (not a shifted rank-N) is removed.
 
-- [ ] **Step 4.4: Trash tab + restore**
-    - [ ] **Action:** Tab Trash loads `/api/admin/removed`, renders rows with
+- [x] **Step 4.4: Trash tab + restore**
+    - [x] **Action:** Tab Trash loads `/api/admin/removed`, renders rows with
         `removed_at`/reason + seed + a per-row "Restore" button calling
         `/api/admin/restore`.
-    - [ ] **Verification (Interactive Test):**
+    - [x] **Verification (Interactive Test):**
         1. Open Trash; confirm previously removed configs appear newest-first with reason.
         2. Click Restore on one; confirm it disappears from Trash.
         3. Wait ≤60 s; confirm it reappears on the leaderboard.

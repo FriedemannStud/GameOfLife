@@ -1,3 +1,10 @@
+2026-06-22 — Duel: honest join-button + scan-hint wording
+
+- UX-only fix in `web/duel/duel.html`: the home button labelled "Scannen & beitreten" only opened the manual code-entry screen — it never started a camera scan, and it cannot. The QR scan is done by the phone's **native** camera app (browser `getUserMedia` requires a secure context / HTTPS, which the LAN-HTTP deployment does not provide), which deep-links via `?join=ROOM_ID` straight into `joinRoom` on boot (player identity always exists from `localStorage`, so there is no onboarding gate). The native path therefore already works end-to-end; no in-page scanner or HTTPS layer was added.
+- Home button: "Scannen & beitreten" → **"Duell beitreten"** (the button leads to code entry, so it no longer promises a scan it cannot perform).
+- Join screen hint: code entry is now the primary action, with scanning reframed as a tip about using the phone's own camera app ("…das bringt dich automatisch rein"). Reaching this screen already implies the user chose to type, since a successful scan deep-links past it.
+- No JS, no scanner library, no build step (statically served page). Lobby creator text ("Lass deinen Gegner das hier scannen") was already correct and left unchanged.
+
 2026-06-20 — ADR-0034: Tournament performance monitoring (`performance_metrics`)
 
 - New feature: live + historical performance monitoring for the O(N²) round-robin tournament, so a crowd-submitted pattern that drags match throughput down is visible at a glance during the fair.

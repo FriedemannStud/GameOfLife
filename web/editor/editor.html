@@ -89,6 +89,63 @@
             margin: 34px 0 0;
         }
 
+        /* ---------- "Deine Spezies im Ranking" panel (Option A) ---------- */
+        .ranking-section { margin-top: 16px; }
+        .rank-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-deep);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin: 0 auto 8px;
+            max-width: 360px;
+            text-align: left;
+        }
+        .rank-pos {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 1.15rem;
+            color: var(--amber);
+            min-width: 40px;
+            text-align: center;
+        }
+        .rank-seed {
+            display: grid;
+            grid-template-columns: repeat(8, 4px);
+            grid-template-rows: repeat(8, 4px);
+            gap: 1px;
+            flex: 0 0 auto;
+        }
+        .rank-seed i { background: var(--cell-dead); border-radius: 1px; }
+        .rank-seed i.on {
+            background: var(--cyan);
+            box-shadow: 0 0 3px rgba(0,220,255,0.6);
+        }
+        .rank-stats { flex: 1; min-width: 0; }
+        .rank-wr {
+            font-family: var(--font-mono);
+            color: var(--cyan);
+            font-size: 0.92rem;
+            font-weight: 700;
+        }
+        .rank-wdl {
+            font-family: var(--font-ui);
+            font-size: 0.72rem;
+            color: var(--muted);
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+        .ranking-empty {
+            font-family: var(--font-ui);
+            color: var(--muted);
+            font-size: 0.86rem;
+            line-height: 1.55;
+            margin: 0;
+        }
+        .ranking-empty strong { color: var(--text); }
+
         /* ---------- Console panel with HUD corner brackets ---------- */
         .editor-section {
             position: relative;
@@ -462,6 +519,17 @@
         </p>
     </div>
 
+    <!-- KI-Agent unterstützt: "Deine Spezies im Ranking" panel (Option A).
+         Shows the global ranks of the player's own submissions, matched by the
+         claimed nickname (unique per player via name-claiming, ADR-0027) against
+         the per-configuration global leaderboard (ADR-0025). Hidden until a
+         nickname exists in localStorage. -->
+    <div id="ranking-section" class="editor-section ranking-section" style="display:none">
+        <h3 class="editor-title">Deine Spezies im Ranking</h3>
+        <p class="panel-sub">Globale Rangliste · pro Konfiguration</p>
+        <div id="ranking-body"></div>
+    </div>
+
     <hr>
 
     <!-- KI-Agent unterstützt: back to the Conway Lab landing/title screen -->
@@ -686,6 +754,7 @@
                 // the button until a new (>=2 char) name is entered.
                 nicknameInput.value = '';
                 fetchGlobalCount();
+                fetchMyRanking();
                 updateUI();
             } else if(res.status === 409) {
                 // Name taken by someone else -> reveal the reclaim input. The hint
@@ -784,6 +853,66 @@
         };
     })();
 
+    // KI-Agent unterstützt: escape user-controlled text before insertion into HTML
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[c]);
+    }
+
+    // KI-Agent unterstützt: render an 8x8 mini-grid from the leaderboard `seed`
+    // (dense row-major array, index = y*8+x — matches cells_to_grid / the C side)
+    function seedMiniHtml(seed) {
+        if(!Array.isArray(seed) || seed.length < 64) return '';
+        let cells = '';
+        for(let i=0; i<64; i++) cells += seed[i] ? '<i class="on"></i>' : '<i></i>';
+        return '<div class="rank-seed">' + cells + '</div>';
+    }
+
+    // KI-Agent unterstützt: "Deine Spezies im Ranking" (Option A). Matches the
+    // player's own ranked submissions by claimed nickname (unique per player,
+    // ADR-0027) against the global per-configuration leaderboard (ADR-0025).
+    // The leaderboard only returns the top rows, and freshly submitted configs
+    // are unrated (matches_played == 0) until the matchmaker runs — so an
+    // unmatched-but-named player gets an honest "not yet visible" hint.
+    async function fetchMyRanking() {
+        const section = document.getElementById('ranking-section');
+        const body = document.getElementById('ranking-body');
+        const nickname = localStorage.getItem('biotope_nickname');
+        if(!nickname) { section.style.display = 'none'; return; }
+
+        try {
+            const res = await fetch('/api/leaderboard');
+            if(!res.ok) { section.style.display = 'none'; return; }
+            const data = await res.json();
+            const rows = (data.leaderboard || []).filter(r => r.name === nickname);
+
+            section.style.display = 'block';
+            if(rows.length === 0) {
+                body.innerHTML = '<p class="ranking-empty">Deine Spezies <strong>' +
+                    escapeHtml(nickname) + '</strong> ist noch nicht in den Top-Rängen ' +
+                    'sichtbar. Frisch eingereichte Konfigurationen werden erst nach dem ' +
+                    'nächsten Turnierlauf (etwa eine Minute) gewertet.</p>';
+                return;
+            }
+            body.innerHTML = rows.map(r =>
+                '<div class="rank-row">' +
+                    '<div class="rank-pos">#' + r.rank + '</div>' +
+                    seedMiniHtml(r.seed) +
+                    '<div class="rank-stats">' +
+                        '<div class="rank-wr">' + r.win_rate + '% Siegquote</div>' +
+                        '<div class="rank-wdl">' + r.wins + 'S · ' + r.draws +
+                            'U · ' + r.losses + 'N · Ø stabil ' +
+                            r.avg_stable_generation + '</div>' +
+                    '</div>' +
+                '</div>'
+            ).join('');
+        } catch(e) {
+            console.error("Could not fetch ranking", e);
+            section.style.display = 'none';
+        }
+    }
+
     async function fetchGlobalCount() {
         try {
             // Fetch directly from the FastAPI backend
@@ -800,6 +929,7 @@
     createGrid();
     updateUI();
     fetchGlobalCount();
+    fetchMyRanking();
 
 </script>
 

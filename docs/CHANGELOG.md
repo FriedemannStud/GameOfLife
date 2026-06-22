@@ -1,3 +1,8 @@
+2026-06-22 — Duel: soundtrack volume cap + fade-in
+
+- `web/duel/duel.html`: the duel soundtrack now starts at **25% volume** (single `AUDIO_TARGET_VOLUME` constant, applied to both the build-up start and the result swell — no loud payoff jump) with a **~1.5 s fade-in** from silence (`fadeInAudio`, 60 × 25 ms steps).
+- Platform note: volume is controlled directly via the `<audio>` element's `.volume`. This works on desktop; **iOS Safari/WebKit ignores `.volume` from JS**, so on iPhones the cap and fade-in have no effect and the track plays at system volume, adjusted by the hardware buttons. A Web Audio `GainNode` would honour volume on iOS, but routing an `<audio>` element through `createMediaElementSource` is silent on iOS WebKit (long-standing bug, confirmed in testing: desktop played, iPhone went silent). The simple, stable `.volume` path was chosen deliberately — stability + manual volume control over fragile JS gain control. Rationale recorded as a code comment for future maintainers.
+
 2026-06-22 — Duel: honest join-button + scan-hint wording
 
 - UX-only fix in `web/duel/duel.html`: the home button labelled "Scannen & beitreten" only opened the manual code-entry screen — it never started a camera scan, and it cannot. The QR scan is done by the phone's **native** camera app (browser `getUserMedia` requires a secure context / HTTPS, which the LAN-HTTP deployment does not provide), which deep-links via `?join=ROOM_ID` straight into `joinRoom` on boot (player identity always exists from `localStorage`, so there is no onboarding gate). The native path therefore already works end-to-end; no in-page scanner or HTTPS layer was added.

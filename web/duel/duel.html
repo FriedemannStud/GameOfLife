@@ -612,6 +612,8 @@
         <div style="margin-top:6px">
             <button id="btn-mute" class="link-btn">♪ Sound: an</button>
         </div>
+        <!-- KI-Agent unterstützt: TEMPORARY audio diagnostics (remove after debugging) -->
+        <div id="audio-debug" style="margin-top:6px;font-size:0.7rem;color:#8b97a8;font-family:monospace"></div>
         <div style="margin-top:6px">
             ♪ Musik: „Open Flow“ — erstellt mit
             <a href="https://suno.com/s/82OAUnbHAxUlSSla" target="_blank" rel="noopener">Suno</a>
@@ -771,13 +773,19 @@
     function playBuildup() {
         if (!duelAudio || !soundOn) return;
         try {
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
             duelAudio.muted = false;        // ensure the unlock mute was lifted
             duelAudio.currentTime = 0;
-            // KI-Agent unterstützt: start silent and ramp up to the target volume so
-            // the soundtrack fades in instead of snapping to full level.
-            fadeInAudio(AUDIO_TARGET_VOLUME);
-            duelAudio.play().catch(() => {});
+            // KI-Agent unterstützt: a suspended AudioContext outputs silence through
+            // the gain graph, so start the fade-in + play only AFTER resume() settles.
+            const start = () => {
+                fadeInAudio(AUDIO_TARGET_VOLUME);
+                duelAudio.play().catch(() => {});
+            };
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume().then(start).catch(start);
+            } else {
+                start();
+            }
         } catch (e) { /* ignore */ }
     }
     function playPayoff() {
@@ -835,6 +843,23 @@
         document.getElementById('btn-mute').textContent = '♪ Sound: ' + (soundOn ? 'an' : 'aus');
         if (!soundOn) stopAudio();
     });
+    // KI-Agent unterstützt: TEMPORARY audio diagnostics (remove after debugging).
+    // Surfaces the live audio-engine state on-screen so a phone can report it.
+    (function audioDebug() {
+        const el = document.getElementById('audio-debug');
+        if (!el) return;
+        const AC = window.AudioContext || window.webkitAudioContext;
+        setInterval(() => {
+            const ctx = audioCtx ? audioCtx.state : '–';
+            const g = gainNode ? gainNode.gain.value.toFixed(2) : '–';
+            const vol = duelAudio ? duelAudio.volume.toFixed(2) : '–';
+            const m = duelAudio ? (duelAudio.muted ? 'Y' : 'N') : '?';
+            const p = duelAudio ? (duelAudio.paused ? 'Y' : 'N') : '?';
+            const t = duelAudio ? duelAudio.currentTime.toFixed(1) : '–';
+            el.textContent = 'WA:' + (AC ? 'y' : 'n') + ' ctx:' + ctx + ' gain:' + g
+                + ' vol:' + vol + ' mut:' + m + ' pause:' + p + ' t:' + t;
+        }, 500);
+    })();
     // KI-Agent unterstützt: fade the soundtrack out before following the "Back to
     // Lab" link, then navigate. If nothing is playing, let the link behave normally.
     document.getElementById('link-lab').addEventListener('click', (e) => {

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<!-- KI-Agent unterstützt: POSTER 2 von 2 — A1-Hochkant — wiai25-JUBILÄUMS-DESIGN.
+     Inhalt = poster2_a1.html (VERSION 2); NUR Header/Footer/Farb-Design auf die
+     neue Event-Vorlage vorlagen/Poster_Plotter.pdf umgestellt:
+       - Hausblau (#00457B) -> Jubiläums-Lila (#9769DC), helle Bänder -> Lavendel.
+       - Kopf: randloses Lila-Banner + SCHWARZER Titelbalken (weisse Schrift, Lila-Akzent).
+       - Fuss: Lila-Trennlinie + randloser SCHWARZER Balken.
+       - Scoreboard-Boxen (.statbox/.stat) jetzt SCHWARZ mit pinker Schrift.
+     Frühere Variante (VERSION 2, optimiert) — Notizen weiterhin gültig:
+     Basis: poster2_a1.html. Charakter: "harte Fakten" — daher KEINE Inhalts-
+     Reduktion der Daten, sondern eine "Scoreboard"-Dramaturgie:
+       1. Jede der drei Fragen löst sich in ein BOLD RESULT auf. Die bestehende
+          navy "553-Billiarden"-Statbox bekommt Gesellschaft: Frage 3 erhält ein
+          grünes BEWIESEN-Badge (Q.E.D.), die Turnierdaten zwei Hero-Stat-Kacheln
+          (≈67 % Siegquote · 24–32 Sweet Spot) in derselben Scoreboard-Optik.
+       2. Verbindungs-Prosa gestrafft ("Weniger ist mehr" gilt für den Text um die
+          Zahlen, nicht für die Zahlen) — v.a. der lange Frage-3-Absatz.
+       3. Redundante Wegweiser-Leiste entfernt (die Sektionsköpfe RANDLOS/
+          UNZÄHLBAR/FAIR tragen die Drei-Fragen-Erzählung bereits).
+       4. Doppelter QR in der Fusszeile durch die URL ersetzt; KI-Co-Autoren
+          leiser in die Anlass-Zeile (Erstsemester prominent).
+     Corporate Design wie Poster 1 / die Uni-Bamberg-Vorlagen in ./vorlagen/.
+     Druck: Browser -> Drucken -> "Als PDF speichern", A1 hochkant, Ränder: keine,
+     Hintergrundgrafiken: AN. -->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>BIOTOP – Poster 2 (A1) · v2</title>
+<style>
+  :root{
+    /* wiai25-Jubiläums-Design (Vorlage: vorlagen/Poster_Plotter.pdf).
+       Lila-Akzent + schwarze Kopf-/Titel-/Fussbalken statt Uni-Hausblau. */
+    --navy:#9769DC;        /* Jubiläums-Lila (Banner, Umrandungen, Akzente) */
+    --navy-d:#6B3FB0;      /* dunkleres Lila */
+    --band:#EDE7F6;        /* helles Lavendel (Hintergründe, Sektionsköpfe) */
+    --band-d:#D6C7EE;
+    --black:#0E0E10;       /* Kopf-Titelbalken + Fussbalken (wie Vorlage) */
+    --ink:#1A1A1A; --mute:#52606E; --paper:#FFFFFF;
+    --red:#D7263D; --blue:#1B6CA8; --go:#0F8B6C;   /* semantische Akzente */
+    --cyan:#7FE3FF;        /* Scoreboard-Zahl auf Lila */
+  }
+  @page{ size: 594mm 841mm; margin:0; }   /* DIN A1 hochkant */
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family: Arial, Tahoma, Helvetica, sans-serif;
+    color:var(--ink); background:var(--paper);
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+
+  /* A1 portrait = 594 x 841 mm; A0-Layout (841 mm) hineinskaliert. */
+  .page{ position:relative; width:594mm; height:841mm; overflow:hidden;
+         background:var(--paper); }
+  .poster{ position:absolute; top:0; left:0; transform-origin:top left;
+           transform:scale(0.7063); width:841mm; height:1191mm;
+           display:flex; flex-direction:column; background:var(--paper); }
+
+  /* ============ KOPF (wiai25-Vorlage: Lila-Banner + schwarzer Titelbalken) ============ */
+  .banner{ position:relative; background:var(--navy); height:150mm;
+           border-top-right-radius:55mm; margin-top:0; color:#fff; }
+  /* abgeschrägte Unterkante (wie Vorlage): links höher -> rechts tiefer.
+     Gefälle exakt 5% = 42mm / 841mm Banner-Breite (Vorlage: ~30mm/594mm A1).
+     Schwarzer Keil unten links geht nahtlos ins schwarze Titelband über. */
+  .banner::after{ content:""; position:absolute; left:0; right:0; bottom:0;
+                  height:42mm; background:var(--black);
+                  clip-path:polygon(0 0, 0 100%, 100% 100%); }
+  .brand{ position:absolute; left:22mm; top:50%; transform:translateY(-50%); }
+  .brand .logo{ font-size:78pt; font-weight:800; letter-spacing:2pt; line-height:1; }
+  .brand .logo .o{ color:#E8DBFA; }
+  .brand .sub{ font-size:24pt; font-weight:700; margin-top:4mm; color:#EBE1F8;
+               letter-spacing:.5pt; }
+  .uni-word{ position:absolute; right:158mm; top:50%; transform:translateY(-50%);
+             font-size:52pt; font-weight:400; letter-spacing:.5pt; white-space:nowrap; }
+  .wappen{ position:absolute; right:30mm; top:50%; transform:translateY(-50%);
+           height:118mm; width:auto; }
+
+  /* schwarzer Titelbalken (wie Vorlage): weisse Schrift, Lila-Akzent, linksbündig.
+     -1mm Überlappung schliesst die Subpixel-Haarlinie zur Banner-Unterkante. */
+  .titlebar{ background:var(--black); padding:8mm 24mm 7mm; text-align:left;
+             margin-top:-1mm; position:relative; }
+  .title{ font-size:58pt; font-weight:800; letter-spacing:.5pt; line-height:1.04;
+          color:#fff; margin:0; }
+  .title .ac{ color:var(--navy); }
+  .author{ font-size:26pt; font-weight:700; color:#D8CCEE; margin:4mm 0 0;
+           line-height:1.1; }
+  .occasion{ font-size:20pt; font-weight:700; color:#9990A6; margin:2mm 0 0; }
+
+  /* ---------- Inhalt ---------- */
+  .content{ flex:1; display:flex; flex-direction:column; padding:6mm 22mm 9mm; }
+
+  .intro{ font-size:33pt; line-height:1.18; margin:0; }
+  .lead{ font-size:37pt; font-weight:700; font-style:italic; line-height:1.14;
+         margin:5mm 0 0; color:var(--ink); }
+
+  /* ---------- Sektionen ---------- */
+  .band{ margin-top:8mm; }
+  .sechead{ display:flex; align-items:center; gap:6mm; background:var(--band);
+            border-left:6mm solid var(--navy); border-radius:0 5mm 5mm 0;
+            padding:6mm 9mm; }
+  .sechead .num{ display:inline-flex; align-items:center; justify-content:center;
+                 width:18mm; height:18mm; border-radius:50%; background:var(--navy);
+                 color:#fff; font-size:30pt; font-weight:800; flex:none; }
+  .sechead .num.diamond{ background:transparent; color:var(--navy); font-size:36pt; }
+  .sechead .lab{ font-size:30pt; font-weight:800; letter-spacing:2pt; color:var(--ink); }
+  .sechead .sep{ font-size:30pt; font-weight:800; color:var(--ink); opacity:.55; }
+  .sechead .qlab{ font-size:34pt; font-weight:800; color:var(--ink); line-height:1.05; }
+
+  h2{ font-size:42pt; font-weight:800; line-height:1.05; margin:4mm 0 0; color:var(--ink); }
+  .core{ font-size:34pt; font-weight:600; line-height:1.18; margin:4mm 0 4mm;
+         border-left:5mm solid var(--navy); padding-left:7mm; color:var(--ink); }
+  .core .hl-red{ color:var(--red); } .core .hl-blue{ color:var(--blue); }
+  .core .hl-go{ color:var(--go); }
+
+  p.body{ font-size:31pt; line-height:1.2; margin:4mm 0 0; }
+
+  /* Antwort-Box (grün) als "Result" im Bamberg-Stil */
+  .answer{ font-size:32pt; line-height:1.18; margin:4mm 0 0; background:#EAF4EF;
+           border-left:5mm solid var(--go); border-radius:0 4mm 4mm 0; padding:5mm 9mm; }
+  .answer .lab{ color:var(--go); font-weight:800; }
+  /* grünes "Q.E.D."-Badge — das Spieler-Achievement für einen Beweis */
+  .badge{ display:inline-block; background:var(--go); color:#fff; font-weight:800;
+          letter-spacing:1.5pt; font-size:26pt; border-radius:4mm;
+          padding:2mm 7mm; margin:0 6mm 1mm 0; vertical-align:middle; }
+  code{ font-family:"Courier New", monospace; background:#fff; border:1px solid var(--band-d);
+        border-radius:2mm; padding:0 2mm; color:var(--ink); font-size:0.92em; }
+
+  ul{ font-size:31pt; line-height:1.22; margin:4mm 0 0; padding-left:11mm; }
+  li{ margin:3mm 0; }
+  .cap{ font-size:22pt; color:var(--mute); text-align:center; margin:3mm 0 0;
+        line-height:1.16; }
+
+  /* ---------- Bilder / Raster ---------- */
+  .row{ display:flex; gap:9mm; align-items:flex-start; margin-top:7mm; }
+  figure{ margin:0; }
+  .full{ width:100%; height:auto; display:block; }
+  .svgwrap{ border:1.5px solid var(--band-d); border-radius:4mm; padding:4mm;
+            background:#fff; }
+
+  /* Scoreboard-Box (wiai25): schwarzer Grund, pinke Schrift — der Combinatorik-Hero */
+  .statbox{ background:var(--black); color:var(--navy); border-radius:6mm;
+            padding:7mm 10mm; text-align:center; margin-top:4mm; }
+  .statbox .q{ font-size:27pt; color:#C9B6EC; margin:0 0 3mm; }
+  .statbox .big{ font-size:42pt; font-weight:800; color:var(--navy); margin:0 0 3mm; line-height:1.25; }
+  .statbox math{ color:var(--navy); }
+  .statbox .exact{ font-size:27pt; color:#C9B6EC; margin:0 0 3mm; line-height:1.2; word-break:break-word; }
+  .statbox .note2{ font-size:23pt; color:#C9B6EC; margin:0; }
+
+  /* Hero-Stat-Kachel (gleiche Scoreboard-Optik wie .statbox, kompakt) */
+  .stat{ background:var(--black); color:var(--navy); border-radius:6mm; padding:6mm 7mm;
+         text-align:center; }
+  .stat .v{ font-size:50pt; font-weight:800; color:var(--navy); line-height:1; margin:0; }
+  .stat .k{ font-size:24pt; color:#C9B6EC; margin:3mm 0 0; line-height:1.18; }
+
+  /* ---------- Fuß (wiai25-Vorlage: Lila-Trennlinie + schwarzer Balken) ---------- */
+  .footer{ margin-top:auto; border-top:3mm solid var(--navy); background:var(--black);
+           padding:5mm 24mm; margin:0 -22mm -9mm;
+           display:flex; justify-content:space-between; align-items:center;
+           font-size:23pt; color:#B9B2C4; }
+  .footer strong{ color:#fff; }
+  .footer .url{ font-size:26pt; font-weight:800; color:var(--navy); letter-spacing:.5pt; }
+</style>
+</head>
+<body>
+<div class="page">
+<div class="poster">
+
+  <!-- ============ KOPF ============ -->
+  <header>
+    <div class="banner">
+      <div class="brand">
+        <div class="logo">BI<span class="o">O</span>TOP</div>
+        <div class="sub">Erstsemester-Projekt · Fakultät WIAI</div>
+      </div>
+      <div class="uni-word">Universität Bamberg</div>
+      <img class="wappen" src="wappen_unibamberg.png" alt="Wappen der Otto-Friedrich-Universität Bamberg">
+    </div>
+    <div class="titlebar">
+      <h1 class="title"><span class="ac">BIOTOP</span> – Die Mathematik hinter dem Spiel</h1>
+      <p class="author">Friedemann Decker · Erstsemester, Fakultät WIAI</p>
+      <p class="occasion">Mensch-KI-Team mit Gemini CLI · Claude CLI &nbsp;·&nbsp; 25 Jahre Fakultät WIAI · Jubiläumsfeier 2026 &nbsp;·&nbsp; Poster 2 von 2: Drei Fragen &amp; echte Turnierdaten</p>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <p class="intro"><strong>Biotop</strong> sieht aus wie ein Spiel – darunter steckt
+      echte Mathematik. Drei Fragen, die harmlos aussehen, führen mitten in die
+      <strong>Diskrete Modellierung</strong> des ersten Semesters. Und
+      <strong>10.000 simulierte Start-Konfigurationen</strong> verraten, was wirklich gewinnt.</p>
+    <p class="lead">Drei Fragen an ein digitales Ökosystem – mit Beweis statt Bauchgefühl.</p>
+
+    <!-- ============ ① FRAGE 1: TORUS ============ -->
+    <section class="band">
+      <div class="sechead"><span class="num">1</span><span class="lab">FRAGE 1 · RANDLOS</span><span class="sep">–</span><span class="qlab">Wie wird ein 8×8-Schachbrett unendlich?</span></div>
+      <p class="core">Wir <strong>verkleben die Ränder</strong>: rechts an links, oben an unten.
+        Aus dem Quadrat wird ein <strong>Torus</strong> – eine Fläche ganz ohne Rand.</p>
+
+      <div class="svgwrap"><img class="full" style="max-height:104mm; width:auto; margin:0 auto" src="f_torus_fold.svg" alt="Faltung: 8×8-Feld → Zylinder → Torus"></div>
+
+      <p class="answer"><span class="lab">Antwort:</span> Das endliche Feld verhält sich wie ein
+        <strong>unendliches</strong>: jede Zelle hat exakt 8 Nachbarn, kein Ort ist „besonders".
+        Genau das brauchen wir für die faire Antwort auf Frage&nbsp;3.</p>
+    </section>
+
+    <!-- ============ ② FRAGE 2: KOMBINATORIK ============ -->
+    <section class="band">
+      <div class="sechead"><span class="num">2</span><span class="lab">FRAGE 2 · UNZÄHLBAR</span><span class="sep">–</span><span class="qlab">Wie viele erlaubte Biotope gibt es?</span></div>
+      <p class="core">Fair-Play-Grenze: höchstens <strong>24 von 64 Zellen</strong> lebendig.
+        Mit dem <strong>Binomialkoeffizienten</strong> zählen wir alle erlaubten Muster auf.</p>
+
+      <div class="statbox">
+        <p class="q">Anzahl aller Startmuster mit 0 bis 24 von 64 lebenden Zellen:</p>
+        <p class="big">
+          <math display="inline">
+            <munderover>
+              <mo>&#x2211;</mo>
+              <mrow><mi>k</mi><mo>=</mo><mn>0</mn></mrow>
+              <mn>24</mn>
+            </munderover>
+            <mrow>
+              <mo>(</mo><mfrac linethickness="0"><mn>64</mn><mi>k</mi></mfrac><mo>)</mo>
+            </mrow>
+            <mo>&#x2248;</mo>
+            <mn>553&#x202F;Billiarden</mn>
+          </math>
+        </p>
+        <p class="exact">exakt 552&#x202F;859&#x202F;891&#x202F;708&#x202F;071&#x202F;949 Muster</p>
+        <p class="note2">mehr, als es Sekunden seit dem Urknall gegeben hat – stures Durchprobieren (Brute Force) chancenlos</p>
+      </div>
+
+      <p class="answer"><span class="lab">Antwort:</span> Rund <strong>553 Billiarden</strong> erlaubte
+        Biotope – keine Tabelle „bester Muster" zum Auswendiglernen. Man muss bauen, simulieren und
+        mutig sein. <strong>Kreativität gewinnt.</strong></p>
+    </section>
+
+    <!-- ============ ③ FRAGE 3: SEITEN-SYMMETRIE ============ -->
+    <section class="band">
+      <div class="sechead"><span class="num">3</span><span class="lab">FRAGE 3 · FAIR</span><span class="sep">–</span><span class="qlab">Ist die linke oder die rechte Seite im Vorteil?</span></div>
+      <p class="core"><strong>Nein – beweisbar nicht.</strong> Auf dem randlosen Torus ist „links" nur
+        „rechts", um eine halbe Feldbreite verschoben – das Feld merkt den Unterschied gar nicht.</p>
+
+      <p class="body">Dazu ein winziges Regel-Detail: Eine neue Zelle entsteht nur bei
+        <strong>genau&nbsp;3</strong> Nachbarn. Weil 3 <em>ungerade</em> ist, gibt es nie ein
+        „2&nbsp;Rot&nbsp;:&nbsp;2&nbsp;Blau"-Patt – die Regel ist <strong>vollkommen farb-symmetrisch</strong>.
+        Randloser Torus + farb-symmetrische Regel ergeben zwingend: Runde&nbsp;2 (Seiten getauscht) ist
+        eine <strong>exakte Kopie</strong> von Runde&nbsp;1.</p>
+
+      <p class="answer"><span class="badge">BEWIESEN&nbsp;✓</span> Weder links noch rechts ist im Vorteil –
+        die Siegchancen sind <strong>positionsunabhängig</strong>. Die zweite Runde war überflüssig und
+        wurde gestrichen.</p>
+    </section>
+
+    <!-- ============ ◆ ECHTE TURNIERDATEN ============ -->
+    <section class="band">
+      <div class="sechead"><span class="num diamond">◆</span><span class="lab">ECHTE TURNIERDATEN · DICHTE-OPTIMUM</span></div>
+      <h2>Wie dicht sollte ein Startmuster sein?</h2>
+      <p class="core">Weder fast leer noch randvoll: Es gibt ein messbares <strong>Dichte-Optimum</strong> –
+        <strong>gemessen, nicht vermutet</strong>.</p>
+
+      <div class="row">
+        <figure style="flex:1.35">
+          <div class="svgwrap"><img class="full" style="max-height:116mm; width:auto; margin:0 auto" src="f23_winrate_vs_cells.svg"
+            alt="Win-Rate über Startzellzahl: umgekehrte U-Kurve mit Optimum bei 24–32 Zellen"></div>
+          <figcaption class="cap">10.000 zufällige Startmuster · ~100 Mio. Duelle im eigenen C-Hyper-Worker-Turnier.</figcaption>
+        </figure>
+        <div style="flex:1; align-self:center">
+          <div class="stat" style="margin-bottom:6mm"><p class="v">≈ 67 %</p><p class="k">Siegquote im Sweet Spot</p></div>
+          <div class="stat"><p class="v">24–32</p><p class="k">optimal lebende Zellen (von 64)</p></div>
+          <ul style="margin-top:6mm">
+            <li><strong>Zu leer</strong> (&lt; 12 Zellen): zu wenig Substanz – das Muster stirbt aus.</li>
+            <li><strong>Zu voll</strong> (&gt; 40 Zellen): Überbevölkerung – das Muster kollabiert.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FUSS ============ -->
+    <footer class="footer">
+      <div><strong>BIOTOP</strong> · kompetitives Game of Life · Fakultät WIAI · 2026&nbsp;·&nbsp; Das Spiel & die Mitmach-Station auf Poster 1</div>
+      <div class="url">biotop.wiai-lab.de</div>
+    </footer>
+
+  </div>
+</div>
+</div>
+</body>
+</html>

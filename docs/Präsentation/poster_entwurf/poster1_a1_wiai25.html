@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<!-- KI-Agent unterstützt: POSTER 1 von 2 — A1-Hochkant — wiai25-JUBILÄUMS-DESIGN.
+     Inhalt = poster1_a1.html (VERSION 2); NUR Header/Footer/Farb-Design auf die
+     neue Event-Vorlage vorlagen/Poster_Plotter.pdf umgestellt:
+       - Hausblau (#00457B) -> Jubiläums-Lila (#9769DC), helle Bänder -> Lavendel.
+       - Kopf: randloses Lila-Banner + SCHWARZER Titelbalken (weisse Schrift, Lila-Akzent).
+       - Fuss: Lila-Trennlinie + randloser SCHWARZER Balken.
+     Frühere Variante (VERSION 2, optimiert) — Notizen weiterhin gültig:
+     Basis: poster1_a1.html. Optimierungen ("Weniger ist mehr!" + Messe-3-Sekunden-Test):
+       1. Redundanten Wegweiser ("roter Faden"-Leiste) entfernt — die nummerierten
+          Sektionsköpfe tragen die 1->2->3-Erzählung bereits.
+       2. Call-to-Action zum visuellen Anker gemacht: dominante QR-Karte mit fettem
+          Imperativ + grosser URL im Zentrum.
+       3. Textmenge pro Sektion reduziert (Faszination & Entstehung je 3->2 Stichpunkte).
+       4. Dunkle Screenshots vereinheitlicht (gleicher Schatten, ruhigere Galerie).
+       5. Doppelten QR in der Fusszeile durch die URL ersetzt (ein klarer CTA).
+       6. Conway's-Apostroph korrigiert; KI-Co-Autoren leiser in die Anlass-Zeile.
+     Layout & Corporate Design nach den Uni-Bamberg-Vorlagen in ./vorlagen/.
+     Druck: Browser -> Drucken -> "Als PDF speichern", A1 hochkant, Ränder: keine,
+     Hintergrundgrafiken: AN. -->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>BIOTOP – Poster 1 (A1) · v2</title>
+<style>
+  :root{
+    /* wiai25-Jubiläums-Design (Vorlage: vorlagen/Poster_Plotter.pdf).
+       Lila-Akzent + schwarze Kopf-/Titel-/Fussbalken statt Uni-Hausblau. */
+    --navy:#9769DC;        /* Jubiläums-Lila (Banner, Umrandungen, Akzente) */
+    --navy-d:#6B3FB0;      /* dunkleres Lila */
+    --band:#EDE7F6;        /* helles Lavendel (Hintergründe, Sektionsköpfe) */
+    --band-d:#D6C7EE;
+    --black:#0E0E10;       /* Kopf-Titelbalken + Fussbalken (wie Vorlage) */
+    --ink:#1A1A1A; --mute:#52606E; --paper:#FFFFFF;
+    --red:#D7263D; --blue:#1B6CA8; --go:#0F8B6C;   /* semantische Akzente */
+  }
+  @page{ size: 594mm 841mm; margin:0; }   /* DIN A1 hochkant */
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family: Arial, Tahoma, Helvetica, sans-serif;
+    color:var(--ink); background:var(--paper);
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+
+  /* A1 portrait = 594 x 841 mm. Das A0-Layout (841 mm Breite) wird per
+     transform:scale(0.7063) hineinskaliert -> EINE A1-Seite. */
+  .page{ position:relative; width:594mm; height:841mm; overflow:hidden;
+         background:var(--paper); }
+  .poster{ position:absolute; top:0; left:0; transform-origin:top left;
+           transform:scale(0.7063); width:841mm; height:1191mm;
+           display:flex; flex-direction:column; background:var(--paper); }
+
+  /* ============ KOPF (wiai25-Vorlage: Lila-Banner + schwarzer Titelbalken) ============ */
+  /* Lila-Banner mit gerundeter oberer rechter Ecke, randlos oben (wie Vorlage) */
+  .banner{ position:relative; background:var(--navy); height:150mm;
+           border-top-right-radius:55mm; margin-top:0; color:#fff; }
+  /* abgeschrägte Unterkante (wie Vorlage): links höher -> rechts tiefer.
+     Gefälle exakt 5% = 42mm / 841mm Banner-Breite (Vorlage: ~30mm/594mm A1).
+     Schwarzer Keil unten links geht nahtlos ins schwarze Titelband über. */
+  .banner::after{ content:""; position:absolute; left:0; right:0; bottom:0;
+                  height:42mm; background:var(--black);
+                  clip-path:polygon(0 0, 0 100%, 100% 100%); }
+  .brand{ position:absolute; left:22mm; top:50%; transform:translateY(-50%); }
+  .brand .logo{ font-size:78pt; font-weight:800; letter-spacing:2pt; line-height:1; }
+  .brand .logo .o{ color:#E8DBFA; }
+  .brand .sub{ font-size:24pt; font-weight:700; margin-top:4mm; color:#EBE1F8;
+               letter-spacing:.5pt; }
+  .uni-word{ position:absolute; right:158mm; top:50%; transform:translateY(-50%);
+             font-size:52pt; font-weight:400; letter-spacing:.5pt; white-space:nowrap; }
+  .wappen{ position:absolute; right:30mm; top:50%; transform:translateY(-50%);
+           height:118mm; width:auto; }
+
+  /* schwarzer Titelbalken (wie Vorlage): weisse Schrift, Lila-Akzent, linksbündig.
+     -1mm Überlappung schliesst die Subpixel-Haarlinie zur Banner-Unterkante. */
+  .titlebar{ background:var(--black); padding:8mm 24mm 7mm; text-align:left;
+             margin-top:-1mm; position:relative; }
+  .title{ font-size:58pt; font-weight:800; letter-spacing:.5pt; line-height:1.04;
+          color:#fff; margin:0; }
+  .title .ac{ color:var(--navy); }
+  .author{ font-size:26pt; font-weight:700; color:#D8CCEE; margin:4mm 0 0;
+           line-height:1.1; }
+  .occasion{ font-size:20pt; font-weight:700; color:#9990A6; margin:2mm 0 0; }
+
+  /* ---------- Inhalt ---------- */
+  .content{ flex:1; display:flex; flex-direction:column; padding:6mm 22mm 9mm; }
+
+  .intro{ font-size:29pt; line-height:1.18; margin:0; }
+  .lead{ font-size:34pt; font-weight:700; font-style:italic; line-height:1.14;
+         margin:5mm 0 0; color:var(--ink); }
+
+  /* ---------- Sektionen ---------- */
+  .band{ margin-top:7mm; }
+  /* Sektionskopf: hellblaugraue Leiste + navy Nummernkreis (wie Vorlagen) */
+  .sechead{ display:flex; align-items:center; gap:6mm; background:var(--band);
+            border-left:6mm solid var(--navy); border-radius:0 5mm 5mm 0;
+            padding:4mm 8mm; }
+  .sechead .num{ display:inline-flex; align-items:center; justify-content:center;
+                 width:16mm; height:16mm; border-radius:50%; background:var(--navy);
+                 color:#fff; font-size:28pt; font-weight:800; flex:none; }
+  .sechead .lab{ font-size:28pt; font-weight:800; letter-spacing:2pt; color:var(--ink); }
+
+  h2{ font-size:36pt; font-weight:800; line-height:1.05; margin:3mm 0 0; color:var(--ink); }
+  .core{ font-size:30pt; font-weight:600; line-height:1.18; margin:3mm 0 4mm;
+         border-left:5mm solid var(--navy); padding-left:7mm; color:var(--ink); }
+  .core .hl-red{ color:var(--red); } .core .hl-blue{ color:var(--blue); }
+  .core .hl-go{ color:var(--go); }
+
+  ul{ font-size:29pt; line-height:1.2; margin:3mm 0 0; padding-left:11mm; }
+  li{ margin:2mm 0; }
+  .cap{ font-size:20pt; color:var(--mute); text-align:center; margin:3mm 0 0;
+        line-height:1.16; }
+
+  /* zentrale Mitmach-Sektion: gleicher Stil, aber stärkere navy Umrandung */
+  .center{ border:3mm solid var(--navy); border-radius:8mm; padding:5mm 10mm 6mm;
+           background:#F4F7FB; margin-top:7mm; }
+  .center .sechead{ margin-top:-2mm; }
+
+  /* ---------- Bilder / Raster ---------- */
+  .row{ display:flex; gap:8mm; align-items:flex-start; margin-top:5mm; }
+  figure{ margin:0; }
+  .full{ width:100%; height:auto; display:block; }
+  .svgwrap{ border:1.5px solid var(--band-d); border-radius:4mm; padding:4mm;
+            background:#fff; }
+  /* einheitliche Bildschirm-Galerie: gleicher Rahmen + dezenter Schatten */
+  .photo{ display:block; margin:0 auto; max-width:100%;
+          border:2px solid var(--navy); border-radius:4mm; background:#0d1117;
+          box-shadow:0 1.5mm 4mm rgba(0,0,0,.20); }
+
+  /* ---------- Dominanter Call-to-Action (Messe-Anker) ---------- */
+  .cta{ display:flex; flex-direction:column; align-items:center; justify-content:center;
+        border:3mm solid var(--navy); border-radius:7mm; background:#fff; padding:5mm 5mm 4mm; }
+  .cta-head{ font-size:31pt; font-weight:800; color:var(--ink); line-height:1.04;
+             margin:0 0 4mm; text-align:center; }
+  .cta-qr{ display:block; width:130mm; height:130mm; }
+  .cta-url{ font-size:32pt; font-weight:800; color:var(--go); letter-spacing:.5pt;
+            margin-top:4mm; }
+
+  /* ---------- Fuß (wiai25-Vorlage: Lila-Trennlinie + schwarzer Balken) ---------- */
+  .footer{ margin-top:auto; border-top:3mm solid var(--navy); background:var(--black);
+           padding:5mm 24mm; margin:0 -22mm -9mm;
+           display:flex; justify-content:space-between; align-items:center;
+           font-size:21pt; color:#B9B2C4; }
+  .footer strong{ color:#fff; }
+  .footer .url{ font-size:24pt; font-weight:800; color:var(--navy); letter-spacing:.5pt; }
+</style>
+</head>
+<body>
+<div class="page">
+<div class="poster">
+
+  <!-- ============ KOPF: Banner + Titelbalken (Uni-Bamberg-Vorlage) ============ -->
+  <header>
+    <div class="banner">
+      <div class="brand">
+        <div class="logo">BI<span class="o">O</span>TOP</div>
+        <div class="sub">Erstsemester-Projekt · Fakultät WIAI</div>
+      </div>
+      <div class="uni-word">Universität Bamberg</div>
+      <img class="wappen" src="wappen_unibamberg.png" alt="Wappen der Otto-Friedrich-Universität Bamberg">
+    </div>
+    <div class="titlebar">
+      <h1 class="title"><span class="ac">BIOTOP</span> – Conway's Game of Life als Wettkampf</h1>
+      <p class="author">Friedemann Decker · Erstsemester, Fakultät WIAI</p>
+      <p class="occasion">Mensch-KI-Team mit Gemini CLI · Claude CLI &nbsp;·&nbsp; 25 Jahre Fakultät WIAI · Jubiläumsfeier 2026 &nbsp;·&nbsp; Poster 1 von 2: Das Erlebnis</p>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <p class="intro"><strong>Conway's Game of Life</strong> erzeugt aus vier einfachen Regeln
+      verblüffend komplexe Muster. <strong>Biotop</strong> macht daraus einen Wettkampf:
+      <span style="color:var(--red);font-weight:700">Team Rot</span> und
+      <span style="color:var(--blue);font-weight:700">Team Blau</span> kämpfen auf einem Gitter
+      um die Vorherrschaft.</p>
+    <p class="lead">Wie entsteht aus vier Regeln ein faszinierendes Spiel?</p>
+
+    <!-- ============ ① F2.1 FASZINATION ============ -->
+    <section class="band">
+      <div class="sechead"><span class="num">1</span><span class="lab">FASZINATION</span></div>
+      <h2>Komplexität aus vier Regeln: Wie entsteht Ordnung ganz von selbst?</h2>
+      <p class="core">Vier simple Regeln – und trotzdem entstehen Gleiter, Oszillatoren und Muster. Das nennt man <strong>Emergenz</strong>.</p>
+
+      <div class="svgwrap"><img class="full" style="max-height:82mm; width:auto; margin:0 auto" src="f21_vier_regeln.svg" alt="Die vier Regeln"></div>
+
+      <div class="row">
+        <figure style="flex:0 0 240mm">
+          <img class="photo" style="max-height:96mm" src="kiosk_live.png" alt="Live-Kiosk">
+          <figcaption class="cap">Live am Stand: vier Partien gleichzeitig.</figcaption>
+        </figure>
+        <ul style="flex:1; margin-top:0">
+          <li><strong>Emergenz:</strong> komplexes Verhalten aus einfachen lokalen Regeln – ganz ohne zentrale Steuerung.</li>
+          <li>1970 von John Conway erfunden – sogar <strong>Turing-vollständig</strong> (man kann darin „rechnen").</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============ ② F3.2 MITMACHEN (ZENTRUM / CALL-TO-ACTION) ============ -->
+    <section class="center">
+      <div class="sechead"><span class="num">2</span><span class="lab">MITMACHEN</span></div>
+      <h2>Erschaffen Sie das stärkste Biotop!</h2>
+      <p class="core"><strong>Ihr Muster. Live im Turnier. In Echtzeit in der Rangliste.</strong>
+        Malen Sie in <strong>30 Sekunden</strong> Ihr eigenes 8×8-Muster – es tritt sofort an.</p>
+
+      <div class="svgwrap"><img class="full" style="max-height:82mm; width:auto; margin:0 auto" src="f32_mitmach_ablauf.svg" alt="Mitmach-Ablauf in 4 Schritten"></div>
+
+      <div class="row" style="align-items:stretch">
+        <figure class="cta" style="flex:0 0 220mm">
+          <div class="cta-head">Jetzt selbst<br>mitspielen →</div>
+          <img class="cta-qr" src="qr_editor.png" alt="QR-Code zum Editor">
+          <div class="cta-url">biotop.wiai-lab.de</div>
+        </figure>
+        <figure style="flex:1; text-align:center; align-self:center">
+          <img class="photo" style="max-height:108mm" src="editor_tablet.png" alt="Editor am Tablet">
+          <figcaption class="cap">Muster malen, Team wählen, absenden.</figcaption>
+        </figure>
+        <figure style="flex:1; text-align:center; align-self:center">
+          <img class="photo" style="max-height:108mm" src="leaderboard.png" alt="Live-Rangliste">
+          <figcaption class="cap">Ihr Name in der Live-Rangliste.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ ③ F1.1 ENTSTEHUNG ============ -->
+    <section class="band">
+      <div class="sechead"><span class="num">3</span><span class="lab">WIE IST DAS ENTSTANDEN?</span></div>
+      <h2>Wie weit kommt ein Erstsemester, wenn Mensch und KI als Team programmieren?</h2>
+      <p class="core">Hinter BIOTOP steckt ein komplettes <strong>verteiltes System</strong>.</p>
+
+      <div class="row">
+        <figure style="flex:1.15"><div class="svgwrap"><img class="full" style="max-height:104mm; width:auto; margin:0 auto" src="f11_architektur_3schichten.svg" alt="3-Schichten-Architektur"></div></figure>
+        <ul style="flex:1; margin-top:0">
+          <li><strong>Werkzeug für jede Schicht:</strong> Tempo in C, Komfort in Python, Zugänglichkeit im Web.</li>
+          <li><strong>KI als Teampartner, nicht Autopilot:</strong> Entscheidungen in Architektur-Notizen (ADRs) begründet, Code getestet (Ziel: null Compiler-Warnungen).</li>
+        </ul>
+      </div>
+
+      <div class="row" style="margin-top:5mm">
+        <div class="svgwrap" style="flex:1"><img class="full" style="max-height:60mm; width:auto; margin:0 auto" src="f11_kennzahlen.svg" alt="Kennzahlen des Projekts"></div>
+      </div>
+      <p class="cap" style="margin-top:2mm">Projektweite Konvention: jede KI-unterstützte Stelle trägt im Code den Kommentar <code>// KI-Agent unterstützt</code>.</p>
+    </section>
+
+    <!-- ============ FUSS ============ -->
+    <footer class="footer">
+      <div><strong>BIOTOP</strong> · kompetitives Game of Life · Fakultät WIAI · 2026&nbsp;·&nbsp; Mehr Mathematik & Daten auf Poster 2</div>
+      <div class="url">biotop.wiai-lab.de</div>
+    </footer>
+
+  </div>
+</div>
+</div>
+</body>
+</html>

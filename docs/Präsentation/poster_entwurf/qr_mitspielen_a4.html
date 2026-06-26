@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<!-- KI-Agent unterstützt: Ausschnitt "Jetzt selbst mitspielen" (CTA-Karte aus
+     poster1_a1_wiai25.html) als eigenständige, druckbare DIN-A4-Seite.
+     Design 1:1 übernommen (Lila-Umrandung, Überschrift, QR, grüne URL),
+     nur für A4 zentriert und vergrössert. -->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>BIOTOP – Jetzt selbst mitspielen (A4)</title>
+<style>
+  :root{
+    --navy:#9769DC;          /* Jubiläums-Lila (Umrandung) */
+    --ink:#1A1A1A;
+    --go:#0F8B6C;            /* grüne URL */
+    --paper:#FFFFFF;
+  }
+  @page{ size: 210mm 297mm; margin:0; }   /* DIN A4 hochkant */
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family: Arial, Tahoma, Helvetica, sans-serif;
+    color:var(--ink); background:var(--paper);
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  /* A4-Seite, Karte zentriert */
+  .page{ position:relative; width:210mm; height:297mm; background:var(--paper);
+         display:flex; align-items:center; justify-content:center; }
+
+  /* CTA-Karte – identisches Design wie im Poster, auf A4 skaliert */
+  .cta{ display:flex; flex-direction:column; align-items:center; justify-content:center;
+        border:4mm solid var(--navy); border-radius:12mm; background:#fff;
+        padding:14mm 14mm 11mm; }
+  .cta-head{ font-size:46pt; font-weight:800; color:var(--ink); line-height:1.05;
+             margin:0 0 9mm; text-align:center; }
+  .cta-qr{ display:block; width:130mm; height:130mm; image-rendering:pixelated; }
+  .cta-url{ font-size:44pt; font-weight:800; color:var(--go); letter-spacing:.5pt;
+            margin-top:9mm; }
+</style>
+</head>
+<body>
+<div class="page">
+  <figure class="cta" style="margin:0">
+    <div class="cta-head">Jetzt selbst<br>mitspielen &rarr;</div>
+    <img class="cta-qr" src="qr_editor.png" alt="QR-Code zum Editor">
+    <div class="cta-url">biotop.wiai-lab.de</div>
+  </figure>
+</div>
+</body>
+</html>

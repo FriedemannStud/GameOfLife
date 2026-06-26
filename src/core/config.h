@@ -18,7 +18,7 @@
 #define KIOSK_SIM_GEN_INTERVAL_S  0.4f   // 1/xf = Generationen/s im Live-Battles-Fenster
 
 // KI-Agent unterstützt: Kiosk render budget (ADR-0033)
-#define KIOSK_TARGET_FPS          30      // per-device tuning knob (FR-1); default 30 for cool office-laptop operation, raise to 60 for smoother motion
+#define KIOSK_TARGET_FPS          15      // per-device tuning knob (FR-1); 15 for low-heat trade-show operation, 30 for cool office-laptop, 60 for smoother motion
 #define KIOSK_FADE_REF_FPS        120.0f  // reference fps the 0.95 fade was tuned at (FR-2)
 #define KIOSK_FADE_PER_REF_FRAME  0.95f   // fossil fade per frame @ reference fps (FR-2)
 #define KIOSK_FADE_DT_MAX         0.1f    // clamp frame-time spikes so a stall can't wipe trails (FR-2)

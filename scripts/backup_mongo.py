@@ -6,6 +6,7 @@ Run this on the SERVER (outside Docker) while the stack is up:
 
     python scripts/backup_mongo.py
 
+mongodump runs inside the running mongo container (no host installation needed).
 Credentials are read from the project's .env file (MONGO_USER, MONGO_PASSWORD).
 The dump lands in backup/mongodump_YYYYMMDD_HHMMSS/ relative to the project root.
 
@@ -15,12 +16,12 @@ After the dump, commit and push to preserve the data in git:
     git commit -m "backup: MongoDB dump YYYY-MM-DD"
     git push
 
-To restore on a fresh machine with a running stack:
+To restore on a fresh machine with a running stack (mongorestore must be available):
 
     mongorestore --host 127.0.0.1 --port 27018 \\
         --username $MONGO_USER --password $MONGO_PASSWORD \\
         --authenticationDatabase admin \\
-        backup/mongodump_<timestamp>/
+        backup/mongodump_<timestamp>/biotope_db
 """
 
 import os
@@ -32,9 +33,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 BACKUP_BASE = ROOT / "backup"
 ENV_FILE = ROOT / ".env"
-
-MONGO_HOST = "127.0.0.1"
-MONGO_PORT = "27018"  # host-side port from docker-compose
 
 
 def load_env(path: Path) -> dict:
@@ -52,6 +50,23 @@ def load_env(path: Path) -> dict:
     return env
 
 
+def find_mongo_container() -> str:
+    """Return the name of the running mongo container from the compose stack."""
+    out = subprocess.check_output(
+        [
+            "docker", "ps",
+            "--filter", "label=com.docker.compose.service=mongo",
+            "--format", "{{.Names}}",
+        ],
+        text=True,
+    ).strip()
+    if not out:
+        raise RuntimeError(
+            "No running 'mongo' container found. Is 'docker compose up' running?"
+        )
+    return out.splitlines()[0]
+
+
 def main() -> None:
     env = load_env(ENV_FILE)
 
@@ -63,29 +78,41 @@ def main() -> None:
         print("ERROR: MONGO_USER and MONGO_PASSWORD must be set in .env or environment.")
         sys.exit(1)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_dir = BACKUP_BASE / f"mongodump_{timestamp}"
-    out_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        container = find_mongo_container()
+    except RuntimeError as e:
+        print(f"ERROR: {e}")
+        sys.exit(1)
 
-    cmd = [
+    print(f"Using container: {container}")
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    inner_dump = f"/tmp/mongodump_{timestamp}"
+    out_dir = BACKUP_BASE / f"mongodump_{timestamp}"
+
+    print(f"Dumping '{db_name}' → {out_dir.relative_to(ROOT)}\n")
+
+    # Run mongodump inside the container (mongodump connects to localhost:27017 there)
+    dump_cmd = [
+        "docker", "exec", container,
         "mongodump",
-        "--host", MONGO_HOST,
-        "--port", MONGO_PORT,
         "--username", user,
         "--password", password,
         "--authenticationDatabase", "admin",
         "--db", db_name,
-        "--out", str(out_dir),
+        "--out", inner_dump,
     ]
-
-    print(f"Connecting to {MONGO_HOST}:{MONGO_PORT}, database '{db_name}' ...")
-    print(f"Output → {out_dir.relative_to(ROOT)}\n")
-
-    result = subprocess.run(cmd)
-
+    result = subprocess.run(dump_cmd)
     if result.returncode != 0:
-        print("\nERROR: mongodump exited with a non-zero status.")
+        print("\nERROR: mongodump failed inside the container.")
         sys.exit(result.returncode)
+
+    # Copy dump from container to host backup directory
+    BACKUP_BASE.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["docker", "cp", f"{container}:{inner_dump}", str(BACKUP_BASE)], check=True)
+
+    # Clean up the temporary dump inside the container
+    subprocess.run(["docker", "exec", container, "rm", "-rf", inner_dump])
 
     total_bytes = sum(f.stat().st_size for f in out_dir.rglob("*") if f.is_file())
     print(f"\nDump complete. Size: {total_bytes / 1024:.1f} KB")

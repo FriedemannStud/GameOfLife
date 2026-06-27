@@ -47,6 +47,16 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 Backend environment variables (`MONGO_USER`, `MONGO_PASSWORD`, etc.) are in `.env` — do not commit changes to it. See `.env.example` for the expected keys.
 
+### MongoDB Backup
+
+To preserve data before the server is decommissioned, run the backup script **on the server** (outside Docker, with the stack running):
+
+```bash
+python scripts/backup_mongo.py
+```
+
+It reads credentials from `.env`, calls `mongodump` against `127.0.0.1:27018`, and writes the dump to `backup/mongodump_<timestamp>/`. Commit and push that directory to preserve the data in git. Restore with `mongorestore` using the same credentials.
+
 ## Testing
 
 **C unit tests** — compiled and run directly:

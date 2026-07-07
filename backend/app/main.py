@@ -110,6 +110,13 @@ app.mount("/admin", StaticFiles(directory="web/admin", html=True), name="admin")
 # KI-Agent unterstützt: Serve the Mission Statement (rules of Biotop) static page.
 app.mount("/mission", StaticFiles(directory="web/mission"), name="mission")
 
+# KI-Agent unterstützt: Serve the Eurovision Sankey visualization and its data
+# (eurovision-data/, docs/stories/) as static files, reachable at
+# biotop.wiai-lab.de/sankey/sankey.html. sankey.html fetches its JSON/topojson
+# and story markdown via paths relative to itself, so the data directories must
+# live alongside it under this same mount.
+app.mount("/sankey", StaticFiles(directory="web/sankey"), name="sankey")
+
 # KI-Agent unterstützt: Serve the Shoulder-Duel page and its self-hosted assets
 # (soundtrack) as static files (ADR-0028).
 app.mount("/duel", StaticFiles(directory="web/duel"), name="duel")

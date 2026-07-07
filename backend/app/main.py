@@ -114,8 +114,9 @@ app.mount("/mission", StaticFiles(directory="web/mission"), name="mission")
 # (eurovision-data/, docs/stories/) as static files, reachable at
 # biotop.wiai-lab.de/sankey/sankey.html. sankey.html fetches its JSON/topojson
 # and story markdown via paths relative to itself, so the data directories must
-# live alongside it under this same mount.
-app.mount("/sankey", StaticFiles(directory="web/sankey"), name="sankey")
+# live alongside it under this same mount. html=True lets the short URL
+# biotop.wiai-lab.de/sankey serve index.html, which redirects to sankey.html.
+app.mount("/sankey", StaticFiles(directory="web/sankey", html=True), name="sankey")
 
 # KI-Agent unterstützt: Serve the Shoulder-Duel page and its self-hosted assets
 # (soundtrack) as static files (ADR-0028).

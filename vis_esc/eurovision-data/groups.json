@@ -1,0 +1,46 @@
+{
+  "_meta": {
+    "description": "Curated country groups for ESC participation stories, keyed by stable group key; members are ISO2 codes joining entries.json.country_iso2. 'story' is a reserved anchor for the future per-group data-story (ADR-0006), null until then.",
+    "join_key": "members[] = country_iso2 (ISO2)",
+    "vocab": "eurovision-data/README.md (section: groups.json)",
+    "status": "complete — all seven groups migrated from sankey.html"
+  },
+  "groups": {
+    "ewg_founding": {
+      "label": "EWG-Gründungsmitglieder",
+      "members": ["BE", "DE", "FR", "IT", "LU", "NL"],
+      "story": null
+    },
+    "eastern_bloc": {
+      "label": "Ehemaliger Ostblock",
+      "members": ["AL", "BG", "BY", "CZ", "EE", "HR", "HU", "LT", "LV", "MK",
+                  "PL", "RO", "RS", "RU", "SI", "SK", "UA", "YU"],
+      "story": null
+    },
+    "nordic": {
+      "label": "Nordische Länder",
+      "members": ["DK", "FI", "IS", "NO", "SE"],
+      "story": null
+    },
+    "yugoslavia": {
+      "label": "Jugoslawien & Nachfolgestaaten",
+      "members": ["YU", "HR", "SI", "BA", "MK", "CS", "RS", "ME"],
+      "story": null
+    },
+    "caucasus": {
+      "label": "Kaukasus",
+      "members": ["AM", "GE", "AZ"],
+      "story": null
+    },
+    "beyond_europe": {
+      "label": "Jenseits Europas",
+      "members": ["IL", "MA", "AU", "TR"],
+      "story": null
+    },
+    "mediterranean": {
+      "label": "Mittelmeer-Süderweiterung",
+      "members": ["MT", "GR", "TR", "CY"],
+      "story": null
+    }
+  }
+}

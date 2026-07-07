@@ -1,0 +1,193 @@
+{
+  "_meta": {
+    "description": "Per-country reference attributes for ESC participants, keyed by ISO2 (joins entries.json.country_iso2). Static attributes are scalars/lists; time-varying attributes are lists of intervals with explicit from/to (to: null = open/ongoing). Stored at full-year resolution; decade aggregation happens in code. Prose, rationale and the controlled vocabularies live in knowledge/09-laender-attribute.md.",
+    "join_key": "country_iso2 (ISO2)",
+    "vocab": "eurovision-data/README.md (section: country_attributes.json)",
+    "status": "wars[] filled for all 52 ESC codes; languages/cultural_region/government still scaffold (only DE, SE, UA, YU complete)",
+    "wars_scope": {
+      "definition": "Only conflicts in which the country itself is a direct belligerent: interstate wars, territorial wars, and full-scale civil/disintegration wars. Excludes coalition/expeditionary interventions abroad (e.g. Iraq 2003, Afghanistan, Libya 2011, Russia in Syria) and low-intensity internal insurgencies/terror campaigns (PKK, ETA, Northern Ireland Troubles, North Macedonia 2001, Albania 1997 unrest).",
+      "window": "Wars whose dates overlap the ESC era 1956-2026 (a war is recorded even if the country joined the ESC later, as long as the war years fall in range).",
+      "role_vocab": {
+        "verteidigend": "country defends against an attack/invasion on its own (claimed) territory",
+        "angreifend": "country launched the offensive / invaded or attacked another territory",
+        "zwischenstaatlich": "mutual interstate war with symmetric or disputed initiation",
+        "buergerkrieg": "internal civil war on the country's own territory",
+        "zerfallskonflikt": "war of state disintegration / post-imperial separatism",
+        "kolonialkrieg": "metropole fighting an independence/decolonisation movement"
+      },
+      "notes": "role reflects the state's primary military posture and is a simplification of contested histories. The same war appears under each belligerent ESC country with a mirrored role (e.g. Cyprus 1974: CY verteidigend / TR angreifend). Successor-state attribution follows the dataset's historical codes: SFRY breakup wars (1991-1995) sit on YU; the Kosovo War (1998-1999) on RS as the enduring Serbian code.",
+      "sources": "Verified June 2026 against Wikipedia conflict articles (en.wikipedia.org) cross-checked with Britannica/ICTY/CFR; dates at full-year resolution."
+    }
+  },
+  "countries": {
+    "AD": { "wars": [] },
+    "AL": { "wars": [] },
+    "AM": {
+      "wars": [
+        { "from": 1988, "to": 1994, "name": "Erster Bergkarabachkrieg", "role": "zwischenstaatlich" },
+        { "from": 2020, "to": 2020, "name": "Zweiter Bergkarabachkrieg", "role": "verteidigend" }
+      ]
+    },
+    "AT": { "wars": [] },
+    "AU": { "wars": [] },
+    "AZ": {
+      "wars": [
+        { "from": 1988, "to": 1994, "name": "Erster Bergkarabachkrieg", "role": "zwischenstaatlich" },
+        { "from": 2020, "to": 2020, "name": "Zweiter Bergkarabachkrieg", "role": "angreifend" },
+        { "from": 2023, "to": 2023, "name": "Aserbaidschanische Offensive in Bergkarabach", "role": "angreifend" }
+      ]
+    },
+    "BA": {
+      "wars": [
+        { "from": 1992, "to": 1995, "name": "Bosnienkrieg", "role": "verteidigend" }
+      ]
+    },
+    "BE": { "wars": [] },
+    "BG": { "wars": [] },
+    "BY": { "wars": [] },
+    "CH": { "wars": [] },
+    "CS": { "wars": [] },
+    "CY": {
+      "wars": [
+        { "from": 1974, "to": 1974, "name": "Türkische Invasion Zyperns", "role": "verteidigend" }
+      ]
+    },
+    "CZ": { "wars": [] },
+    "DE": {
+      "languages": ["de"],
+      "cultural_region": "mitteleuropa",
+      "government": [
+        { "from": 1949, "to": null, "form": "parlamentarische_republik", "note": "Bundesrepublik (Teilnahme als BR Deutschland; DDR nie ESC-Teilnehmer)" }
+      ],
+      "wars": []
+    },
+    "DK": { "wars": [] },
+    "EE": { "wars": [] },
+    "ES": {
+      "wars": [
+        { "from": 1957, "to": 1958, "name": "Ifni-Krieg", "role": "kolonialkrieg" }
+      ]
+    },
+    "FI": { "wars": [] },
+    "FR": {
+      "wars": [
+        { "from": 1954, "to": 1962, "name": "Algerienkrieg", "role": "kolonialkrieg" },
+        { "from": 1956, "to": 1956, "name": "Sueskrise", "role": "angreifend" }
+      ]
+    },
+    "GB": {
+      "wars": [
+        { "from": 1956, "to": 1956, "name": "Sueskrise", "role": "angreifend" },
+        { "from": 1982, "to": 1982, "name": "Falklandkrieg", "role": "verteidigend" }
+      ]
+    },
+    "GE": {
+      "wars": [
+        { "from": 1991, "to": 1992, "name": "Südossetienkrieg", "role": "zerfallskonflikt" },
+        { "from": 1992, "to": 1993, "name": "Krieg in Abchasien", "role": "zerfallskonflikt" },
+        { "from": 2008, "to": 2008, "name": "Kaukasuskrieg", "role": "verteidigend" }
+      ]
+    },
+    "GR": { "wars": [] },
+    "HR": {
+      "wars": [
+        { "from": 1991, "to": 1995, "name": "Kroatischer Unabhängigkeitskrieg", "role": "verteidigend" }
+      ]
+    },
+    "HU": { "wars": [] },
+    "IE": { "wars": [] },
+    "IL": {
+      "wars": [
+        { "from": 1956, "to": 1956, "name": "Sueskrise (Sinai-Feldzug)", "role": "angreifend" },
+        { "from": 1967, "to": 1967, "name": "Sechstagekrieg", "role": "zwischenstaatlich" },
+        { "from": 1973, "to": 1973, "name": "Jom-Kippur-Krieg", "role": "verteidigend" },
+        { "from": 1982, "to": 1982, "name": "Libanonkrieg 1982", "role": "angreifend" },
+        { "from": 2006, "to": 2006, "name": "Libanonkrieg 2006", "role": "zwischenstaatlich" },
+        { "from": 2008, "to": 2009, "name": "Gazakrieg 2008/09", "role": "angreifend" },
+        { "from": 2014, "to": 2014, "name": "Gazakrieg 2014", "role": "angreifend" },
+        { "from": 2024, "to": 2025, "name": "Gazakrieg ab 2023", "role": "zwischenstaatlich" }
+      ]
+    },
+    "IS": { "wars": [] },
+    "IT": { "wars": [] },
+    "LT": { "wars": [] },
+    "LU": { "wars": [] },
+    "LV": { "wars": [] },
+    "MA": {
+      "wars": [
+        { "from": 1975, "to": 1991, "name": "Westsahara-Krieg", "role": "angreifend" }
+      ]
+    },
+    "MC": { "wars": [] },
+    "MD": {
+      "wars": [
+        { "from": 1992, "to": 1992, "name": "Transnistrien-Krieg", "role": "verteidigend" }
+      ]
+    },
+    "ME": { "wars": [] },
+    "MK": { "wars": [] },
+    "MT": { "wars": [] },
+    "NL": { "wars": [] },
+    "NO": { "wars": [] },
+    "PL": { "wars": [] },
+    "PT": {
+      "wars": [
+        { "from": 1961, "to": 1974, "name": "Portugiesischer Kolonialkrieg", "role": "kolonialkrieg" }
+      ]
+    },
+    "RO": { "wars": [] },
+    "RS": {
+      "wars": [
+        { "from": 1998, "to": 1999, "name": "Kosovokrieg", "role": "zerfallskonflikt" }
+      ]
+    },
+    "RU": {
+      "wars": [
+        { "from": 1994, "to": 1996, "name": "Erster Tschetschenienkrieg", "role": "buergerkrieg" },
+        { "from": 1999, "to": 2009, "name": "Zweiter Tschetschenienkrieg", "role": "buergerkrieg" },
+        { "from": 2008, "to": 2008, "name": "Kaukasuskrieg", "role": "angreifend" },
+        { "from": 2014, "to": null, "name": "Russisch-Ukrainischer Krieg", "role": "angreifend" }
+      ]
+    },
+    "SE": {
+      "languages": ["sv"],
+      "cultural_region": "nordeuropa",
+      "government": [
+        { "from": 1809, "to": null, "form": "parlamentarische_monarchie" }
+      ],
+      "wars": []
+    },
+    "SI": {
+      "wars": [
+        { "from": 1991, "to": 1991, "name": "10-Tage-Krieg", "role": "verteidigend" }
+      ]
+    },
+    "SK": { "wars": [] },
+    "SM": { "wars": [] },
+    "TR": {
+      "wars": [
+        { "from": 1974, "to": 1974, "name": "Türkische Invasion Zyperns", "role": "angreifend" }
+      ]
+    },
+    "UA": {
+      "languages": ["uk", "ru"],
+      "cultural_region": "osteuropa",
+      "government": [
+        { "from": 1991, "to": null, "form": "semipraesidiale_republik", "note": "Unabhängigkeit von der UdSSR" }
+      ],
+      "wars": [
+        { "from": 2014, "to": null, "name": "Russisch-Ukrainischer Krieg", "role": "verteidigend" }
+      ]
+    },
+    "YU": {
+      "languages": ["sr", "hr", "sl", "mk"],
+      "cultural_region": "suedosteuropa",
+      "government": [
+        { "from": 1945, "to": 1992, "form": "sozialistische_republik", "note": "Sozialistische Föderative Republik Jugoslawien" }
+      ],
+      "wars": [
+        { "from": 1991, "to": 1995, "name": "Jugoslawienkriege", "role": "zerfallskonflikt" }
+      ]
+    }
+  }
+}

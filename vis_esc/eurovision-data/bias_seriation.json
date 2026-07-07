@@ -1,0 +1,433 @@
+{
+  "_meta": {
+    "description": "Community ordering for the bias matrix; order[] is the row/column sequence, communities[] the diagonal blocks. Cell values live in bias_matrix.json keyed by [giver, receiver].",
+    "method": "Louvain (resolution 1.0) on the undirected graph whose edge weight is the summed log2(bias) of significant (p<0.05), positive (bias>1), substantive (O>=20) directed votes",
+    "modularity": 0.4849,
+    "chosen_seed": 3,
+    "n_nodes_in_graph": 51,
+    "n_countries_total": 52,
+    "n_communities": 7,
+    "generator": "scripts/build_bias_matrix.py"
+  },
+  "order": [
+    "HR",
+    "MK",
+    "BA",
+    "RS",
+    "SI",
+    "ME",
+    "CS",
+    "AT",
+    "IS",
+    "LT",
+    "SE",
+    "EE",
+    "LV",
+    "FI",
+    "NO",
+    "DK",
+    "IE",
+    "GB",
+    "AU",
+    "PL",
+    "HU",
+    "DE",
+    "RU",
+    "AZ",
+    "GE",
+    "UA",
+    "BY",
+    "MD",
+    "AM",
+    "RO",
+    "CZ",
+    "IL",
+    "AL",
+    "GR",
+    "TR",
+    "CY",
+    "SM",
+    "IT",
+    "YU",
+    "BG",
+    "CH",
+    "NL",
+    "BE",
+    "ES",
+    "AD",
+    "FR",
+    "PT",
+    "LU",
+    "MC",
+    "MT",
+    "SK",
+    "MA"
+  ],
+  "communities": [
+    {
+      "id": 1,
+      "size": 8,
+      "internal_weight": 63.41,
+      "curated_tags": {
+        "—": 1,
+        "yugoslavia": 7
+      },
+      "suggested_label": "yugoslavia",
+      "start_index": 0,
+      "end_index": 7,
+      "members": [
+        {
+          "iso": "HR",
+          "name": "Croatia",
+          "within_strength": 21.91
+        },
+        {
+          "iso": "MK",
+          "name": "North Macedonia",
+          "within_strength": 20.71
+        },
+        {
+          "iso": "BA",
+          "name": "Bosnia and Herzegovina",
+          "within_strength": 20.41
+        },
+        {
+          "iso": "RS",
+          "name": "Serbia",
+          "within_strength": 19.73
+        },
+        {
+          "iso": "SI",
+          "name": "Slovenia",
+          "within_strength": 18.37
+        },
+        {
+          "iso": "ME",
+          "name": "Montenegro",
+          "within_strength": 10.67
+        },
+        {
+          "iso": "CS",
+          "name": "Serbia and Montenegro",
+          "within_strength": 10.3
+        },
+        {
+          "iso": "AT",
+          "name": "Austria",
+          "within_strength": 4.73
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "size": 14,
+      "internal_weight": 54.26,
+      "curated_tags": {
+        "beyond_europe": 1,
+        "ewg_founding": 1,
+        "nordic": 5,
+        "eastern_bloc": 5,
+        "—": 2
+      },
+      "suggested_label": "nordic",
+      "start_index": 8,
+      "end_index": 21,
+      "members": [
+        {
+          "iso": "IS",
+          "name": "Iceland",
+          "within_strength": 12.66
+        },
+        {
+          "iso": "LT",
+          "name": "Lithuania",
+          "within_strength": 11.21
+        },
+        {
+          "iso": "SE",
+          "name": "Sweden",
+          "within_strength": 10.16
+        },
+        {
+          "iso": "EE",
+          "name": "Estonia",
+          "within_strength": 9.96
+        },
+        {
+          "iso": "LV",
+          "name": "Latvia",
+          "within_strength": 9.86
+        },
+        {
+          "iso": "FI",
+          "name": "Finland",
+          "within_strength": 9.28
+        },
+        {
+          "iso": "NO",
+          "name": "Norway",
+          "within_strength": 8.45
+        },
+        {
+          "iso": "DK",
+          "name": "Denmark",
+          "within_strength": 8.11
+        },
+        {
+          "iso": "IE",
+          "name": "Ireland",
+          "within_strength": 7.79
+        },
+        {
+          "iso": "GB",
+          "name": "United Kingdom",
+          "within_strength": 6.3
+        },
+        {
+          "iso": "AU",
+          "name": "Australia",
+          "within_strength": 6.26
+        },
+        {
+          "iso": "PL",
+          "name": "Poland",
+          "within_strength": 4.04
+        },
+        {
+          "iso": "HU",
+          "name": "Hungary",
+          "within_strength": 2.3
+        },
+        {
+          "iso": "DE",
+          "name": "Germany",
+          "within_strength": 2.14
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "size": 10,
+      "internal_weight": 51.75,
+      "curated_tags": {
+        "caucasus": 3,
+        "eastern_bloc": 5,
+        "beyond_europe": 1,
+        "—": 1
+      },
+      "suggested_label": "eastern_bloc",
+      "start_index": 22,
+      "end_index": 31,
+      "members": [
+        {
+          "iso": "RU",
+          "name": "Russia",
+          "within_strength": 15.97
+        },
+        {
+          "iso": "AZ",
+          "name": "Azerbaijan",
+          "within_strength": 15.27
+        },
+        {
+          "iso": "GE",
+          "name": "Georgia",
+          "within_strength": 14.12
+        },
+        {
+          "iso": "UA",
+          "name": "Ukraine",
+          "within_strength": 13.8
+        },
+        {
+          "iso": "BY",
+          "name": "Belarus",
+          "within_strength": 13.01
+        },
+        {
+          "iso": "MD",
+          "name": "Moldova",
+          "within_strength": 10.46
+        },
+        {
+          "iso": "AM",
+          "name": "Armenia",
+          "within_strength": 8.44
+        },
+        {
+          "iso": "RO",
+          "name": "Romania",
+          "within_strength": 5.4
+        },
+        {
+          "iso": "CZ",
+          "name": "Czechia",
+          "within_strength": 3.58
+        },
+        {
+          "iso": "IL",
+          "name": "Israel",
+          "within_strength": 3.46
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "size": 11,
+      "internal_weight": 38.9,
+      "curated_tags": {
+        "eastern_bloc": 2,
+        "ewg_founding": 3,
+        "—": 2,
+        "mediterranean": 3,
+        "yugoslavia": 1
+      },
+      "suggested_label": "ewg_founding",
+      "start_index": 32,
+      "end_index": 42,
+      "members": [
+        {
+          "iso": "AL",
+          "name": "Albania",
+          "within_strength": 13.39
+        },
+        {
+          "iso": "GR",
+          "name": "Greece",
+          "within_strength": 11.44
+        },
+        {
+          "iso": "TR",
+          "name": "Turkey",
+          "within_strength": 9.84
+        },
+        {
+          "iso": "CY",
+          "name": "Cyprus",
+          "within_strength": 9.25
+        },
+        {
+          "iso": "SM",
+          "name": "San Marino",
+          "within_strength": 7.31
+        },
+        {
+          "iso": "IT",
+          "name": "Italy",
+          "within_strength": 7.09
+        },
+        {
+          "iso": "YU",
+          "name": "Yugoslavia",
+          "within_strength": 5.89
+        },
+        {
+          "iso": "BG",
+          "name": "Bulgaria",
+          "within_strength": 4.51
+        },
+        {
+          "iso": "CH",
+          "name": "Switzerland",
+          "within_strength": 3.61
+        },
+        {
+          "iso": "NL",
+          "name": "Netherlands",
+          "within_strength": 3.12
+        },
+        {
+          "iso": "BE",
+          "name": "Belgium",
+          "within_strength": 2.37
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "size": 6,
+      "internal_weight": 11.83,
+      "curated_tags": {
+        "—": 4,
+        "ewg_founding": 2
+      },
+      "suggested_label": "—",
+      "start_index": 43,
+      "end_index": 48,
+      "members": [
+        {
+          "iso": "ES",
+          "name": "Spain",
+          "within_strength": 6.32
+        },
+        {
+          "iso": "AD",
+          "name": "Andorra",
+          "within_strength": 5.92
+        },
+        {
+          "iso": "FR",
+          "name": "France",
+          "within_strength": 5.22
+        },
+        {
+          "iso": "PT",
+          "name": "Portugal",
+          "within_strength": 4.46
+        },
+        {
+          "iso": "LU",
+          "name": "Luxembourg",
+          "within_strength": 1.11
+        },
+        {
+          "iso": "MC",
+          "name": "Monaco",
+          "within_strength": 0.63
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "size": 2,
+      "internal_weight": 5.5,
+      "curated_tags": {
+        "mediterranean": 1,
+        "eastern_bloc": 1
+      },
+      "suggested_label": "mediterranean",
+      "start_index": 49,
+      "end_index": 50,
+      "members": [
+        {
+          "iso": "MT",
+          "name": "Malta",
+          "within_strength": 5.5
+        },
+        {
+          "iso": "SK",
+          "name": "Slovakia",
+          "within_strength": 5.5
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "size": 1,
+      "internal_weight": 0.0,
+      "curated_tags": {
+        "beyond_europe": 1
+      },
+      "suggested_label": "ungebunden",
+      "start_index": 51,
+      "end_index": 51,
+      "members": [
+        {
+          "iso": "MA",
+          "name": "Morocco",
+          "within_strength": 0.0
+        }
+      ]
+    }
+  ]
+}

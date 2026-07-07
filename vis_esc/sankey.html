@@ -1,0 +1,3261 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESC-Teilnehmer 1956–2026</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+  <script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
+  <script src="https://unpkg.com/js-yaml@4/dist/js-yaml.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ── Editorial design tokens (NYT / Pudding house style) ─────── */
+    :root {
+      --paper:      #ffffff;
+      --ink:        #1a1a1a;
+      --ink-soft:   #6b6b6b;
+      --hairline:   #e6e3dd;
+      --paper-dim:  #eef0f3;  /* map stage fill (unselected participants) */
+      --map-line:   #9aa3ab;  /* map borders/coastlines — readable on --paper-dim */
+      --accent:     #1b9e91;  /* kicker + new-entrant semantic */
+      --gone:       #c44e3d;  /* dropout semantic */
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      margin: 0;
+      padding: 3rem 2.5rem 4rem;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    main { max-width: 1280px; margin: 0 auto; }
+
+    /* ── Masthead: kicker → headline → standfirst → hairline ─────── */
+    #masthead {
+      border-bottom: 1px solid var(--hairline);
+      padding-bottom: 1.4rem;
+      margin-bottom: 1.9rem;
+    }
+    #kicker {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin: 0 0 0.65rem;
+    }
+    h1#chart-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 700;
+      font-size: 2.7rem;
+      line-height: 1.07;
+      color: var(--ink);
+      margin: 0 0 0.7rem;
+      max-width: 24ch;
+    }
+    #subtitle {
+      font-size: 1.06rem;
+      line-height: 1.5;
+      font-weight: 400;
+      color: var(--ink-soft);
+      margin: 0;
+      max-width: 62ch;
+    }
+
+    /* ── Chart surface ──────────────────────────────────────────── */
+    /* Diagram-level title above the Sankey on the main page; the masthead
+       carries the page title, this names the graphic itself. */
+    #chart-heading { margin: 0 0 0.9rem; }
+    #chart-heading-title {
+      font-family: 'Playfair Display', Georgia, serif; font-weight: 700;
+      font-size: 1.5rem; line-height: 1.2; color: var(--ink); margin: 0;
+    }
+    #chart-heading-subtitle {
+      font-size: 1rem; line-height: 1.45; color: var(--ink-soft);
+      margin: 0.3rem 0 0; max-width: 62ch;
+    }
+    /* Flexes to fill the row beside the fixed sidebar; min-width:0 lets it
+       shrink below the SVG's intrinsic 1150px so the row never overflows. */
+    #chart { background: var(--paper); padding: 0; overflow: visible; flex: 1 1 0; min-width: 0; position: relative; }
+    #chart svg { overflow: visible; width: 100%; height: auto; display: block; }
+
+    /* War legend chip — shown only while the Sankey is in war-story mode (0002). */
+    #war-legend {
+      display: none; position: absolute; top: 6px; left: 6px; z-index: 2;
+      align-items: center; gap: 7px; padding: 5px 10px;
+      background: rgba(255,255,255,0.82); border-radius: 6px;
+      font-family: 'Inter', sans-serif; font-size: 12px; color: var(--ink);
+      pointer-events: none;
+    }
+    body.war-mode #war-legend { display: flex; }
+    #war-legend .war-swatch {
+      width: 13px; height: 13px; border-radius: 2px;
+      background: #BE1E2D; border: 1px solid #7A0F1A;
+    }
+
+    .node rect { rx: 2; }
+    .node text {
+      font-family: 'Inter', sans-serif;
+      font-size: 12.5px;
+      font-weight: 500;
+      fill: var(--ink);
+      font-feature-settings: 'tnum' 1;
+    }
+    /* Decade time axis below the nodes: range on top, country count muted below. */
+    .axis-sub { font-size: 10.5px; font-weight: 400; fill: var(--ink-soft); }
+
+    .link {
+      fill: none;
+      stroke-opacity: 0.32;
+      transition: stroke-opacity 0.3s;
+    }
+    .link:hover { stroke-opacity: 0.6; }
+
+    .overlay { pointer-events: none; }
+    .seams { pointer-events: none; }
+    .war-marks { pointer-events: none; }
+    /* Map hover echoes onto a country's Sankey threads (ADR-0004 FR-08). */
+    .hit-cell.echo { stroke: var(--ink); stroke-width: 1; }
+
+    /* ── Tooltip: white card, hairline, tabular figures ─────────── */
+    .tooltip {
+      position: absolute;
+      background: #fff;
+      color: var(--ink);
+      border: 1px solid var(--hairline);
+      box-shadow: 0 4px 18px rgba(0,0,0,0.13);
+      padding: 8px 11px;
+      border-radius: 6px;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.18s;
+      font-feature-settings: 'tnum' 1;
+    }
+    .tooltip .tt-label {
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 10px;
+      color: var(--ink-soft);
+      margin-bottom: 2px;
+    }
+    .tooltip .tt-value { font-weight: 600; font-size: 13px; }
+    .tooltip .tt-war { margin-top: 6px; }
+    .tooltip .tt-war:first-of-type { margin-top: 4px; }
+    .tooltip .tt-parties { font-size: 11px; color: var(--ink-soft); margin-top: 1px; }
+    .tooltip .tt-role.attacker { color: #BE1E2D; font-weight: 600; }
+    .tooltip .tt-role.defender { color: #2C6FB0; font-weight: 600; }
+
+    /* ── Footer / source line ───────────────────────────────────── */
+    #chart-footer {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--hairline);
+      font-size: 0.78rem;
+      line-height: 1.5;
+      color: var(--ink-soft);
+      max-width: 70ch;
+    }
+
+    /* ── Layout + selection rail ────────────────────────────────── */
+    /* align-items:flex-start is required so the side rails can travel as sticky. */
+    #content-row { display: flex; align-items: flex-start; gap: 1.6rem; margin-top: 1.4rem; }
+
+    /* Single shared scroll column: both diagrams stack here and scroll as one. */
+    #content-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 1.6rem; }
+
+    /* Persistent gutter reserves its width even while the roster is hidden. */
+    #roster-gutter { flex: none; width: 210px; position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto; }
+
+    /* ── Anchored member roster (hover identification + expanded legend) ─── */
+    #member-roster {
+      background: #fff; border: 1px solid var(--hairline);
+      box-shadow: 0 4px 18px rgba(0,0,0,0.13); border-radius: 6px;
+      padding: 0.7rem 0.9rem; width: 100%; font-size: 0.98rem;
+    }
+    #member-roster[hidden] { display: none; }
+    .mr-header {
+      font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--ink-soft); margin-bottom: 0.5rem;
+    }
+    .mr-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.16rem 0.25rem; border-radius: 4px; }
+    .mr-row.is-hovered { background: #f0eee9; font-weight: 600; }
+    .mr-swatch { width: 0.85rem; height: 0.85rem; border-radius: 2px; flex: none; }
+    .sync-hl { box-shadow: 0 0 0 2px var(--accent); border-radius: 4px; }
+    #selection-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.7rem;
+      width: 224px;
+      flex: none;
+      font-size: 0.88rem;
+      border-right: 1px solid var(--hairline);
+      padding-right: 1.5rem;
+      position: sticky;
+      top: 1rem;
+      max-height: calc(100vh - 2rem);
+      overflow-y: auto;
+    }
+    .sp-heading {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      margin: 0 0 0.1rem;
+    }
+    #country-search {
+      padding: 0.4rem 0.6rem;
+      border: 1px solid var(--hairline);
+      border-radius: 5px;
+      width: 100%;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.86rem;
+      color: var(--ink);
+    }
+    #country-search:focus { outline: none; border-color: var(--accent); }
+    .sp-groups { display: flex; flex-direction: column; gap: 0.45rem; }
+    .sp-groups label { display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; }
+    .group-swatch { width: 0.8rem; height: 0.8rem; border-radius: 2px; flex: none; background: transparent; box-shadow: inset 0 0 0 1px var(--hairline); }
+    #reset-btn {
+      align-self: flex-start;
+      padding: 0.3rem 0.75rem;
+      border: 1px solid var(--hairline);
+      border-radius: 5px;
+      background: #fff;
+      color: var(--ink-soft);
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.82rem;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    #reset-btn:hover { border-color: var(--ink-soft); color: var(--ink); }
+    #entity-chips { display: flex; flex-direction: column; align-items: flex-start; gap: 0.4rem; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.22rem 0.6rem; border-radius: 12px;
+      background: #f6f4f0; font-size: 0.82rem;
+    }
+    .chip-swatch { width: 0.8rem; height: 0.8rem; border-radius: 2px; flex: none; }
+    .chip-x { cursor: pointer; font-weight: bold; color: var(--ink-soft); line-height: 1; }
+    .chip-x:hover { color: var(--ink); }
+
+    /* ── Narrative zone: map hero + reserved data-story slot (ADR-0004) ─── */
+    #narrative-zone { display: flex; gap: 1.6rem; flex-wrap: wrap; }
+    #map-panel { flex: 1 1 560px; }
+    #story-slot { flex: 1 1 360px; }
+
+    /* ── Vote-bias matrix (ADR-0009): directed klüngel heat-grid ───── */
+    #matrix-zone { margin-top: 2.4rem; border-top: 1px solid var(--hairline); padding-top: 1.6rem; }
+    #matrix-zone h2 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.3rem; font-weight: 600; margin: 0 0 0.6rem; color: var(--ink);
+    }
+    #matrix-scroll { overflow-x: auto; }
+    #matrix-svg { font-family: 'Inter', sans-serif; }
+    #matrix-svg .matrix-tick { font-size: 13.5px; fill: var(--ink-soft); }
+    #matrix-svg .matrix-sep { stroke: var(--ink); stroke-width: 0.75; opacity: 0.5; }
+    .matrix-cell { shape-rendering: crispEdges; }
+    #matrix-empty {
+      font-size: 0.9rem; color: var(--ink-soft); font-style: italic;
+      padding: 1.4rem 0; max-width: 52ch;
+    }
+    #matrix-legend {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 1.2rem;
+      margin-top: 0.9rem; font-size: 0.8rem; color: var(--ink-soft);
+    }
+    #matrix-legend .legend-swatch {
+      display: inline-block; width: 0.9rem; height: 0.9rem; border-radius: 2px;
+      vertical-align: middle; margin-right: 0.35rem;
+    }
+    #matrix-legend .legend-gradient {
+      display: inline-block; width: 120px; height: 0.9rem; border-radius: 2px;
+      vertical-align: middle; margin-right: 0.35rem; border: 1px solid var(--hairline);
+    }
+    #matrix-legend .legend-blank { border: 1px solid var(--hairline); background: var(--paper); }
+    #matrix-caption { font-size: 0.72rem; color: var(--ink-soft); margin-top: 0.7rem; max-width: 64ch; }
+    #matrix-method { font-size: 0.78rem; color: var(--ink-soft); margin-top: 1rem; max-width: 64ch; }
+    #matrix-method summary {
+      cursor: pointer; font-weight: 600; color: var(--ink); list-style-position: outside;
+    }
+    #matrix-method h3 { font-size: 0.8rem; color: var(--ink); margin: 0.8rem 0 0.2rem; }
+    #matrix-method p { margin: 0 0 0.5rem; line-height: 1.55; }
+    .geo-country {
+      fill: var(--paper-dim, #eef0f3);
+      stroke: var(--map-line);
+      stroke-width: 0.5;
+      transition: fill 300ms;
+    }
+    .geo-context {
+      fill: none;
+      stroke: var(--map-line);
+      stroke-width: 0.5;
+      pointer-events: none;
+    }
+    /* Centroid dot for micro-states too small to read as a filled shape. */
+    .geo-marker { stroke: #fff; stroke-width: 1; transition: fill 300ms; }
+    .inset-frame { fill: none; stroke: var(--hairline); stroke-width: 1; }
+    .inset-label {
+      font-family: 'Inter', sans-serif; font-size: 0.68rem; fill: var(--ink-soft);
+    }
+
+    /* ── Scrollytelling reading mode (ADR-0006) ──────────────────────── */
+    #story-entries {
+      margin-top: 1rem; display: flex; flex-direction: column;
+      align-items: flex-start; gap: 0.5rem;
+    }
+    .story-entry {
+      padding: 0.45rem 0.95rem;
+      border: 1px solid var(--accent); border-radius: 5px;
+      background: var(--accent); color: #fff; cursor: pointer;
+      font-family: 'Inter', sans-serif; font-size: 0.9rem;
+      transition: opacity 0.15s;
+    }
+    .story-entry:hover { opacity: 0.88; }
+    .story-entry:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* The mode is hidden until entered; entering also clears the explore view. */
+    #story-mode { display: none; }
+    body.story-mode #content-row,
+    body.story-mode #chart-footer,
+    body.story-mode .story-entry { display: none; }
+    body.story-mode #story-mode {
+      display: flex; gap: 2.4rem; align-items: flex-start;
+    }
+
+    /* The active graphic is pinned; the other is faded out in the same grid cell. */
+    #story-stage {
+      position: sticky; top: 0; flex: 1 1 0; min-width: 0;
+      height: 100vh; display: grid; align-content: center; justify-items: center;
+    }
+    #story-stage #chart, #story-stage #map, #story-stage #vote, #story-stage #payoff,
+    #story-stage #measure {
+      grid-area: 1 / 1; width: 100%; max-height: 80vh;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 300ms;
+    }
+    #story-stage .is-stage { opacity: 1 !important; pointer-events: auto !important; }
+    /* Per-stage diagram heading (story 0003), pinned at the top of the sticky
+       stage so every graphic carries a title analog to the measure stage. */
+    #stage-heading {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 2;
+      text-align: center; padding: 0.7rem 1rem 0; pointer-events: none;
+    }
+    #stage-heading.empty { display: none; }
+    #stage-title {
+      font-family: 'Playfair Display', Georgia, serif; font-size: 22px;
+      color: var(--ink); line-height: 1.25;
+    }
+    #stage-subtitle {
+      font-size: 14px; color: var(--ink-soft); margin: 0.25rem auto 0; max-width: 60ch;
+    }
+    /* Hit cells opt back into pointer events individually, so the inert-stage
+       rule above can't reach them; silence them explicitly while the chart is
+       off stage, or the faded Sankey leaks hovers onto the matrix (ADR-0010). */
+    #story-stage #chart:not(.is-stage) .hit-cell { pointer-events: none; }
+    #story-stage #chart svg, #story-stage #map svg,
+    #story-stage #vote svg, #story-stage #payoff svg, #story-stage #measure svg {
+      width: auto; height: auto; max-width: 100%; max-height: 80vh;
+    }
+    /* The matrix shares the stacked stage cell; it scrolls inside the 80vh box
+       instead of spilling past the sticky viewport (ADR-0010). */
+    #story-stage #matrix-scroll {
+      grid-area: 1 / 1; place-self: center; max-width: 100%; max-height: 80vh;
+      overflow: auto; opacity: 0; pointer-events: none; transition: opacity 320ms ease;
+    }
+    /* On stage the matrix sheds its section chrome; only the grid carries the beat. */
+    body.story-mode #matrix-zone > :not(#matrix-scroll) { display: none; }
+
+    /* Vote stage (#vote): the Δ baseline cloud + median (story 0002, ADR-0008). */
+    #vote .vote-dot { fill: #B7B1A4; }
+    #vote .vote-band-line { stroke: #E4DFD5; stroke-width: 1; }
+    #vote .vote-year {
+      fill: var(--ink-soft); font-family: 'Inter', sans-serif; font-size: 12px;
+    }
+    #vote .vote-year-note {
+      fill: #C9C2B6; font-family: 'Inter', sans-serif; font-size: 11px; font-style: italic;
+    }
+    #vote .vote-axis path, #vote .vote-axis line { stroke: #D2CCC0; }
+    #vote .vote-axis text { fill: var(--ink-soft); font-family: 'Inter', sans-serif; font-size: 14px; }
+    #vote .vote-zero { stroke: #D2CCC0; stroke-width: 1; }
+    #vote .vote-median { stroke: #9E1B2F; stroke-width: 1.5; stroke-dasharray: 5 3; }
+    #vote .vote-label { fill: var(--ink-soft); font-family: 'Inter', sans-serif; font-size: 14px; }
+    #vote .vote-title {
+      fill: var(--ink); font-family: 'Playfair Display', Georgia, serif; font-size: 20px;
+    }
+    #vote .vote-flag {
+      font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600;
+      paint-order: stroke; stroke: var(--paper); stroke-width: 3px;
+    }
+
+    /* Payoff stage (#payoff): bias-vs-rank scatter (story 0003, ADR-0010). */
+    #payoff svg { font-family: 'Inter', sans-serif; }
+    #payoff .payoff-axis path, #payoff .payoff-axis line { stroke: #D2CCC0; }
+    #payoff .payoff-axis text { fill: var(--ink-soft); font-size: 13px; }
+    #payoff .payoff-axis-label { fill: var(--ink-soft); font-size: 13px; }
+    #payoff .payoff-ref-line { stroke: #B7B1A4; stroke-width: 1.5; stroke-dasharray: 5 3; }
+    #payoff .payoff-ref-label { fill: var(--ink-soft); font-size: 12px; font-style: italic; }
+    #payoff .payoff-dot { stroke: var(--paper); stroke-width: 1.5; }
+    #payoff .payoff-label {
+      fill: var(--ink); font-size: 12px; font-weight: 600;
+      paint-order: stroke; stroke: var(--paper); stroke-width: 3px;
+    }
+
+    /* Measure stage (#measure): the Klüngel-Faktor as a two-bar ratio (story 0003, ADR-0011). */
+    #measure svg { font-family: 'Inter', sans-serif; }
+    #measure .measure-bar { stroke: var(--paper); stroke-width: 1.5; }
+    #measure .measure-value {
+      fill: var(--ink); font-size: 17px; font-weight: 700;
+    }
+    #measure .measure-cat { fill: var(--ink); font-size: 14px; font-weight: 600; }
+    #measure .measure-sub { fill: var(--ink-soft); font-size: 12.5px; }
+    #measure .measure-ref-line { stroke: #B7B1A4; stroke-width: 1.5; stroke-dasharray: 5 3; }
+    #measure .measure-ref-label { fill: var(--ink-soft); font-size: 12px; font-style: italic; }
+    #measure .measure-factor-num {
+      fill: #C44E3D; font-family: 'Playfair Display', Georgia, serif;
+      font-size: 44px; font-weight: 700; text-anchor: middle;
+    }
+    #measure .measure-factor-form { fill: var(--ink-soft); font-size: 15px; text-anchor: middle; }
+
+    #story-scroller { flex: 0 0 38%; max-width: 460px; }
+    #story-page-head { padding-top: 1.5rem; margin: 0 0 1rem; }
+    #story-page-head h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 700; font-size: 2.8rem; line-height: 1.1;
+      color: var(--ink); margin: 0 0 0.6rem;
+    }
+    #story-page-head p {
+      font-family: 'Inter', sans-serif; font-size: 1.15rem;
+      line-height: 1.4; color: var(--ink-soft); margin: 0; max-width: 42ch;
+    }
+    .story-step {
+      min-height: 78vh; display: flex; flex-direction: column; justify-content: center;
+    }
+    .story-step h2 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 600; font-size: 1.5rem; color: var(--ink); margin: 0 0 0.8rem;
+    }
+    .story-step p {
+      font-size: 1.06rem; line-height: 1.6; color: var(--ink);
+      margin: 0 0 1rem; max-width: 46ch;
+    }
+    .story-aside { min-height: 60vh; }
+    .story-cue {
+      font-style: italic; font-size: 1rem; line-height: 1.5;
+      color: var(--ink-soft); max-width: 40ch;
+      border-left: 2px solid var(--accent); padding-left: 0.9rem;
+    }
+    .story-figure {
+      margin: 1.6rem 0 0; font-size: 1rem; color: var(--ink-soft);
+      display: flex; align-items: baseline; gap: 0.55rem;
+    }
+    .story-count {
+      font-family: 'Playfair Display', Georgia, serif; font-weight: 700;
+      font-size: 2.8rem; line-height: 1; color: #C0392B;
+    }
+
+    /* yu-hinge beat: slowly fade only the aggregate river; decade rects and the
+       overlay band stay full, so the Yugoslavia transition reads on its own. */
+    #chart svg.spotlight .link { opacity: 0.04; transition: opacity 1200ms; }
+    @media (prefers-reduced-motion: reduce) {
+      #chart svg.spotlight .link { transition: none; }
+    }
+    #story-exit {
+      margin: 1rem 0 8rem; padding: 0.5rem 1.05rem;
+      border: 1px solid var(--accent); border-radius: 5px;
+      background: var(--accent); color: #fff; cursor: pointer;
+      font-family: 'Inter', sans-serif; font-size: 0.95rem;
+    }
+    @media (max-width: 820px) {
+      body.story-mode #story-mode { flex-direction: column; }
+      #story-stage { height: 60vh; }
+      #story-scroller { flex: none; max-width: none; }
+    }
+  </style>
+</head>
+<body>
+
+<main>
+  <header id="masthead">
+    <p id="kicker">Eurovision Song Contest · 1956–2026</p>
+    <h1 id="chart-title">—</h1>
+    <p id="subtitle">— noch keine Daten —</p>
+    <div id="story-entries"></div>
+  </header>
+
+  <div id="content-row">
+    <div id="selection-panel"></div>
+
+    <div id="content-col">
+      <div id="chart-heading">
+        <h2 id="chart-heading-title">Sechs Jahrzehnte Teilnehmer im Fluss</h2>
+        <p id="chart-heading-subtitle">Zugänge, durchgehende Teilnahme und Abgänge von 1956 bis 2026.</p>
+      </div>
+      <div id="chart">
+        <div id="war-legend"><span class="war-swatch"></span>Krieg</div>
+      </div>
+
+      <div id="narrative-zone">
+        <div id="map-panel">
+          <div id="map"></div>
+        </div>
+        <div id="story-slot" aria-hidden="true"><!-- reserved for the data story (ADR-0005) --></div>
+      </div>
+
+      <section id="matrix-zone" hidden aria-labelledby="matrix-title">
+        <h2 id="matrix-title">Wer wählt wen — die Klüngel-Matrix</h2>
+        <p id="matrix-empty" hidden>Wähle links ein Land oder eine Gruppe, um die gegenseitigen Klüngel-Beziehungen der Auswahl als Matrix zu sehen.</p>
+        <div id="matrix-scroll"><svg id="matrix-svg"></svg></div>
+        <div id="matrix-legend"></div>
+        <p id="matrix-caption"></p>
+        <details id="matrix-method">
+          <summary>Wie wird der Klüngel berechnet?</summary>
+          <h3>Was wäre fair?</h3>
+          <p>Manche Länder verteilen grundsätzlich viele Punkte, manche Lieder sind
+          grundsätzlich beliebt. Das »Nullmodell« rechnet aus, wie viele Punkte von einem
+          Land zum anderen fließen <em>müssten</em>, wenn nur das zählte — ganz ohne
+          Freundschaft, Nachbarschaft oder Diaspora. Diese erwartete Zahl ist
+          <strong>E</strong>; der <strong>Bias</strong> zeigt, wie weit die Wirklichkeit
+          <strong>O</strong> darüber liegt. (Damit eine Clique ihre eigene Vorliebe nicht zur
+          »Normalität« erklärt, wird die Beliebtheit eines Landes stets aus den Stimmen
+          <em>aller übrigen</em> geschätzt.)</p>
+          <h3>Könnte es Zufall sein?</h3>
+          <p>Wir mischen die echten Stimmen tausendfach neu durch und messen jedes Mal, wie
+          groß ein Bias allein durch Zufall ausfällt. Übertrifft der echte Wert fast alle
+          dieser Zufallsläufe, ist er kein Glücksfall. »<strong>p</strong> &lt; 0,001« heißt:
+          stärker als praktisch jeder Zufallsdurchlauf.</p>
+          <h3>Gibt es überhaupt Cliquen?</h3>
+          <p>Ein Verfahren namens <em>Louvain</em> sucht Ländergruppen, die sich gegenseitig
+          hochpunkten, und ordnet die Matrix so, dass sie als Blöcke auf der Diagonale
+          zusammenrücken — daher die sichtbaren Quadrate. Der Wert <strong>Q</strong>
+          (zwischen 0 und 1) sagt, wie klar sich das Feld in getrennte Cliquen teilt: hoch =
+          scharf abgegrenzte Gruppen, niedrig = eine große Mischung.</p>
+        </details>
+      </section>
+    </div>
+
+    <div id="roster-gutter">
+      <div id="member-roster" hidden></div>
+    </div>
+  </div>
+
+  <footer id="chart-footer">
+    Quelle: <code>eurovision-data</code>
+  </footer>
+</main>
+
+<div class="tooltip" id="tooltip"></div>
+
+<!-- Requires a local HTTP server (e.g. python3 -m http.server 8080) — fetch() does not work via file:// -->
+<script>
+  // ── Module-scope state ─────────────────────────────────────────
+  const DECADES = ['1956–1969','1970–1979','1980–1989','1990–1999',
+                   '2000–2009','2010–2019','2020–2026'];
+
+  let groups = {}; // group key → { label, members[], story }; filled by loadGroups()
+
+  let participation   = new Map(); // ISO2 → Set<decade-label>
+  let countryByDecade = new Map(); // decade-label → Set<ISO2>
+  let countryNames    = new Map(); // ISO2 → display name
+  let firstEntryYear  = new Map(); // ISO2 → earliest participation year
+  let countryAttrs    = new Map(); // ISO2 → { languages, cultural_region, government[], wars[] }
+  let allEntries      = [];        // every entry row, kept for the vote stage (story 0002)
+  let voteRowsCache   = null;      // memoised split-era finals (built once by voteRows())
+  let sankeyLinksData = [];        // set by render(), read by computeLinkCountries()
+  let sankeyNodesData = [];        // set by render(), read by the overlay engine
+  let linkCountries   = new Map(); // link-index → Set<ISO2>
+  let selectedEntities = [];          // ordered Entity list; selection order = stack order
+
+  // Vote-bias matrix (ADR-0009): runtime consumers of the two derived JSONs.
+  let biasMatrix    = null;        // parsed bias_matrix.json (parallel arrays)
+  let biasSeriation = null;        // parsed bias_seriation.json (order + communities)
+  let biasOrder     = [];          // axis sequence, alias of biasSeriation.order
+  let biasIndex     = new Map();   // "giver|receiver" → cellDatum
+  let biasCommunityOf = new Map(); // ISO2 → Louvain community index (for sub-blocks)
+
+  // Scrollytelling data-story layer (ADR-0006): an opt-in reading mode.
+  let storyMode = false;              // true while the scroll experience is on screen
+  let story = null;                   // parsed Story object of the active chapter
+  let stepObserver = null;            // IntersectionObserver driving step changes
+  // War-evidence story (0002): per-step temporal anchor + role-overlay switches.
+  let storyFocus = null;              // resolved focus year (null = `all`/peace)
+  let storyWarSegments = false;       // Sankey war-segment role tint active
+  let storyRoleMode = false;          // map paints by binary role at storyFocus
+  const STORY_SOURCES = {
+    '0001': 'docs/stories/0001-osterweiterung-nach-1989.md',
+    '0002': 'docs/stories/0002-krieger-sollen-nicht-singen.md',
+    '0003': 'docs/stories/0003-kluengel-lohnt-sich-nicht.md'   // ADR-0010
+  };
+  // Chapter entries rendered from one registry; `label` overrides the (long)
+  // story title where a short button caption reads better.
+  const CHAPTERS = [
+    { id: '0001', label: 'Kollaps - Wie der Zerbruch des Ostblocks das ESC-Feld verdoppelte' },
+    { id: '0002', label: 'Krieg - Wie der ESC Kriegsländer belohnt' },
+    { id: '0003', label: 'Klüngel - Nachbarschaft ist dicker als Talent' }
+  ];
+  // Editorial categorical palette: saturated enough to read as the loud "events"
+  // against the neutral river, tuned not to clash with the new/gone semantics.
+  const PALETTE = ['#2D6A9F','#D1495B','#E0A33A','#3F8E6E','#8E5BA6',
+                   '#1F8FA6','#B5651D','#5A6B7B','#A23B72','#4C6E3F'];
+  // Entities pinned to a signature colour; kept out of the rotation pool below.
+  const FIXED_COLORS = { 'group:eastern_bloc': '#C0392B' };  // the Eastern bloc reads red
+  const TINT_L = [38, 82];             // lightness span for the expanded tint ramp (NFR-05)
+  // War-evidence story (0002, ADR-0008): every belligerent reads as one red field —
+  // the role string survives in the data and tooltips, but no longer splits the colour.
+  const ROLE_RED  = '#9E1B2F';         // war accent on the map — distinct from the clay `gone` node
+  const VOTE_MEDIAN = -3;              // documented Δ baseline finding (drawn, not recomputed)
+  // Sankey war marker (story 0002): figure-ground per NYT practice — in war-story
+  // mode the whole field recedes to a quiet desaturated grey and war is the single
+  // red accent, so the marking stands out instead of competing with 19 hues.
+  const WAR_FILL = '#BE1E2D';          // the one accent: war segments
+  const WAR_EDGE = '#7A0F1A';          // thin contour separating adjacent war segments
+  // Display labels for the six raw roles in the war tooltip (German UI strings).
+  const ROLE_LABEL = { verteidigend: 'Verteidiger', angreifend: 'Angreifer',
+    zwischenstaatlich: 'zwischenstaatlich', kolonialkrieg: 'Kolonialkrieg',
+    zerfallskonflikt: 'Zerfallskonflikt', buergerkrieg: 'Bürgerkrieg' };
+  let memberCache    = new Map();     // node → Set<ISO2>, cleared each refresh()
+  let effectiveCache = new Map();     // entity.id → Set<ISO2>, cleared each refresh()
+  let hoveredMember  = null;          // { entityId, iso, segKey } | null — current hover target
+
+  // ── Geographic map state (ADR-0004) ────────────────────────────
+  let featureByIso     = new Map();   // ISO2 → GeoJSON Feature (modern borders)
+  let contextFeatures  = [];          // non-participant Mediterranean rim (coastline backdrop)
+  let everParticipants = new Set();   // = new Set(participation.keys())
+  let mapSvg = null, geoPath = null, insetPath = null; // retained handles
+
+  // Historical codes with no modern feature map to their successor footprints;
+  // direct successor members (also colourable) win on territorial overlap (FR-04).
+  const HIST_ALIAS = {
+    YU: ['RS', 'HR', 'SI', 'BA', 'MK', 'ME'],
+    CS: ['RS', 'ME']
+  };
+
+  // A fixed editorial window, not a fit to the raw stage: Russia reaches the
+  // dateline (±180°) and many countries carry far-flung territories, so fitting to
+  // feature bounds would zoom out to the whole globe. West: Iberia/Morocco (Iceland
+  // is shifted in beside Norway during the data build); east: the Urals. The east
+  // bound (66°E) leaves a strip past the Ural cut so the open-ended Russia fragment
+  // reads as "continues beyond the map", not "ends at the edge" (ADR-0004 Dec. 4).
+  // South: 26°N — Israel reaches only to 29.5°N, so a tighter bound pinned it to the
+  // bottom edge as an easily-missed sliver; the extra strip gives it breathing room.
+  const MAP_FRAME = { type: 'Polygon',
+    coordinates: [[[-13, 26], [66, 26], [66, 72], [-13, 72], [-13, 26]]] };
+  // Europe/Asia divide: Russia is clipped here, leaving its eastern outline open
+  // (a clip edge is never stroked) so the fragment breaks off rather than walling.
+  const URAL_LON = 60;
+  // Australian mainland window for the inset; remote AU territories clip away.
+  const AU_FRAME = { type: 'Polygon',
+    coordinates: [[[112, -44], [154, -44], [154, -10], [112, -10], [112, -44]]] };
+
+  function decadeLabel(year) {
+    if (year <= 1969) return '1956–1969';
+    if (year <= 1979) return '1970–1979';
+    if (year <= 1989) return '1980–1989';
+    if (year <= 1999) return '1990–1999';
+    if (year <= 2009) return '2000–2009';
+    if (year <= 2019) return '2010–2019';
+    return '2020–2026';
+  }
+
+  function buildParticipation(entries) {
+    const map = new Map();
+    for (const e of entries) {
+      if (!map.has(e.country_iso2)) map.set(e.country_iso2, new Set());
+      map.get(e.country_iso2).add(decadeLabel(e.year));
+    }
+    return map;
+  }
+
+  function invertParticipation(pm) {
+    const map = new Map();
+    for (const [iso2, decades] of pm) {
+      for (const d of decades) {
+        if (!map.has(d)) map.set(d, new Set());
+        map.get(d).add(iso2);
+      }
+    }
+    return map;
+  }
+
+  function buildCountryNames(entries) {
+    const map = new Map();
+    for (const e of entries) map.set(e.country_iso2, e.country);
+    return map;
+  }
+
+  function buildFirstEntryYear(entries) {
+    const map = new Map();
+    for (const e of entries) {
+      const cur = map.get(e.country_iso2);
+      if (cur === undefined || e.year < cur) map.set(e.country_iso2, e.year);
+    }
+    return map;
+  }
+
+  function getNewEntrantSet(targetName) {
+    const prevName = DECADES[DECADES.indexOf(targetName) - 1];
+    const inTarget = countryByDecade.get(targetName) ?? new Set();
+    const inPrev   = prevName ? (countryByDecade.get(prevName) ?? new Set()) : new Set();
+    return new Set([...inTarget].filter(c => !inPrev.has(c)));
+  }
+
+  function getDropoutSet(sourceName) {
+    const nextName = DECADES[DECADES.indexOf(sourceName) + 1];
+    const inSource = countryByDecade.get(sourceName) ?? new Set();
+    const inNext   = nextName ? (countryByDecade.get(nextName) ?? new Set()) : new Set();
+    return new Set([...inSource].filter(c => !inNext.has(c)));
+  }
+
+  function getContinuitySet(sourceName, targetName) {
+    const srcSet = countryByDecade.get(sourceName) ?? new Set();
+    const tgtSet = countryByDecade.get(targetName) ?? new Set();
+    return new Set([...srcSet].filter(c => tgtSet.has(c)));
+  }
+
+  // Resolves any node to the country Set it represents, using its single
+  // incident link to find the adjacent decade for 'new' / 'gone' nodes.
+  function nodeMembers(node) {
+    if (memberCache.has(node)) return memberCache.get(node);
+    let set;
+    if (node.type === 'decade') set = countryByDecade.get(node.name) ?? new Set();
+    else if (node.type === 'new') set = getNewEntrantSet(node.sourceLinks[0].target.name);
+    else set = getDropoutSet(node.targetLinks[0].source.name);
+    memberCache.set(node, set);
+    return set;
+  }
+
+  function computeLinkCountries() {
+    const result = new Map();
+    sankeyLinksData.forEach((link, i) => {
+      const src = link.source, tgt = link.target;
+      let countries;
+      if (src.type === 'new')   countries = getNewEntrantSet(tgt.name);
+      else if (tgt.type === 'gone') countries = getDropoutSet(src.name);
+      else                      countries = getContinuitySet(src.name, tgt.name);
+      result.set(i, countries);
+    });
+    return result;
+  }
+
+  function buildSelectionPanel() {
+    const panel = document.getElementById('selection-panel');
+
+    const heading = document.createElement('h2');
+    heading.className = 'sp-heading';
+    heading.textContent = 'Hervorheben';
+    panel.appendChild(heading);
+
+    const searchWrap = document.createElement('div');
+    searchWrap.innerHTML =
+      '<input id="country-search" list="country-list"' +
+      ' placeholder="Land suchen" autocomplete="off">' +
+      '<datalist id="country-list"></datalist>';
+    panel.appendChild(searchWrap);
+
+    const groupWrap = document.createElement('div');
+    groupWrap.className = 'sp-groups';
+    for (const [key, grp] of Object.entries(groups)) {
+      const lbl = document.createElement('label');
+      lbl.innerHTML = `<input type="checkbox" data-group="${key}">` +
+        `<span class="group-swatch" data-swatch="${key}"></span> ${grp.label}`;
+      groupWrap.appendChild(lbl);
+    }
+    panel.appendChild(groupWrap);
+
+    const btn = document.createElement('button');
+    btn.id = 'reset-btn';
+    btn.textContent = 'Auswahl zurücksetzen';
+    panel.appendChild(btn);
+
+    const chips = document.createElement('div');
+    chips.id = 'entity-chips';
+    panel.appendChild(chips);
+  }
+
+  function populateDatalist() {
+    const dl = document.getElementById('country-list');
+    const sorted = [...countryNames.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+    for (const [iso2, name] of sorted) {
+      const opt = document.createElement('option');
+      opt.value = `${name} (${iso2})`;
+      dl.appendChild(opt);
+    }
+  }
+
+  // A member is attributed to the first entity (in selection order) that claims
+  // it, so entity blocks stay disjoint (FR-04). Earlier entities win.
+  function effectiveMembers(entity) {
+    if (effectiveCache.has(entity.id)) return effectiveCache.get(entity.id);
+    const claimed = new Set();
+    for (const e of selectedEntities) {
+      if (e.id === entity.id) break;
+      for (const m of e.members) claimed.add(m);
+    }
+    const set = new Set([...entity.members].filter(m => !claimed.has(m)));
+    effectiveCache.set(entity.id, set);
+    return set;
+  }
+
+  function activeIsoSet() {
+    const result = new Set();
+    for (const e of selectedEntities)
+      for (const m of effectiveMembers(e)) result.add(m);
+    return result;
+  }
+
+  function nextColor() {
+    const used = new Set(selectedEntities.map(e => e.color));
+    const reserved = new Set(Object.values(FIXED_COLORS));
+    const pool = PALETTE.filter(c => !reserved.has(c));
+    return pool.find(c => !used.has(c)) ?? pool[selectedEntities.length % pool.length];
+  }
+
+  function addEntity(entity) {
+    if (selectedEntities.some(e => e.id === entity.id)) return;
+    entity.color = FIXED_COLORS[entity.id] ?? nextColor();
+    entity.expanded = false;
+    selectedEntities.push(entity);
+  }
+
+  function removeEntity(id) {
+    selectedEntities = selectedEntities.filter(e => e.id !== id);
+  }
+
+  function decadeNode(name) {
+    return sankeyNodesData.find(n => n.type === 'decade' && n.name === name);
+  }
+
+  function blockMinYear(entity) {
+    let min = Infinity;
+    for (const m of effectiveMembers(entity)) min = Math.min(min, firstEntryYear.get(m) ?? Infinity);
+    return min;
+  }
+
+  // Newest-established block nearest the green/blue seam (top); founders sink down.
+  function orderedBlocks() {
+    return [...selectedEntities].sort((a, b) => blockMinYear(b) - blockMinYear(a));
+  }
+
+  // Closed cubic ribbon of constant height h; control points at the horizontal
+  // midpoint match d3.sankeyLinkHorizontal so bands align with aggregate links.
+  function ribbonPath(sx, sy0, tx, ty0, h) {
+    const xc = (sx + tx) / 2;
+    return `M${sx},${sy0}C${xc},${sy0} ${xc},${ty0} ${tx},${ty0}` +
+           `L${tx},${ty0 + h}C${xc},${ty0 + h} ${xc},${sy0 + h} ${sx},${sy0 + h}Z`;
+  }
+
+  function unitCell(node) {
+    return (node.y1 - node.y0) / node.value;
+  }
+
+  function newNodeFor(decadeName) {
+    return sankeyNodesData.find(n => n.type === 'new' && n.sourceLinks[0].target.name === decadeName);
+  }
+
+  function goneNodeFor(decadeName) {
+    return sankeyNodesData.find(n => n.type === 'gone' && n.targetLinks[0].source.name === decadeName);
+  }
+
+  // Members entering this decade via its green 'new' node. The first decade has
+  // no such node (its members arrive from the left margin), so the set is empty.
+  function nodeNewEntrants(node) {
+    return newNodeFor(node.name) ? getNewEntrantSet(node.name) : new Set();
+  }
+
+  // Top of a decade's blue (continue) region: just below its green new-inflow.
+  function greenSeam(node, cell) {
+    return node.y0 + nodeNewEntrants(node).size * cell;
+  }
+
+  // Newest-established member first, so the newest sits nearest the green/blue seam
+  // and member order stays consistent across decades (bands merge without twisting).
+  function sortedMembers(members) {
+    return [...members].sort((a, b) =>
+      (firstEntryYear.get(b) - firstEntryYear.get(a)) || d3.ascending(a, b));
+  }
+
+  // A member's shade in the expanded fan-out: the group's hue/chroma kept, only
+  // lightness varied across TINT_L by stacking index, so members read as one family
+  // and never collide with other entities' colours (FR-10). Stable across decades.
+  function memberTint(base, i, n) {
+    const c = d3.hcl(base);
+    if (n > 1) c.l = TINT_L[0] + (TINT_L[1] - TINT_L[0]) * (i / (n - 1));
+    return c.formatHex();
+  }
+
+  // Lays one entity's present members as a single block ordered newest→oldest, split
+  // at the green/blue seam (new entrants above, continuers below). One global order —
+  // rather than measuring from the seam on each side — keeps a member's relative
+  // position identical across decades, so a migrating block never twists.
+  function placeEntity(layout, e, node, seam, offs, cell) {
+    const present = sortedMembers([...effectiveMembers(e)].filter(m => nodeMembers(node).has(m)));
+    const eCount = present.filter(m => nodeNewEntrants(node).has(m)).length;
+    // Tint index runs over all of the entity's members (not just the present ones),
+    // so a member keeps its shade across decades regardless of who else is present.
+    const all = e.expanded ? sortedMembers([...effectiveMembers(e)]) : null;
+    present.forEach((m, i) => {
+      const y = i < eCount ? seam - (offs.above + eCount - i) * cell
+                           : seam + (offs.below + i - eCount) * cell;
+      const color = all ? memberTint(e.color, all.indexOf(m), all.length) : e.color;
+      layout.set(m, { y, color, id: e.id });
+    });
+    return { above: offs.above + eCount, below: offs.below + present.length - eCount };
+  }
+
+  // One conserved vertical slot per selected member in a node: a member exits
+  // exactly where it entered, so enter→continue and continue→drop never jump (FR-04).
+  function memberLayout(node, cell) {
+    const seam = greenSeam(node, cell), layout = new Map();
+    let offs = { above: 0, below: 0 };
+    for (const e of orderedBlocks()) offs = placeEntity(layout, e, node, seam, offs, cell);
+    return layout;
+  }
+
+  // Continue: member present in both A and B → slot-to-slot at its conserved y.
+  function continueCells(out, A, B, la, lb, cell) {
+    for (const [m, s] of la)
+      if (lb.has(m)) out.push({ color: s.color, sx: A.x1, sy: s.y, tx: B.x0, ty: lb.get(m).y, h: cell,
+        iso: m, entityId: s.id, segKey: `${s.id}|${A.x1}|${B.x0}` });
+  }
+
+  // Enter: member in B but not A → from B's green 'new' node into its slot, the
+  // 'new'-node order matching the target order so the slices stay parallel.
+  function enterCells(out, B, la, lb, cell) {
+    const entrants = [...lb.keys()].filter(m => !la.has(m)).sort((a, b) => lb.get(a).y - lb.get(b).y);
+    const N = newNodeFor(B.name);
+    entrants.forEach((m, i) => {
+      const t = lb.get(m), sx = N ? N.x1 : B.x0 - 30;
+      out.push({ color: t.color, sx, sy: N ? N.y0 + i * cell : t.y, tx: B.x0, ty: t.y, h: cell,
+        iso: m, entityId: t.id, segKey: `${t.id}|${sx}|${B.x0}` });
+    });
+  }
+
+  // Drop: member in A but not B → from its slot into A's draining 'gone' node.
+  function dropCells(out, A, la, lb, cell) {
+    const G = goneNodeFor(A.name);
+    if (!G) return;
+    const drops = [...la.keys()].filter(m => !lb.has(m)).sort((a, b) => la.get(a).y - la.get(b).y);
+    drops.forEach((m, i) => {
+      const s = la.get(m);
+      out.push({ color: s.color, sx: A.x1, sy: s.y, tx: G.x0, ty: G.y0 + i * cell, h: cell,
+        iso: m, entityId: s.id, segKey: `${s.id}|${A.x1}|${G.x0}` });
+    });
+  }
+
+  // First decade: members have no 'new' node, so they stub in from the left margin
+  // at their own conserved slot.
+  function initialEntryCells(out, A, la, cell) {
+    for (const [m, s] of la) out.push({ color: s.color, sx: A.x0 - 30, sy: s.y, tx: A.x0, ty: s.y, h: cell,
+      iso: m, entityId: s.id, segKey: `${s.id}|${A.x0 - 30}|${A.x0}` });
+  }
+
+  // Fuses stacked 1-cell ribbons that abut on both ends into one band, so adjacent
+  // members of a flow read as a single slice without fill-opacity hairlines.
+  function mergeRibbons(cells, cell) {
+    const near = (a, b) => Math.abs(a - b) < 1e-6;
+    const merged = [];
+    for (const g of d3.group(cells, c => `${c.color}|${c.sx}|${c.tx}|${c.war ? 1 : 0}`).values()) {
+      g.sort((a, b) => a.sy - b.sy);
+      let run = null;
+      for (const c of g) {
+        if (run && near(c.sy, run.sy + run.h) && near(c.ty, run.ty + run.h)) run.h += cell;
+        else { run = { ...c }; merged.push(run); }
+      }
+    }
+    return merged.map(r => ({ d: ribbonPath(r.sx, r.sy, r.tx, r.ty, r.h),
+                             color: r.color, war: !!r.war }));
+  }
+
+  // Raw per-member unit cells (identity-tagged) before mergeRibbons fuses them —
+  // the single geometry source for the bands, separators, and the hit layer.
+  function collectCells() {
+    const cell = unitCell(decadeNode(DECADES[0])), cells = [];
+    const layouts = new Map(DECADES.map(d => [d, memberLayout(decadeNode(d), cell)]));
+    initialEntryCells(cells, decadeNode(DECADES[0]), layouts.get(DECADES[0]), cell);
+    for (let i = 0; i < DECADES.length - 1; i++) {
+      const A = decadeNode(DECADES[i]), B = decadeNode(DECADES[i + 1]);
+      const la = layouts.get(DECADES[i]), lb = layouts.get(DECADES[i + 1]);
+      continueCells(cells, A, B, la, lb, cell);
+      enterCells(cells, B, la, lb, cell);
+      dropCells(cells, A, la, lb, cell);
+    }
+    return cells;
+  }
+
+  // ── Sankey war-segment role tint (story 0002, ADR-0008) ───────────
+  function decadeRange(name) {
+    const [a, b] = name.split('–').map(Number);
+    return [a, b];
+  }
+
+  // The decade a cell's transition lands in: its target decade, or — for a drain
+  // into the gone-node — its source decade. Null if it touches no decade node.
+  function cellDecade(cell) {
+    const t = sankeyNodesData.find(n => n.type === 'decade' && n.x0 === cell.tx);
+    if (t) return t.name;
+    const s = sankeyNodesData.find(n => n.type === 'decade' && n.x1 === cell.sx);
+    return s ? s.name : null;
+  }
+
+  // A year inside the cell's decade at which the country is at war, else null (peace).
+  function decadeYear(cell) {
+    const name = cellDecade(cell);
+    if (!name) return null;
+    const [a, b] = decadeRange(name);
+    const w = (attrsFor(cell.iso)?.wars ?? [])
+      .find(x => x.from <= b && (x.to == null || x.to >= a));
+    return w ? Math.max(a, w.from) : null;
+  }
+
+  // Drains most chroma and lifts lightness so the field reads as a quiet, still
+  // individually-traceable grey ground against the single red war accent (ADR-0008).
+  function muteColor(color) {
+    const c = d3.hcl(color);
+    c.c *= 0.28;
+    c.l = Math.min(82, c.l + 22);
+    return c.formatHex();
+  }
+
+  // War-story mode: recede every band to grey and flag its war-year cells, so the
+  // red marks are the only colour the eye competes for (figure-ground, FR-05).
+  function markWarSegments(cells) {
+    for (const cell of cells) {
+      cell.war = decadeYear(cell) != null;
+      cell.color = muteColor(cell.color);
+    }
+  }
+
+  // The wars active in the decade a cell's red segment represents (FR: war tooltip).
+  function warsInDecade(cell) {
+    const name = cellDecade(cell);
+    if (!name) return [];
+    const [a, b] = decadeRange(name);
+    return (attrsFor(cell.iso)?.wars ?? []).filter(w => w.from <= b && (w.to == null || w.to >= a));
+  }
+
+  // Every participant in a named conflict with its role — attacker/defender and the
+  // other parties are derived from who shares the war name, not stored per record.
+  function partiesOf(name) {
+    const out = [];
+    for (const [iso, a] of countryAttrs)
+      for (const w of (a.wars ?? [])) if (w.name === name) out.push({ iso, role: w.role });
+    return out;
+  }
+
+  function yearsLabel(w) {
+    if (w.to == null) return `seit ${w.from}`;
+    return w.from === w.to ? `${w.from}` : `${w.from}–${w.to}`;
+  }
+
+  // One conflict block: name + span, then its parties coloured by attacker/defender.
+  function warBlock(w) {
+    const box = document.createElement('div');
+    box.className = 'tt-war';
+    const head = document.createElement('div');
+    head.className = 'tt-value';
+    head.textContent = `${w.name} (${yearsLabel(w)})`;
+    box.append(head, partiesLine(w.name));
+    return box;
+  }
+
+  function partiesLine(name) {
+    const line = document.createElement('div');
+    line.className = 'tt-parties';
+    partiesOf(name).forEach((p, i) => {
+      if (i) line.append(' · ');
+      const span = document.createElement('span');
+      span.className = `tt-role ${p.role === 'verteidigend' ? 'defender'
+        : p.role === 'angreifend' ? 'attacker' : ''}`;
+      span.textContent = `${countryNames.get(p.iso) ?? p.iso}: ${ROLE_LABEL[p.role] ?? p.role}`;
+      line.append(span);
+    });
+    return line;
+  }
+
+  // Country headline + one block per active conflict; built with DOM nodes (no HTML
+  // injection) since war names come from the data file (security note, §6).
+  function renderWarTooltip(cell) {
+    const tip = document.getElementById('tooltip');
+    tip.textContent = '';
+    const head = document.createElement('div');
+    head.className = 'tt-label';
+    head.textContent = countryNames.get(cell.iso) ?? cell.iso;
+    tip.append(head, ...warsInDecade(cell).map(warBlock));
+  }
+
+  // Bare country headline — the member tooltip for the non-war stories (0001/0003).
+  function renderNameTooltip(iso) {
+    const tip = document.getElementById('tooltip');
+    tip.textContent = '';
+    const head = document.createElement('div');
+    head.className = 'tt-label';
+    head.textContent = countryNames.get(iso) ?? iso;
+    tip.append(head);
+  }
+
+  // Map hover tooltip: the country headline plus every war that makes it a belligerent
+  // (story 0002); reuses warBlock, and shows the name alone for non-belligerents.
+  function renderMapTooltip(iso) {
+    const tip = document.getElementById('tooltip');
+    tip.textContent = '';
+    const head = document.createElement('div');
+    head.className = 'tt-label';
+    head.textContent = countryNames.get(iso) ?? iso;
+    const inWarStory = storyMode && story?.id === '0002';
+    const wars = inWarStory ? (attrsFor(iso)?.wars ?? []).map(warBlock) : [];
+    tip.append(head, ...wars);
+  }
+
+  function renderOverlay(cells, cell) {
+    const layer = d3.select('#chart svg g.overlay');
+    if (layer.empty()) return;
+    const ribbons = mergeRibbons(cells, cell);
+    layer.selectAll('path')
+      .data(ribbons)
+      .join('path')
+        .attr('d', r => r.d)
+        .attr('fill', r => r.color)
+        .attr('fill-opacity', 0.85)
+        .attr('stroke', 'none');
+    renderWarMarks(ribbons.filter(r => r.war));
+  }
+
+  // War segments: the single red accent over the receded grey field, each kept a
+  // separate contoured path so adjacent countries' wars stay countable (ADR-0008).
+  function renderWarMarks(warRibbons) {
+    const layer = d3.select('#chart svg g.war-marks');
+    if (layer.empty()) return;
+    layer.selectAll('path')
+      .data(warRibbons)
+      .join('path')
+        .attr('d', r => r.d)
+        .attr('fill', WAR_FILL)
+        .attr('fill-opacity', 0.95)
+        .attr('stroke', WAR_EDGE)
+        .attr('stroke-width', 1.25);
+  }
+
+  // Open cubic tracing the shared edge between two stacked member cells; same
+  // horizontal-midpoint control points as ribbonPath so the seam follows the flow.
+  function separatorPath(sx, sy, tx, ty) {
+    const xc = (sx + tx) / 2;
+    return `M${sx},${sy}C${xc},${sy} ${xc},${ty} ${tx},${ty}`;
+  }
+
+  // Internal member boundaries of each band: per segKey (one entity in one
+  // transition), the edge where two abutting member cells meet. Single-member
+  // segments yield no pairs, so a country entity gets no seams (FR-02).
+  function isExpanded(entityId) {
+    return !!selectedEntities.find(e => e.id === entityId)?.expanded;
+  }
+
+  function collectSeparators(cells) {
+    const near = (a, b) => Math.abs(a - b) < 1e-6, seps = [];
+    for (const g of d3.group(cells, c => c.segKey).values()) {
+      if (isExpanded(g[0].entityId)) continue; // tints delineate expanded members
+      g.sort((a, b) => a.sy - b.sy);
+      for (let i = 1; i < g.length; i++) {
+        const lo = g[i], hi = g[i - 1];
+        if (near(lo.sy, hi.sy + hi.h))
+          seps.push({ d: separatorPath(lo.sx, lo.sy, lo.tx, lo.ty), entityId: lo.entityId });
+      }
+    }
+    return seps;
+  }
+
+  function renderSeparators(seps) {
+    const layer = d3.select('#chart svg g.seams');
+    if (layer.empty()) return;
+    layer.selectAll('path')
+      .data(seps)
+      .join('path')
+        .attr('d', s => s.d)
+        .attr('stroke', 'rgba(255,255,255,0.5)')
+        .attr('stroke-width', 1)
+        .attr('fill', 'none');
+  }
+
+  // One transparent, interactive path per member cell, data-bound to the cell so
+  // hover/click read identity directly. The visible bands stay pointer-events:none,
+  // so the aggregate-link tooltip survives wherever no cell covers it (FR-04).
+  function renderHitLayer(cells) {
+    const layer = d3.select('#chart svg g.hit');
+    if (layer.empty()) return;
+    layer.on('mouseleave', onMemberLeave);
+    layer.selectAll('path')
+      .data(cells)
+      .join('path')
+        .attr('class', 'hit-cell')
+        .attr('d', c => ribbonPath(c.sx, c.sy, c.tx, c.ty, c.h))
+        .attr('fill', 'transparent')
+        .attr('stroke', 'none')
+        .attr('pointer-events', 'all')
+        .on('mouseover', onMemberMove)
+        .on('mousemove', onMemberMove)
+        .on('click', onMemberClick);
+  }
+
+  // Per-entity view flag, not a dissolution: the group stays one entity, so
+  // collapse is loss-free (FR-08). Only groups fan out; countries are thickness 1.
+  function toggleExpand(entityId) {
+    const e = selectedEntities.find(x => x.id === entityId);
+    if (!e || e.kind !== 'group') return;
+    e.expanded = !e.expanded;
+    refresh();
+  }
+
+  function onMemberClick(event, cell) {
+    toggleExpand(cell.entityId);
+  }
+
+  // Siblings sharing one segKey (one entity in one transition), ordered top→bottom
+  // (newest-first, matching the band stack) — the roster's display order (FR-05).
+  function rosterMembers(entityId, segKey) {
+    const sibs = collectCells().filter(c => c.entityId === entityId && c.segKey === segKey);
+    sibs.sort((a, b) => a.sy - b.sy);
+    return sibs.map(c => ({ iso: c.iso, name: countryNames.get(c.iso), color: c.color }));
+  }
+
+  function rosterHeader(entityId) {
+    const e = selectedEntities.find(x => x.id === entityId);
+    const h = document.createElement('div');
+    h.className = 'mr-header';
+    h.textContent = e ? e.label : '';
+    return h;
+  }
+
+  function rosterRow(m, hovered) {
+    const row = document.createElement('div');
+    row.className = hovered ? 'mr-row is-hovered' : 'mr-row';
+    row.appendChild(makeSwatch('mr-swatch', m.color));
+    const lbl = document.createElement('span');
+    lbl.textContent = m.name ?? m.iso;
+    row.append(lbl);
+    return row;
+  }
+
+  // All of an entity's members in stacking order with their expanded tints — the
+  // persistent legend shown while a group is fanned out (FR-11).
+  function expandedRosterMembers(entity) {
+    const all = sortedMembers([...effectiveMembers(entity)]);
+    return all.map((iso, i) => ({ iso, name: countryNames.get(iso),
+      color: memberTint(entity.color, i, all.length) }));
+  }
+
+  function renderRosterList(entityId, members, iso) {
+    const box = document.getElementById('member-roster');
+    if (!entityId || members.length === 0) { box.hidden = true; box.textContent = ''; return; }
+    box.textContent = '';
+    box.appendChild(rosterHeader(entityId));
+    for (const m of members) box.appendChild(rosterRow(m, m.iso === iso));
+    box.hidden = false;
+  }
+
+  // Anchored list of an entity's members; emphasises `iso`. Null entityId hides it.
+  function renderRoster(entityId, segKey, iso) {
+    if (!entityId) return renderRosterList(null, [], null);
+    renderRosterList(entityId, rosterMembers(entityId, segKey), iso);
+  }
+
+  // The hovered member's panel representation: a group's checkbox row or a country chip.
+  function panelElementFor(entityId) {
+    if (entityId.startsWith('group:'))
+      return document.querySelector(`[data-group="${entityId.slice(6)}"]`)?.closest('label');
+    return document.querySelector(`.chip[data-entity="${entityId}"]`);
+  }
+
+  function syncPanelHighlight(entityId, iso) {
+    document.querySelectorAll('.sync-hl').forEach(el => el.classList.remove('sync-hl'));
+    if (!entityId) return;
+    panelElementFor(entityId)?.classList.add('sync-hl');
+  }
+
+  // segKey in the guard so moving to another decade column rebuilds the roster,
+  // while staying on the same member cell is a no-op (FR-07, flicker-free).
+  function moveTooltip(event) {
+    d3.select('#tooltip')
+      .style('left', (event.pageX + 12) + 'px')
+      .style('top', (event.pageY - 28) + 'px');
+  }
+
+  // War-band detail tooltip; only over a red war segment in war-story mode.
+  function showWarTooltip(cell) {
+    const tip = d3.select('#tooltip');
+    if (!storyWarSegments || !cell.war) { tip.style('opacity', 0); return; }
+    renderWarTooltip(cell);
+    tip.style('opacity', 1);
+  }
+
+  // Stories whose Sankey member tooltip shows only the country name (not war detail).
+  const NAME_TOOLTIP_STORIES = ['0001', '0003'];
+
+  // Member hover tooltip: war detail in story 0002, plain country name in 0001/0003.
+  function showMemberTooltip(cell) {
+    if (storyWarSegments) return showWarTooltip(cell);
+    const tip = d3.select('#tooltip');
+    if (!storyMode || !NAME_TOOLTIP_STORIES.includes(story?.id)) { tip.style('opacity', 0); return; }
+    renderNameTooltip(cell.iso);
+    tip.style('opacity', 1);
+  }
+
+  function onMemberMove(event, cell) {
+    moveTooltip(event);
+    if (hoveredMember && hoveredMember.iso === cell.iso && hoveredMember.segKey === cell.segKey) return;
+    hoveredMember = { entityId: cell.entityId, iso: cell.iso, segKey: cell.segKey };
+    showMemberTooltip(cell);
+    renderRoster(cell.entityId, cell.segKey, cell.iso);
+    syncPanelHighlight(cell.entityId, cell.iso);
+  }
+
+  // On leave the roster reverts to the persistent expanded legend if a group is
+  // fanned out, otherwise it hides entirely (FR-07/FR-11).
+  function onMemberLeave() {
+    hoveredMember = null;
+    d3.select('#tooltip').style('opacity', 0);
+    syncPanelHighlight(null, null);
+    const expanded = selectedEntities.find(e => e.expanded);
+    if (expanded) renderRosterList(expanded.id, expandedRosterMembers(expanded), null);
+    else renderRoster(null, null, null);
+  }
+
+  function applyHighlight(activeSet) {
+    const hasSelection = activeSet.size > 0;
+    // Inline style required: it overrides the .link CSS rule that .attr() cannot.
+    // null on empty selection restores the CSS default and :hover behaviour.
+    d3.selectAll('.link')
+      .style('stroke-opacity', (d, i) => {
+        if (!hasSelection) return null;
+        // The overlay band carries the selection now; matching links keep the
+        // pale default rather than brightening (superseded ADR-0001 behaviour).
+        return [...activeSet].some(c => linkCountries.get(i)?.has(c)) ? null : 0.08;
+      });
+  }
+
+  // Single entry point wired to every selection event.
+  function refresh() {
+    memberCache.clear();
+    effectiveCache.clear();
+    applyHighlight(activeIsoSet());
+    const cell = unitCell(decadeNode(DECADES[0])), cells = collectCells();
+    if (storyWarSegments) markWarSegments(cells);   // story 0002: war-year segments
+    renderOverlay(cells, cell);
+    renderSeparators(collectSeparators(cells));
+    renderHitLayer(cells);
+    recolorMap();
+    renderChips();
+    updateGroupSwatches();
+    highlightVoteCloud();   // no-op outside story mode (#vote absent)
+    renderMatrix();         // selection-coupled klüngel matrix (no-op before load)
+    onMemberLeave();
+  }
+
+  // Resolves a search value to a single ISO2: an exact code or the "(ISO2)"
+  // suffix of a datalist pick. Free-text without a known match yields null.
+  function resolveSearchCode(raw) {
+    const text = (raw ?? '').trim();
+    if (!text) return null;
+    const suffix = text.match(/\(([A-Za-z]{2})\)\s*$/)?.[1].toUpperCase();
+    const upper = text.toUpperCase();
+    if (suffix && countryNames.has(suffix)) return suffix;
+    return countryNames.has(upper) ? upper : null;
+  }
+
+  // Resolves a committed search value to a permanent country entity (FR: search-as-add).
+  function addSearchCountry(raw) {
+    const code = resolveSearchCode(raw);
+    if (code) addEntity({ id: `country:${code}`, kind: 'country',
+      label: `${countryNames.get(code)} (${code})`, members: new Set([code]) });
+  }
+
+  function makeSwatch(className, color) {
+    const s = document.createElement('span');
+    s.className = className;
+    s.style.background = color;
+    return s;
+  }
+
+  // Only country chips carry a remove control; groups are toggled via their checkbox.
+  function dropEntity(entity) {
+    removeEntity(entity.id);
+    refresh();
+  }
+
+  // Groups have no chip; their colour shows on the checkbox swatch (blank when inactive).
+  function updateGroupSwatches() {
+    for (const sw of document.querySelectorAll('.group-swatch')) {
+      const active = selectedEntities.find(e => e.id === `group:${sw.dataset.swatch}`);
+      sw.style.background = active ? active.color : 'transparent';
+    }
+  }
+
+  function renderChips() {
+    const box = document.getElementById('entity-chips');
+    box.textContent = '';
+    for (const e of selectedEntities)
+      if (e.kind === 'country') box.appendChild(buildChip(e));
+  }
+
+  function buildChip(e) {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.dataset.entity = e.id;
+    chip.appendChild(makeSwatch('chip-swatch', e.color));
+    const lbl = document.createElement('span');
+    lbl.textContent = e.label;
+    const x = document.createElement('span');
+    x.className = 'chip-x';
+    x.textContent = '×';
+    x.addEventListener('click', () => dropEntity(e));
+    chip.append(lbl, x);
+    return chip;
+  }
+
+  function toggleGroup(cb) {
+    const key = cb.dataset.group, id = `group:${key}`;
+    if (cb.checked) addEntity({ id, kind: 'group',
+      label: groups[key].label, members: new Set(groups[key].members) });
+    else removeEntity(id);
+  }
+
+  function resetSelection() {
+    selectedEntities = [];
+    document.getElementById('country-search').value = '';
+    document.querySelectorAll('[data-group]').forEach(cb => cb.checked = false);
+    refresh();
+  }
+
+  // Initial landing state: the whole field selected — every group as a band,
+  // every ungrouped participant as its own country (groupedFieldEntities).
+  function selectInitialField() {
+    for (const e of groupedFieldEntities([])) addEntity(e);
+    const active = new Set(selectedEntities.map(e => e.id));
+    document.querySelectorAll('[data-group]').forEach(cb =>
+      cb.checked = active.has(`group:${cb.dataset.group}`));
+    refresh();
+  }
+
+  function wireSelectionEvents() {
+    const search = document.getElementById('country-search');
+    search.addEventListener('change', () => { addSearchCountry(search.value); search.value = ''; refresh(); });
+
+    for (const cb of document.querySelectorAll('[data-group]'))
+      cb.addEventListener('change', () => { toggleGroup(cb); refresh(); });
+
+    document.getElementById('reset-btn').addEventListener('click', resetSelection);
+  }
+
+  // ── Configuration ──────────────────────────────────────────────
+  const CONFIG = {
+    width:      1150,
+    marginX:     40,   // symmetric horizontal inset (decade labels now sit below, not right)
+    height: 620,
+    marginBottom: 40,  // freed band under the nodes for the decade time axis
+    nodePadding: 14,
+    nodeWidth:   22,
+    title: "Kollaps - Krieg - Klüngel",
+    subtitle: "Da wo die ESC-Teilnehmer nicht glitzern.",
+    unit: "Länder"
+  };
+
+  // Entry nodes are pulled this far toward the decade they feed; dropout nodes
+  // this far from their source decade. Both place the event near the boundary
+  // where it actually happens instead of aligning with the previous decade's
+  // start, so x reads as "when". Tunable; 1 = at the next decade's edge.
+  const ENTRY_SHIFT = 1 / 2;
+  const EXIT_SHIFT  = 2 / 3;
+
+  // ── Daten ──────────────────────────────────────────────────────
+  const nodes = [
+    // Jahrzehnte
+    { name: "1956–1969", type: "decade" },
+    { name: "1970–1979", type: "decade" },
+    { name: "1980–1989", type: "decade" },
+    { name: "1990–1999", type: "decade" },
+    { name: "2000–2009", type: "decade" },
+    { name: "2010–2019", type: "decade" },
+    { name: "2020–2026", type: "decade" },
+    // Zugänge
+    { name: "Neu 1970er (+4)",  type: "new" },
+    { name: "Neu 1980er (+3)",  type: "new" },
+    { name: "Neu 1990er (+12)", type: "new" },
+    { name: "Neu 2000er (+16)", type: "new" },
+    { name: "Neu 2010er (+2)",  type: "new" },
+    { name: "Neu 2020er (+1)",  type: "new" },
+    // Abgänge
+    { name: "Weg nach 1979 (−2)", type: "gone" },
+    { name: "Weg nach 1989 (−1)", type: "gone" },
+    { name: "Weg nach 1999 (−3)", type: "gone" },
+    { name: "Weg nach 2009 (−3)", type: "gone" },
+    { name: "Weg nach 2019 (−4)", type: "gone" },
+  ];
+
+  // Reihenfolge bestimmt das Andock-Verhalten (linkSort: null = Eingabe-Reihenfolge).
+  // Pro Zielknoten: Neu-Link zuerst → dockt oben an; Weg-Link zuletzt → dockt unten ab.
+  const links = [
+    // ── 1956-1969 → 1970-1979 ──────────────────────────────────
+    { source: "Neu 1970er (+4)",   target: "1970–1979",           value: 4  }, // oben
+    { source: "1956–1969",         target: "1970–1979",           value: 18 }, // unten
+    // ── 1970-1979 → 1980-1989 ──────────────────────────────────
+    { source: "Neu 1980er (+3)",   target: "1980–1989",           value: 3  }, // oben
+    { source: "1970–1979",         target: "1980–1989",           value: 20 }, // Hauptfluss
+    { source: "1970–1979",         target: "Weg nach 1979 (−2)",  value: 2  }, // unten
+    // ── 1980-1989 → 1990-1999 ──────────────────────────────────
+    { source: "Neu 1990er (+12)",  target: "1990–1999",           value: 12 }, // oben
+    { source: "1980–1989",         target: "1990–1999",           value: 22 }, // Hauptfluss
+    { source: "1980–1989",         target: "Weg nach 1989 (−1)",  value: 1  }, // unten
+    // ── 1990-1999 → 2000-2009 ──────────────────────────────────
+    { source: "Neu 2000er (+16)",  target: "2000–2009",           value: 16 }, // oben
+    { source: "1990–1999",         target: "2000–2009",           value: 31 }, // Hauptfluss
+    { source: "1990–1999",         target: "Weg nach 1999 (−3)",  value: 3  }, // unten
+    // ── 2000-2009 → 2010-2019 ──────────────────────────────────
+    { source: "Neu 2010er (+2)",   target: "2010–2019",           value: 2  }, // oben
+    { source: "2000–2009",         target: "2010–2019",           value: 44 }, // Hauptfluss
+    { source: "2000–2009",         target: "Weg nach 2009 (−3)",  value: 3  }, // unten
+    // ── 2010-2019 → 2020-2026 ──────────────────────────────────
+    { source: "Neu 2020er (+1)",   target: "2020–2026",           value: 1  }, // oben
+    { source: "2010–2019",         target: "2020–2026",           value: 42 }, // Hauptfluss
+    { source: "2010–2019",         target: "Weg nach 2019 (−4)",  value: 4  }, // unten
+  ];
+
+  // ── Farben ────────────────────────────────────────────────────
+  // The continuity river stays a quiet, low-chroma neutral so the eye reads the
+  // saturated events (new/gone) and the selection overlay as the signal. Early
+  // decades are light, later decades deepen toward ink — time reads as tone.
+  const decadeScale = d3.scaleLinear()
+    .domain([0, 6])
+    .range(["#BDB7AB", "#33302B"])
+    .interpolate(d3.interpolateRgb);
+
+  function nodeColor(d) {
+    if (d.type === "new")  return "#1B9E91"; // entrant accent (teal)
+    if (d.type === "gone") return "#C44E3D"; // dropout accent (clay)
+    return decadeScale(DECADES.indexOf(d.name));
+  }
+
+  const color = d => nodeColor(d);
+
+  // Slides one node to a new left edge, preserving its width (x only — the
+  // vertical layout from d3.sankey is left untouched, so band geometry holds).
+  function shiftNodeX(node, x0) {
+    const w = node.x1 - node.x0;
+    node.x0 = x0;
+    node.x1 = x0 + w;
+  }
+
+  // After layout, pull entry/dropout nodes off the previous decade's column and
+  // toward the boundary where the event happens. Reads of node.x1/x0 downstream
+  // (aggregate links, overlay enter/drop cells, node rects) follow automatically.
+  function repositionEventNodes(sankeyNodes) {
+    for (const n of sankeyNodes) {
+      if (n.type === "new") {
+        const target = n.sourceLinks[0].target;
+        shiftNodeX(n, n.x0 + ENTRY_SHIFT * (target.x0 - n.x0));
+      } else if (n.type === "gone") {
+        const source = n.targetLinks[0].source;
+        shiftNodeX(n, source.x0 + EXIT_SHIFT * (n.x0 - source.x0));
+      }
+    }
+  }
+
+  // ── Render ────────────────────────────────────────────────────
+  function render() {
+    d3.select("#chart").selectAll("svg, p").remove();  // keep #war-legend
+    d3.select("#chart-title").text(CONFIG.title);
+    d3.select("#subtitle").text(CONFIG.subtitle);
+
+    if (nodes.length === 0 || links.length === 0) {
+      d3.select("#chart")
+        .append("p")
+        .style("color", "#aaa")
+        .style("padding", "2rem")
+        .text("Noch keine Daten vorhanden.");
+      return;
+    }
+
+    // viewBox keeps the 1150×620 internal coordinate system the whole overlay
+    // engine assumes, while CSS scales the rendered SVG to the chart column.
+    const svg = d3.select("#chart")
+      .append("svg")
+      .attr("viewBox", `0 0 ${CONFIG.width} ${CONFIG.height}`)
+      .attr("preserveAspectRatio", "xMinYMid meet");
+
+    // Spalten-Zuordnung: jeder Knoten bekommt seine gewünschte Spalte
+    const depthMap = {
+      "1956–1969": 0, "Neu 1970er (+4)":  0,
+      "1970–1979": 1, "Neu 1980er (+3)":  1,
+      "1980–1989": 2, "Weg nach 1979 (−2)": 2, "Neu 1990er (+12)": 2,
+      "1990–1999": 3, "Weg nach 1989 (−1)": 3, "Neu 2000er (+16)": 3,
+      "2000–2009": 4, "Weg nach 1999 (−3)": 4, "Neu 2010er (+2)":  4,
+      "2010–2019": 5, "Weg nach 2009 (−3)": 5, "Neu 2020er (+1)":  5,
+      "2020–2026": 6, "Weg nach 2019 (−4)": 6,
+    };
+
+    // Vertikale Reihenfolge innerhalb einer Spalte: Zugänge oben, Jahrzehnt mitte, Abgänge unten
+    const typeOrder = { new: 0, decade: 1, gone: 2 };
+
+    const sankey = d3.sankey()
+      .nodeId(d => d.name)
+      .nodeAlign((node, n) => Math.min(depthMap[node.name] ?? 0, n - 1))
+      .nodeSort((a, b) => (typeOrder[a.type] ?? 0) - (typeOrder[b.type] ?? 0))
+      .linkSort(null)
+      .nodeWidth(CONFIG.nodeWidth)
+      .nodePadding(CONFIG.nodePadding)
+      .extent([[CONFIG.marginX, 1],
+               [CONFIG.width - CONFIG.marginX, CONFIG.height - CONFIG.marginBottom]]);
+
+    const { nodes: sankeyNodes, links: sankeyLinks } = sankey({
+      nodes: nodes.map(d => Object.assign({}, d)),
+      links: links.map(d => Object.assign({}, d))
+    });
+
+    repositionEventNodes(sankeyNodes);
+
+    sankeyLinksData = sankeyLinks;
+    sankeyNodesData = sankeyNodes;
+
+    const tooltip = d3.select("#tooltip");
+
+    // Links
+    svg.append("g")
+      .selectAll(".link")
+      .data(sankeyLinks)
+      .join("path")
+        .attr("class", "link")
+        .attr("d", d3.sankeyLinkHorizontal())
+        // Entry/dropout stubs are hidden (stroke none keeps them out of every
+        // selection state, since applyHighlight only touches stroke-opacity); the
+        // events read from the node alone, and the coloured overlay band still
+        // shows them on selection. Kept in the data join so link indices stay
+        // aligned with linkCountries (applyHighlight indexes by position).
+        .attr("stroke", d => (d.source.type === "new" || d.target.type === "gone")
+          ? "none" : nodeColor(d.source))
+        .attr("stroke-width", d => Math.max(1, d.width))
+      .on("mouseover", (event, d) => {
+        tooltip
+          .style("opacity", 1)
+          .html(`<div class="tt-label">${d.source.name} → ${d.target.name}</div>` +
+                `<div class="tt-value">${d.value} ${CONFIG.unit}</div>`);
+      })
+      .on("mousemove", event => {
+        tooltip
+          .style("left", (event.pageX + 12) + "px")
+          .style("top",  (event.pageY - 28) + "px");
+      })
+      .on("mouseout", () => tooltip.style("opacity", 0));
+
+    // Overlay (sub-flow bands): above the dimmed links, below node rects/labels.
+    svg.append("g").attr("class", "overlay");
+
+    // Member separators: thin hairlines over the band revealing its N members.
+    svg.append("g").attr("class", "seams");
+
+    // War segments: hatch + contour above the bands, on a non-hue channel.
+    svg.append("g").attr("class", "war-marks");
+
+    // Transparent per-member hit regions: the only interactive overlay layer.
+    svg.append("g").attr("class", "hit");
+
+    // Nodes
+    const node = svg.append("g")
+      .selectAll(".node")
+      .data(sankeyNodes)
+      .join("g")
+        .attr("class", "node")
+        .attr("transform", d => `translate(${d.x0},${d.y0})`);
+
+    // Only decades get a rect; the entry/dropout nodes are hidden — the events
+    // read from their position and the coloured overlay band on selection alone.
+    node.filter(d => d.type === "decade")
+      .append("rect")
+        .attr("height", d => d.y1 - d.y0)
+        .attr("width",  d => d.x1 - d.x0)
+        .attr("fill",   d => nodeColor(d));
+
+    // Only decades are labelled; entry/dropout nodes read from colour and position
+    // alone. The labels form the time axis on a common baseline below the nodes,
+    // centred under each column: decade range on top, country count muted below.
+    const axisY = CONFIG.height - CONFIG.marginBottom + 24;
+    node.filter(d => d.type === "decade")
+      .append("text")
+        .attr("text-anchor", "middle")
+        .attr("y", d => axisY - d.y0)
+        .each(function (d) {
+          const cx = (d.x1 - d.x0) / 2;
+          d3.select(this).append("tspan").attr("x", cx).text(d.name);
+          d3.select(this).append("tspan").attr("x", cx).attr("dy", "1.25em")
+            .attr("class", "axis-sub").text(`${d.value} ${CONFIG.unit}`);
+        });
+  }
+
+  // ── Geographic map (ADR-0004) ──────────────────────────────────
+  // Fetch the country outlines once and reduce them to featureByIso; on any error
+  // return false so init() skips the map and the Sankey degrades gracefully (FR-01).
+  async function loadGeo() {
+    try {
+      const topo = await fetch('eurovision-data/europe.topojson').then(r => r.json());
+      buildFeatureIndex(topojson.feature(topo, topo.objects.countries).features);
+      // A missing context object only drops the backdrop, never the whole map.
+      if (topo.objects.context)
+        contextFeatures = topojson.feature(topo, topo.objects.context).features;
+      return true;
+    } catch (err) {
+      console.warn('Geo-Daten konnten nicht geladen werden:', err);
+      return false;
+    }
+  }
+
+  function buildFeatureIndex(features) {
+    for (const f of features) featureByIso.set(f.properties.iso2, f);
+  }
+
+  // Drawable features for a participating code: its own modern feature, else the
+  // successor footprints of the border-less historical codes YU/CS (FR-04).
+  function geoFeaturesFor(iso) {
+    if (featureByIso.has(iso)) return [featureByIso.get(iso)];
+    return (HIST_ALIAS[iso] ?? []).map(s => featureByIso.get(s)).filter(Boolean);
+  }
+
+  // The map's quiet base: every ever-participant as one collection, minus Australia
+  // (drawn in the inset). The projection frames this participation universe (FR-02).
+  function stageFeatureCollection() {
+    const seen = new Set(), features = [];
+    for (const iso of everParticipants) {
+      if (iso === 'AU') continue;
+      for (const f of geoFeaturesFor(iso))
+        if (!seen.has(f)) { seen.add(f); features.push(f); }
+    }
+    return { type: 'FeatureCollection', features };
+  }
+
+  // d3-geo treats a polygon's edges as great-circle arcs, so fitting to a lon/lat
+  // FRAME *as a polygon* bows the "rectangle" and bloats its projected bounds (~4.5×),
+  // squeezing the real content into a small central patch. Fit to the bare corner
+  // points instead: under Mercator the rectangle's true extent is the corner bbox.
+  function fitCorners(frame) {
+    return { type: 'MultiPoint', coordinates: frame.coordinates[0] };
+  }
+
+  // Height follows the frame's projected aspect (no letterbox margin): fit to the
+  // width once to read the natural height, then refit into the padded box.
+  function initMap() {
+    const el = document.getElementById('map'), pad = 6;
+    const w = el.clientWidth || 560, frame = fitCorners(MAP_FRAME);
+    const probe = d3.geoMercator().fitWidth(w - 2 * pad, frame);
+    const h = Math.ceil(d3.geoPath(probe).bounds(frame)[1][1]) + 2 * pad;
+    const proj = d3.geoMercator().fitExtent([[pad, pad], [w - pad, h - pad]], frame);
+    // viewBox so story mode's max-height scales the whole map down rather than
+    // clipping its lower edge (Israel, the Australia inset, the North-African coast).
+    mapSvg = d3.select(el).append('svg')
+      .attr('width', w).attr('height', h).attr('viewBox', `0 0 ${w} ${h}`);
+    geoPath = d3.geoPath(proj);
+    drawContext();
+    drawStage(proj, h);
+    initInset(w, h);
+    mapSvg.append('g').attr('class', 'markers');  // topmost: micro-state centroid dots
+  }
+
+  // Faint Mediterranean-rim coastline under the stage so Morocco and Israel sit against
+  // real coast; the participant fills drawn on top mask shared borders, leaving only the
+  // open southern/eastern Mediterranean shore visible.
+  function drawContext() {
+    mapSvg.append('g').attr('class', 'context')
+      .selectAll('path')
+      .data(contextFeatures)
+      .join('path')
+        .attr('class', 'geo-context')
+        .attr('d', geoPath);
+  }
+
+  // The stage is clipped at the Ural meridian so Russia (the only participant east
+  // of the Caucasus) breaks off there with an open outline; everyone else is well
+  // within the cut, so the clip touches nothing but Russia.
+  function drawStage(proj, h) {
+    const xCut = proj([URAL_LON, 40])[0];
+    mapSvg.append('clipPath').attr('id', 'stage-clip')
+      .append('rect').attr('x', -10).attr('y', -10).attr('width', xCut + 10).attr('height', h + 20);
+    mapSvg.append('g').attr('class', 'stage').attr('clip-path', 'url(#stage-clip)')
+      .selectAll('path')
+      .data(stageFeatureCollection().features)
+      .join('path')
+        .attr('class', 'geo-country')
+        .attr('d', geoPath)
+        .on('mouseover', onCountryHover)
+        .on('mousemove', moveTooltip)
+        .on('mouseout', onCountryLeave);
+  }
+
+  // Australia is the one true outlier of the participation universe; an inset keeps
+  // the main frame Europe-tight while still showing it honestly (FR-03).
+  function initInset(w, h) {
+    const iw = Math.round(w * 0.20), ih = Math.round(iw * 0.82), pad = 6;
+    const x = w - iw - pad, y = h - ih - pad;
+    mapSvg.append('clipPath').attr('id', 'inset-clip')
+      .append('rect').attr('x', x).attr('y', y).attr('width', iw).attr('height', ih);
+    const g = mapSvg.append('g').attr('class', 'inset').attr('clip-path', 'url(#inset-clip)');
+    insetPath = d3.geoPath(d3.geoMercator().fitExtent([[x + 2, y + 2], [x + iw - 2, y + ih - 2]], fitCorners(AU_FRAME)));
+    g.append('path').datum(featureByIso.get('AU')).attr('class', 'geo-country').attr('d', insetPath)
+      .on('mouseover', onCountryHover).on('mousemove', moveTooltip).on('mouseout', onCountryLeave);
+    insetFrame(x, y, iw, ih);
+  }
+
+  function insetFrame(x, y, iw, ih) {
+    mapSvg.append('rect').attr('class', 'inset-frame')
+      .attr('x', x).attr('y', y).attr('width', iw).attr('height', ih);
+    const t = mapSvg.append('text').attr('class', 'inset-label').attr('x', x + 5).attr('y', y + ih - 6);
+    t.node().textContent = '»Australien«';
+  }
+
+  // The single colour source for the map (FR-07): each selected member → its entity
+  // colour, or — when the group is expanded — its memberTint() shade. The tint index
+  // is taken over sortedMembers([...effectiveMembers]) exactly as placeEntity does, so
+  // a country reads as the identical tint on map and Sankey (FR-06). Built fresh per
+  // refresh() so the map never holds its own selection state.
+  // Story 0002: paint each selected belligerent by its binary role at the focus year,
+  // falling back to the entity colour where no war is active then (FR-06/FR-08).
+  function roleColorByIso(year) {
+    const colorByIso = new Map();
+    for (const e of selectedEntities)
+      for (const m of effectiveMembers(e))
+        colorByIso.set(m, roleColor(roleAt(m, year)) ?? e.color);
+    return colorByIso;
+  }
+
+  function mapColorByIso() {
+    if (storyRoleMode) return roleColorByIso(storyFocus);
+    const colorByIso = new Map();
+    for (const e of selectedEntities) {
+      const all = e.expanded ? sortedMembers([...effectiveMembers(e)]) : null;
+      for (const m of effectiveMembers(e))
+        colorByIso.set(m, all ? memberTint(e.color, all.indexOf(m), all.length) : e.color);
+    }
+    return colorByIso;
+  }
+
+  // Fill every feature of one code: a direct code paints its own feature, an alias
+  // (YU/CS) paints all its successor footprints. The datum-set filter reaches the
+  // inset AU path too, since it is a .geo-country bound to its feature.
+  function paintIso(iso, color) {
+    const feats = new Set(geoFeaturesFor(iso));
+    // Inline style, not attr: the .geo-country CSS rule outranks a presentation
+    // attribute, so only a style overrides the pale stage fill.
+    mapSvg.selectAll('path.geo-country').filter(f => feats.has(f)).style('fill', color);
+  }
+
+  // Recolour on every selection change: reset to the pale stage (CSS fill), then paint
+  // aliases first and direct codes last, so a successor's own colour wins on overlap
+  // (expanded yugoslavia: RS must beat the YU/CS footprint paint) — FR-05/FR-06/FR-12.
+  function recolorMap() {
+    if (!mapSvg) return;
+    mapSvg.selectAll('path.geo-country').style('fill', null);
+    const colorByIso = mapColorByIso();
+    for (const [iso, color] of colorByIso) if (HIST_ALIAS[iso]) paintIso(iso, color);
+    for (const [iso, color] of colorByIso) if (!HIST_ALIAS[iso]) paintIso(iso, color);
+    renderMarkers(colorByIso);
+  }
+
+  // Micro-states (Israel, Cyprus, Malta, the principalities) project to a few pixels
+  // and read as noise next to the European bulk; a centroid dot in the same colour
+  // guarantees a selected dwarf is seen. The threshold is a share of map width, so it
+  // holds whether the map renders inline or scaled up in story mode.
+  const MARKER_MIN_FRAC = 0.022;   // smaller projected side, relative to map width
+
+  function isTinyFeature(f, limit) {
+    const b = geoPath.bounds(f);
+    return Math.min(b[1][0] - b[0][0], b[1][1] - b[0][1]) < limit;
+  }
+
+  function markerData(colorByIso) {
+    const limit = +mapSvg.attr('width') * MARKER_MIN_FRAC, out = [];
+    for (const [iso, color] of colorByIso)
+      for (const f of geoFeaturesFor(iso))
+        if (isTinyFeature(f, limit)) out.push({ f, iso, color, p: geoPath.centroid(f) });
+    return out;
+  }
+
+  function renderMarkers(colorByIso) {
+    const r = Math.max(3, +mapSvg.attr('width') * 0.006);
+    mapSvg.select('g.markers').selectAll('circle')
+      .data(markerData(colorByIso), d => d.iso)
+      .join('circle')
+        .attr('class', 'geo-marker').attr('r', r)
+        .attr('cx', d => d.p[0]).attr('cy', d => d.p[1])
+        .style('fill', d => d.color)
+        .on('mouseover', (e, d) => onCountryHover(e, d.f))
+        .on('mousemove', moveTooltip)
+        .on('mouseout', onCountryLeave);
+  }
+
+  // ── Cross-view linking: map hover → roster + Sankey (ADR-0004 FR-08) ──
+  // The first selected entity owning this code; null for a stage (non-selected) country.
+  function entityForIso(iso) {
+    const e = selectedEntities.find(x => effectiveMembers(x).has(iso));
+    return e ? e.id : null;
+  }
+
+  // Outline the country's threads in the Sankey by toggling .echo on its hit cells.
+  function echoSankey(iso) {
+    d3.selectAll('#chart svg g.hit path.hit-cell')
+      .classed('echo', c => iso != null && c.iso === iso);
+  }
+
+  // Hovering a selected country echoes it into panel, Sankey and (if a group is
+  // fanned out) the persistent roster. Stage countries resolve to no entity and
+  // are inert; hover never mutates the selection (FR-08/FR-09).
+  function onCountryHover(event, f) {
+    const iso = f.properties.iso2;
+    renderMapTooltip(iso);
+    moveTooltip(event);
+    d3.select('#tooltip').style('opacity', 1);
+    const entityId = entityForIso(iso);
+    if (!entityId) return;
+    syncPanelHighlight(entityId, iso);
+    echoSankey(iso);
+    const expanded = selectedEntities.find(e => e.expanded);
+    if (expanded) renderRosterList(expanded.id, expandedRosterMembers(expanded), iso);
+  }
+
+  function onCountryLeave() {
+    d3.select('#tooltip').style('opacity', 0);
+    echoSankey(null);
+    syncPanelHighlight(null, null);
+    const expanded = selectedEntities.find(e => e.expanded);
+    if (expanded) renderRosterList(expanded.id, expandedRosterMembers(expanded), null);
+  }
+
+  // ── Curated country groups (eurovision-data/groups.json) ──────────
+  // Optional layer: on any error the panel renders without group checkboxes and
+  // the Sankey runs unchanged, so buildSelectionPanel() must tolerate empty groups.
+  async function loadGroups() {
+    try {
+      const data = await fetch('eurovision-data/groups.json').then(r => r.json());
+      groups = data.groups ?? {};
+    } catch (err) {
+      console.warn('Ländergruppen konnten nicht geladen werden:', err);
+    }
+  }
+
+  // ── Per-country reference attributes (eurovision-data/README.md) ───
+  // Optional layer: on any error the Sankey runs unchanged with an empty map, so
+  // every accessor below must tolerate a missing country or attribute.
+  async function loadCountryAttributes() {
+    try {
+      const data = await fetch('eurovision-data/country_attributes.json').then(r => r.json());
+      countryAttrs = new Map(Object.entries(data.countries ?? {}));
+    } catch (err) {
+      console.warn('Länder-Attribute konnten nicht geladen werden:', err);
+    }
+  }
+
+  function attrsFor(iso) {
+    return countryAttrs.get(iso) ?? null;
+  }
+
+  // The interval covering `year` in a from/to list; to == null means open-ended.
+  function intervalAt(list, year) {
+    return (list ?? []).find(p => year >= p.from && (p.to == null || year <= p.to)) ?? null;
+  }
+
+  function governmentAt(iso, year) {
+    return intervalAt(attrsFor(iso)?.government, year);
+  }
+
+  // All wars active in `year` — a country may be in several at once, so this is a list.
+  function warsIn(iso, year) {
+    return (attrsFor(iso)?.wars ?? [])
+      .filter(w => year >= w.from && (w.to == null || year <= w.to));
+  }
+
+  // ── War-evidence accessors (story 0002, ADR-0008) ─────────────────
+  // Any war role marks the country red; story 0002 no longer splits the fill by side.
+  function roleColor(role) {
+    return role == null ? null : ROLE_RED;
+  }
+
+  // Participants carrying at least one war — the broad opener's field (FR-10).
+  function belligerentCodes() {
+    return new Set([...everParticipants].filter(c => (attrsFor(c)?.wars ?? []).length));
+  }
+
+  // The war that marks a country as a belligerent: any war active in `year`, or its
+  // most-recent war when year is null. Used only to decide whether the country is at
+  // war (→ red); the specific role no longer changes the colour.
+  function activeOrLatestWar(iso, year) {
+    const wars = attrsFor(iso)?.wars ?? [];
+    if (year == null) return wars.reduce((a, w) => !a || w.from > a.from ? w : a, null);
+    return warsIn(iso, year)[0] ?? null;
+  }
+
+  function roleAt(iso, year) {
+    return activeOrLatestWar(iso, year)?.role ?? null;
+  }
+
+  function isWarYear(iso, year) {
+    return warsIn(iso, year).length > 0;
+  }
+
+  // The 257 split-era finals — the only rows carrying both jury and televote points.
+  function voteRows() {
+    if (voteRowsCache) return voteRowsCache;
+    voteRowsCache = allEntries.filter(e =>
+      e.final_jury_points != null && e.final_televote_points != null);
+    return voteRowsCache;
+  }
+
+  function deltaOf(row) {
+    return row.final_televote_points - row.final_jury_points;
+  }
+
+  // A country's split rows that fall inside one of its war windows (FR-03/FR-04).
+  function warYearRowsFor(iso) {
+    return voteRows().filter(r => r.country_iso2 === iso && isWarYear(iso, r.year));
+  }
+
+  // ── Scrollytelling story loader & parser (ADR-0006) ───────────────
+  // Separates the leading `---`-fenced frontmatter from the prose body.
+  function splitFrontmatter(text) {
+    const m = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+    return m ? { frontmatter: m[1], body: m[2] } : { frontmatter: '', body: text };
+  }
+
+  // Body → Map<heading, markdown>, keyed by each `## ` section title.
+  function splitSections(body) {
+    const sections = new Map();
+    let heading = null, buf = [];
+    const flush = () => { if (heading) sections.set(heading, buf.join('\n').trim()); };
+    for (const line of body.split('\n')) {
+      const h = line.match(/^## (.+)$/);
+      if (h) { flush(); heading = h[1].trim(); buf = []; } else buf.push(line);
+    }
+    flush();
+    return sections;
+  }
+
+  // Pairs one frontmatter step spec with the prose of its named section.
+  function stepFromSpec(spec, sections) {
+    if (!sections.has(spec.section))
+      console.warn('Story-Schritt ohne passende Überschrift:', spec.section);
+    return { section: spec.section, stage: spec.stage, select: spec.select ?? {},
+      expand: spec.expand ?? null, beat: spec.beat ?? null, caption: spec.caption ?? null,
+      focus: spec.focus ?? null, prose: sections.get(spec.section) ?? '' };
+  }
+
+  // Parses a chapter's Markdown into a Story object; null if it has no steps.
+  function parseStory(id, text) {
+    const { frontmatter, body } = splitFrontmatter(text);
+    const meta = jsyaml.load(frontmatter) ?? {};
+    if (!Array.isArray(meta.steps)) return null;
+    const sections = splitSections(body);
+    return { id, title: meta.title ?? '', steps: meta.steps.map(s => stepFromSpec(s, sections)) };
+  }
+
+  // Fetches and parses a chapter; any failure disables story mode (FR-13).
+  async function loadStory(id) {
+    const path = STORY_SOURCES[id];
+    if (!path) return null;
+    try {
+      return parseStory(id, await fetch(path).then(r => r.text()));
+    } catch (err) {
+      console.warn('Story konnte nicht geladen werden:', err);
+      return null;
+    }
+  }
+
+  // ── Story-mode shell: prose rendering, stage, entry/exit (ADR-0006) ──
+  // Escapes HTML, then re-introduces only **bold** and *italic* as a safe whitelist.
+  function inlineMarkup(text) {
+    const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return esc.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+              .replace(/\*(.+?)\*/g, '<em>$1</em>');
+  }
+
+  // Splits »Keyword - rest of sentence« into its bold keyword and the plain remainder
+  // (leading separator dropped), mirroring the chapter button's split.
+  function splitChapterLabel(text) {
+    const sp = text.indexOf(' ');
+    if (sp === -1) return { head: text, rest: '' };
+    return { head: text.slice(0, sp), rest: text.slice(sp + 1).replace(/^[–-]\s*/, '') };
+  }
+
+  // Page header for the open story: the button's bold keyword as title, its sentence below.
+  function buildStoryHead(story) {
+    const label = CHAPTERS.find(c => c.id === story.id)?.label ?? story.title ?? '';
+    const { head, rest } = splitChapterLabel(label);
+    const wrap = document.createElement('header');
+    wrap.id = 'story-page-head';
+    const h1 = document.createElement('h1');
+    h1.textContent = head;
+    const sub = document.createElement('p');
+    sub.textContent = rest;
+    wrap.append(h1, sub);
+    return wrap;
+  }
+
+  // A caption step is slim: one cue line, no repeated heading/prose (e.g. the map view).
+  function renderCaptionStep(step, i) {
+    const sec = document.createElement('section');
+    sec.className = 'story-step story-aside';
+    sec.dataset.step = i;
+    const p = document.createElement('p');
+    p.className = 'story-cue';
+    p.textContent = step.caption ?? step.section;
+    sec.appendChild(p);
+    return sec;
+  }
+
+  // The cue line under first-occurrence prose: a caption no longer suppresses the prose.
+  function appendCue(sec, text) {
+    const cue = document.createElement('p');
+    cue.className = 'story-cue';
+    cue.textContent = text;
+    sec.appendChild(cue);
+  }
+
+  // One scroll step. A section's first appearance renders heading + prose (+ optional
+  // cue); a repeat appearance is the slim caption aside — routed by `seen`, not caption.
+  function renderStep(step, i, seen) {
+    if (seen.has(step.section)) return renderCaptionStep(step, i);
+    const sec = document.createElement('section');
+    sec.className = 'story-step';
+    sec.dataset.step = i;
+    const h = document.createElement('h2');
+    h.textContent = step.section;
+    sec.appendChild(h);
+    for (const para of step.prose.split(/\n\s*\n/)) {
+      const p = document.createElement('p');
+      p.innerHTML = inlineMarkup(para.replace(/\n/g, ' ').trim());
+      sec.appendChild(p);
+    }
+    if (step.caption) appendCue(sec, step.caption);
+    if (step.beat?.startsWith('count-')) sec.appendChild(buildCounter(step.beat));
+    seen.add(step.section);
+    return sec;
+  }
+
+  // A large field-size figure that the count-* beat tweens; starts at the low endpoint.
+  function buildCounter(beat) {
+    const fig = document.createElement('p');
+    fig.className = 'story-figure';
+    const span = document.createElement('span');
+    span.className = 'story-count';
+    span.textContent = beat.match(/count-(\d+)/)[1];
+    fig.append(span, document.createTextNode(' teilnehmende Länder'));
+    return fig;
+  }
+
+  function buildStoryExit() {
+    const btn = document.createElement('button');
+    btn.id = 'story-exit';
+    btn.type = 'button';
+    btn.textContent = 'Jetzt selbst erkunden';
+    btn.addEventListener('click', exitStoryMode);
+    return btn;
+  }
+
+  // ── Vote stage (#vote): the Δ baseline cloud + median (story 0002, ADR-0008) ──
+  const VOTE_W = 900, VOTE_H = 560;
+  const VOTE_MARGIN = { top: 76, right: 48, bottom: 52, left: 48 };
+  const VOTE_DOT_R = 3.2;
+  const VOTE_LABEL_GAP = 5;            // dot edge → label start
+  const VOTE_LABEL_DY = 11;            // vertical step when nudging a label off a dot
+  const VOTE_CLOUD_TOP = VOTE_H * 0.46; // year bands live below the spike band
+  const VOTE_CLOUD_BOT = VOTE_H - VOTE_MARGIN.bottom;
+  const VOTE_GUIDE_TOP_GAP = 24;        // guide lines stop this far above the latest-year band, leaving room for the label
+  let voteScalesCache = null;          // { x } reused by the spikes layer
+
+  // Built only in story mode; removed with #story-mode on exit (additive — FR-15).
+  function buildVoteStage() {
+    const host = document.createElement('div');
+    host.id = 'vote';
+    host.innerHTML = '<svg></svg>';
+    document.getElementById('story-stage').appendChild(host);
+    d3.select('#vote svg')
+      .attr('viewBox', `0 0 ${VOTE_W} ${VOTE_H}`)
+      .attr('preserveAspectRatio', 'xMidYMid meet');
+    renderVoteBaseline();
+  }
+
+  // Δ → x. The y-axis is now categorical (one equal-height band per split year).
+  function voteX(rows) {
+    const ext = d3.extent(rows, deltaOf);
+    return d3.scaleLinear()
+      .domain([Math.min(ext[0], -20) - 10, Math.max(ext[1], 20) + 10]).nice()
+      .range([VOTE_MARGIN.left, VOTE_W - VOTE_MARGIN.right]);
+  }
+
+  // The full year span, ascending — earliest at the bottom. Gap years (2020, the
+  // pandemic cancellation) stay in as empty bands so the time axis is unbroken.
+  function voteYears(rows) {
+    const ys = rows.map(r => r.year);
+    return d3.range(Math.min(...ys), Math.max(...ys) + 1);
+  }
+
+  // Year → one band; within a band a beeswarm spreads same-Δ rows so none hide.
+  function voteLayout(rows, x) {
+    const years = voteYears(rows);
+    const bandH = (VOTE_CLOUD_BOT - VOTE_CLOUD_TOP) / years.length;
+    const byYear = d3.group(rows, r => r.year);
+    const pos = new Map();
+    years.forEach((yr, k) => placeYearBand(byYear.get(yr), k, bandH, x, pos));
+    return { years, bandH, pos, populated: new Set(byYear.keys()) };
+  }
+
+  // Band k (k=0 at the bottom) centres on its rows, swarmed to avoid x-collisions.
+  function placeYearBand(rows, k, bandH, x, pos) {
+    if (!rows) return;   // an empty year (no contest) just leaves its band blank
+    const cy = VOTE_CLOUD_BOT - (k + 0.5) * bandH;
+    const sorted = rows.slice().sort((a, b) => deltaOf(a) - deltaOf(b));
+    const placed = [];
+    for (const r of sorted) {
+      const px = x(deltaOf(r));
+      const py = swarmY(px, cy, bandH, placed);
+      placed.push({ px, py });
+      pos.set(r, { x: px, y: py });
+    }
+  }
+
+  // Nudge a dot off the band centre in growing steps until it clears its neighbours.
+  function swarmY(px, cy, bandH, placed) {
+    const lim = bandH / 2 - VOTE_DOT_R;
+    for (let d = 0; d <= lim; d += VOTE_DOT_R)
+      for (const dy of (d === 0 ? [0] : [d, -d]))
+        if (!swarmHit(px, cy + dy, placed)) return cy + dy;
+    return cy;   // band saturated — accept overlap rather than escape the band
+  }
+
+  function swarmHit(px, py, placed) {
+    const min2 = (2 * VOTE_DOT_R) ** 2;
+    return placed.some(p => (p.px - px) ** 2 + (p.py - py) ** 2 < min2);
+  }
+
+  function renderVoteBaseline() {
+    const svg = d3.select('#vote svg');
+    if (svg.empty()) return;
+    const rows = voteRows();
+    const x = voteX(rows);
+    voteScalesCache = { x };
+    const layout = voteLayout(rows, x);
+    drawVoteFrame(svg, x);
+    drawVoteBands(svg, layout);
+    drawVoteCloud(svg, rows, layout);
+    drawVoteGuides(svg, x);
+  }
+
+  // The categorical y-axis: an equal-spaced hairline + year label per band.
+  function drawVoteBands(svg, layout) {
+    let g = svg.select('g.vote-bands');
+    if (g.empty()) g = svg.append('g').attr('class', 'vote-bands');
+    g.selectAll('*').remove();
+    layout.years.forEach((yr, k) =>
+      drawVoteBand(g, yr, k, layout.bandH, layout.populated.has(yr)));
+    drawVoteBandLine(g, layout.years.length, layout.bandH);   // top boundary
+  }
+
+  function drawVoteBand(g, yr, k, bandH, hasData) {
+    drawVoteBandLine(g, k, bandH);
+    const baseline = VOTE_CLOUD_BOT - (k + 0.5) * bandH + 4;
+    g.append('text').attr('class', 'vote-year')
+      .attr('x', VOTE_MARGIN.left - 8).attr('y', baseline)
+      .attr('text-anchor', 'end').text(yr);
+    if (!hasData) g.append('text').attr('class', 'vote-year-note')
+      .attr('x', VOTE_MARGIN.left + 6).attr('y', baseline)
+      .text('abgesagt (Corona)');
+  }
+
+  function drawVoteBandLine(g, k, bandH) {
+    const y = VOTE_CLOUD_BOT - k * bandH;
+    g.append('line').attr('class', 'vote-band-line')
+      .attr('x1', VOTE_MARGIN.left).attr('x2', VOTE_W - VOTE_MARGIN.right)
+      .attr('y1', y).attr('y2', y);
+  }
+
+  // Title + Δ axis; the prose owns the meaning, the axis only labels the scale.
+  function drawVoteFrame(svg, x) {
+    svg.selectAll('g.vote-axis, text.vote-title').remove();
+    svg.append('text').attr('class', 'vote-title')
+      .attr('x', VOTE_MARGIN.left).attr('y', 40)
+      .text('Televote − Jury: Δ-Punkte aller Final-Auftritte ab 2016 (n = 257)');
+    svg.append('g').attr('class', 'vote-axis')
+      .attr('transform', `translate(0,${VOTE_H - VOTE_MARGIN.bottom + 12})`)
+      .call(d3.axisBottom(x).ticks(9).tickFormat(d3.format('+d')));
+  }
+
+  function drawVoteCloud(svg, rows, layout) {
+    let g = svg.select('g.vote-cloud');
+    if (g.empty()) g = svg.append('g').attr('class', 'vote-cloud');
+    g.selectAll('circle.vote-dot')
+      .data(rows)
+      .join('circle')
+        .attr('class', 'vote-dot').attr('r', VOTE_DOT_R)
+        .attr('cx', d => layout.pos.get(d).x)
+        .attr('cy', d => layout.pos.get(d).y);
+  }
+
+  // The median −3 finding (drawn, not recomputed) plus the Δ=0 reference.
+  function drawVoteGuides(svg, x) {
+    const top = VOTE_CLOUD_TOP - VOTE_GUIDE_TOP_GAP, bot = VOTE_H - VOTE_MARGIN.bottom;
+    let g = svg.select('g.vote-guides');
+    if (g.empty()) g = svg.append('g').attr('class', 'vote-guides');
+    g.selectAll('*').remove();
+    drawVoteGuide(g, 'vote-zero', x(0), top, bot, null);
+    drawVoteGuide(g, 'vote-median', x(VOTE_MEDIAN), top, bot,
+      `Median ${String(VOTE_MEDIAN).replace('-', '−')}`);
+  }
+
+  function drawVoteGuide(g, cls, xPos, top, bot, label) {
+    g.append('line').attr('class', cls)
+      .attr('x1', xPos).attr('x2', xPos).attr('y1', top).attr('y2', bot);
+    if (label) g.append('text').attr('class', 'vote-label')
+      .attr('x', xPos + 7).attr('y', top + 4).text(label);
+  }
+
+  // Every war-year entry of the selection, biggest Δ first (FR-03/FR-04: all, not cherry-picked).
+  function voteHighlights() {
+    const items = [];
+    for (const e of selectedEntities)
+      for (const iso of e.members)
+        for (const row of warYearRowsFor(iso))
+          items.push({ iso, row, delta: deltaOf(row), color: e.color });
+    return items.sort((a, b) => b.delta - a.delta);
+  }
+
+  // Selection → its war-year dots tinted in place, each flagged with ISO + Δ.
+  function highlightVoteCloud() {
+    const svg = d3.select('#vote svg');
+    if (svg.empty() || !voteScalesCache) return;
+    const items = voteHighlights();
+    recolorVoteCloud(svg, items);
+    drawVoteLabels(svg, topPerCountry(items));
+  }
+
+  // One flag per country: the first per ISO in the Δ-descending list is its largest.
+  function topPerCountry(items) {
+    const seen = new Set();
+    return items.filter(it => !seen.has(it.iso) && seen.add(it.iso));
+  }
+
+  // Tint each highlighted cloud dot with its entity colour and enlarge it a touch
+  // so the Länder-Deltas stand out (Beweis steps); the rest fall back to CSS grey.
+  function recolorVoteCloud(svg, items) {
+    const colors = new Map(items.map(it => [it.row, it.color]));
+    svg.selectAll('circle.vote-dot')
+      .style('fill', d => colors.get(d) ?? null)   // inline style beats the CSS .vote-dot rule
+      .attr('r', d => colors.has(d) ? VOTE_DOT_R + 1.6 : VOTE_DOT_R)
+      .filter(d => colors.has(d)).raise();
+  }
+
+  // The rendered cloud positions, keyed by their bound row (identity-stable).
+  function cloudDots(svg) {
+    const m = new Map();
+    svg.selectAll('circle.vote-dot').each(function (d) {
+      m.set(d, { x: +this.getAttribute('cx'), y: +this.getAttribute('cy') });
+    });
+    return m;
+  }
+
+  // A flag "<ISO> Δ<signed>" right of each highlighted dot; nudged off any dot it covers.
+  function drawVoteLabels(svg, items) {
+    let g = svg.select('g.vote-labels');
+    if (g.empty()) g = svg.append('g').attr('class', 'vote-labels');
+    g.selectAll('*').remove();
+    const pos = cloudDots(svg), dots = [...pos.values()], placed = [];
+    for (const it of items)
+      if (pos.get(it.row)) drawVoteLabel(g, it, pos.get(it.row), dots, placed);
+  }
+
+  function drawVoteLabel(g, it, p, dots, placed) {
+    const text = `${it.iso} Δ${signDelta(it.delta)}`;
+    const w = text.length * 6.3, r = VOTE_DOT_R + 1.6, right = p.x + r + VOTE_LABEL_GAP;
+    const x = right + w <= VOTE_W - VOTE_MARGIN.right   // flip left when it would overflow
+      ? right : p.x - r - VOTE_LABEL_GAP - w;
+    const y = labelY(x, p.y, w, p, dots, placed);
+    placed.push({ x0: x, x1: x + w, y });
+    g.append('text').attr('class', 'vote-flag')
+      .attr('x', x).attr('y', y + 4).style('fill', it.color).text(text);
+  }
+
+  function signDelta(d) {
+    return (d > 0 ? '+' : '−') + Math.abs(d);
+  }
+
+  // Search the dot's row, then growing offsets, for a label slot that hits nothing.
+  function labelY(x, y0, w, self, dots, placed) {
+    for (let k = 0; k <= 8; k++)
+      for (const dir of (k === 0 ? [0] : [1, -1])) {
+        const y = y0 + dir * k * VOTE_LABEL_DY;
+        if (!labelBoxHit(x, y, w, self, dots, placed)) return y;
+      }
+    return y0;   // crowded — keep it on its dot rather than fling it away
+  }
+
+  function labelBoxHit(x, y, w, self, dots, placed) {
+    const overDot = d => d !== self && d.x >= x - 2 && d.x <= x + w
+      && Math.abs(d.y - y) <= 7;
+    const overLabel = b => x < b.x1 && x + w > b.x0 && Math.abs(b.y - y) <= 13;
+    return dots.some(overDot) || placed.some(overLabel);
+  }
+
+  // ── Payoff stage (#payoff): bias vs. rank scatter (story 0003, ADR-0010) ──
+  const PAYOFF_W = 900, PAYOFF_H = 560;
+  const PAYOFF_MARGIN = { top: 64, right: 120, bottom: 64, left: 72 };
+  const PAYOFF_DOT_R = 7;
+  const PAYOFF_RANK_REF = 0.51;        // mean normalised rank over all finalists (≈ field mid)
+  // Per-group klüngel bias vs. payoff, hard-coded from story 0003 `belege`
+  // (votes_final.json + entries.json). bias = ΣO ÷ ΣE over the group's in-pairs
+  // under the null model (×1 = no klüngel), matching the measure stage. rank =
+  // mean normalised final rank, era-fair (1 = winner, 0 = last, per-year
+  // field-size corrected). Pre-computed pattern.
+  const GROUP_PAYOFF = [
+    { key: 'yugoslavia',   label: 'Ex-Jugoslawien', bias: 3.81, rank: 0.466 },
+    { key: 'caucasus',     label: 'Kaukasus',       bias: 2.24, rank: 0.574 },
+    { key: 'nordic',       label: 'Nordländer',     bias: 1.92, rank: 0.483 },
+    { key: 'ewg_founding', label: 'EWG-Gründer',    bias: 1.10, rank: 0.537 },
+  ];
+
+  // Built only in story mode; removed with #story-mode on exit (additive).
+  function buildPayoffStage() {
+    const host = document.createElement('div');
+    host.id = 'payoff';
+    host.innerHTML = '<svg></svg>';
+    document.getElementById('story-stage').appendChild(host);
+    d3.select('#payoff svg')
+      .attr('viewBox', `0 0 ${PAYOFF_W} ${PAYOFF_H}`)
+      .attr('preserveAspectRatio', 'xMidYMid meet');
+    renderPayoff();
+  }
+
+  // x = klüngel bias (right = more biased, ×1 = no klüngel); y = normalised rank (top = better).
+  function payoffScales() {
+    const x = d3.scaleLinear().domain([1.0, 4.0])
+      .range([PAYOFF_MARGIN.left, PAYOFF_W - PAYOFF_MARGIN.right]);
+    const y = d3.scaleLinear().domain([0.44, 0.60])
+      .range([PAYOFF_H - PAYOFF_MARGIN.bottom, PAYOFF_MARGIN.top]);
+    return { x, y };
+  }
+
+  function renderPayoff() {
+    const svg = d3.select('#payoff svg');
+    if (svg.empty()) return;
+    const scales = payoffScales();
+    renderPayoffAxes(svg, scales);
+    renderPayoffDots(svg, scales);
+  }
+
+  function renderPayoffAxes(svg, scales) {
+    svg.selectAll('g.payoff-axis, text.payoff-axis-label, g.payoff-ref').remove();
+    svg.append('g').attr('class', 'payoff-axis')
+      .attr('transform', `translate(0,${PAYOFF_H - PAYOFF_MARGIN.bottom})`)
+      .call(d3.axisBottom(scales.x).ticks(6).tickFormat(d => fmtDe(d, 1)));
+    svg.append('g').attr('class', 'payoff-axis')
+      .attr('transform', `translate(${PAYOFF_MARGIN.left},0)`)
+      .call(d3.axisLeft(scales.y).ticks(5).tickFormat(d => fmtDe(d, 2)));
+    renderPayoffTitles(svg);
+    renderPayoffRef(svg, scales);
+  }
+
+  // German axis titles; the prose owns the meaning, the labels only name the scales.
+  // The stage title itself now lives in #stage-heading (analog to all 0003 stages).
+  function renderPayoffTitles(svg) {
+    svg.append('text').attr('class', 'payoff-axis-label')
+      .attr('x', PAYOFF_W - PAYOFF_MARGIN.right).attr('y', PAYOFF_H - PAYOFF_MARGIN.bottom + 42)
+      .attr('text-anchor', 'end').text('Klüngel-Bias (× erwartet)');
+    svg.append('text').attr('class', 'payoff-axis-label')
+      .attr('x', PAYOFF_MARGIN.left).attr('y', PAYOFF_MARGIN.top - 16).text('Normierter Rang (oben = besser)');
+  }
+
+  // The all-finalist mean rank, drawn so the reader sees who beats the field.
+  function renderPayoffRef(svg, scales) {
+    const yRef = scales.y(PAYOFF_RANK_REF);
+    const g = svg.append('g').attr('class', 'payoff-ref');
+    g.append('line').attr('class', 'payoff-ref-line')
+      .attr('x1', PAYOFF_MARGIN.left).attr('x2', PAYOFF_W - PAYOFF_MARGIN.right)
+      .attr('y1', yRef).attr('y2', yRef);
+    g.append('text').attr('class', 'payoff-ref-label')
+      .attr('x', PAYOFF_W - PAYOFF_MARGIN.right).attr('y', yRef - 7)
+      .attr('text-anchor', 'end').text('Schnitt aller Finalisten');
+  }
+
+  function renderPayoffDots(svg, scales) {
+    let g = svg.select('g.payoff-dots');
+    if (g.empty()) g = svg.append('g').attr('class', 'payoff-dots');
+    g.selectAll('*').remove();
+    GROUP_PAYOFF.forEach(d => renderPayoffDot(g, d, scales));
+  }
+
+  // The two outliers carry the twist, so they reuse the existing teal/clay accents.
+  function payoffColor(key) {
+    if (key === 'ewg_founding') return '#1B9E91';   // entrant teal — the good outlier
+    if (key === 'yugoslavia') return OVER_RED;       // clay — the hardest klüngel
+    return '#8A847A';                                // neutral ink for the rest
+  }
+
+  function renderPayoffDot(g, d, scales) {
+    const cx = scales.x(d.bias), cy = scales.y(d.rank);
+    g.append('circle').attr('class', 'payoff-dot').attr('r', PAYOFF_DOT_R)
+      .attr('cx', cx).attr('cy', cy).attr('fill', payoffColor(d.key));
+    g.append('text').attr('class', 'payoff-label')
+      .attr('x', cx).attr('y', cy - PAYOFF_DOT_R - 7)
+      .attr('text-anchor', 'middle').text(d.label);
+  }
+
+  // ── Measure stage (#measure): the Klüngel-Faktor as a two-bar ratio (story 0003, ADR-0011) ──
+  const MEASURE_W = 900, MEASURE_H = 560;
+  const MEASURE_MARGIN = { top: 52, bottom: 96, left: 80, right: 70 };
+  const MEASURE_BAR_W = 150;
+  // The Klüngel-Faktor worked example, hard-coded from story 0003 `belege`
+  // (votes_final.json null model): observed in-group points per vote ÷ the
+  // points the null model expects without klüngel = the ×bias. Ex-Jugoslawien
+  // is the Lead's anchor (O=2341, E=615 over 258 in-group votes ⇒ ×3,81).
+  const MEASURE_EXAMPLE = { observed: 9.07, expected: 2.38, factor: 3.81 };
+  const MEASURE_BARS = [
+    { label: 'Innerhalb der Gruppe', sub: 'Ex-Jugoslawien · 258 Wertungen',
+      value: MEASURE_EXAMPLE.observed, cx: 320, color: '#C44E3D' },
+    { label: 'Ohne Klüngel erwartet', sub: 'Nullmodell',
+      value: MEASURE_EXAMPLE.expected, cx: 540, color: '#8A847A' },
+  ];
+
+  // Built only in story mode; removed with #story-mode on exit (additive).
+  function buildMeasureStage() {
+    const host = document.createElement('div');
+    host.id = 'measure';
+    host.innerHTML = '<svg></svg>';
+    document.getElementById('story-stage').appendChild(host);
+    d3.select('#measure svg')
+      .attr('viewBox', `0 0 ${MEASURE_W} ${MEASURE_H}`)
+      .attr('preserveAspectRatio', 'xMidYMid meet');
+    renderMeasure();
+  }
+
+  // y = points per vote; bars share one scale so the ×factor reads as their height ratio.
+  function measureScales() {
+    const y = d3.scaleLinear().domain([0, 10])
+      .range([MEASURE_H - MEASURE_MARGIN.bottom, MEASURE_MARGIN.top]);
+    return { y };
+  }
+
+  function renderMeasure() {
+    const svg = d3.select('#measure svg');
+    if (svg.empty()) return;
+    const scales = measureScales();
+    renderMeasureBaseline(svg, scales);
+    renderMeasureBars(svg, scales);
+    renderMeasureFactor(svg, scales);
+  }
+
+  // The dashed expectation line lets the eye read the taller bar as ~4× the baseline.
+  function renderMeasureBaseline(svg, scales) {
+    svg.selectAll('g.measure-base').remove();
+    const yRef = scales.y(MEASURE_EXAMPLE.expected);
+    const g = svg.append('g').attr('class', 'measure-base');
+    g.append('line').attr('class', 'measure-ref-line')
+      .attr('x1', MEASURE_MARGIN.left).attr('x2', MEASURE_W - MEASURE_MARGIN.right)
+      .attr('y1', yRef).attr('y2', yRef);
+    g.append('text').attr('class', 'measure-ref-label')
+      .attr('x', MEASURE_W - MEASURE_MARGIN.right).attr('y', yRef - 8)
+      .attr('text-anchor', 'end').text('Erwartung 2,38');
+  }
+
+  function renderMeasureBars(svg, scales) {
+    let g = svg.select('g.measure-bars');
+    if (g.empty()) g = svg.append('g').attr('class', 'measure-bars');
+    g.selectAll('*').remove();
+    MEASURE_BARS.forEach(d => renderMeasureBar(g, d, scales));
+  }
+
+  function renderMeasureBar(g, d, scales) {
+    const y0 = scales.y(0), yTop = scales.y(d.value);
+    g.append('rect').attr('class', 'measure-bar')
+      .attr('x', d.cx - MEASURE_BAR_W / 2).attr('y', yTop)
+      .attr('width', MEASURE_BAR_W).attr('height', y0 - yTop).attr('fill', d.color);
+    renderMeasureBarLabels(g, d, scales, yTop);
+  }
+
+  function renderMeasureBarLabels(g, d, scales, yTop) {
+    const y0 = scales.y(0);
+    g.append('text').attr('class', 'measure-value')
+      .attr('x', d.cx).attr('y', yTop - 12).attr('text-anchor', 'middle')
+      .text(`${fmtDe(d.value, 2)} Pkt`);
+    g.append('text').attr('class', 'measure-cat')
+      .attr('x', d.cx).attr('y', y0 + 28).attr('text-anchor', 'middle').text(d.label);
+    g.append('text').attr('class', 'measure-sub')
+      .attr('x', d.cx).attr('y', y0 + 48).attr('text-anchor', 'middle').text(d.sub);
+  }
+
+  // The punchline: the ratio of the two bar heights, set beside the tall bar.
+  function renderMeasureFactor(svg, scales) {
+    svg.selectAll('g.measure-factor').remove();
+    const g = svg.append('g').attr('class', 'measure-factor');
+    const yMid = (scales.y(MEASURE_EXAMPLE.observed) + scales.y(0)) / 2;
+    g.append('text').attr('class', 'measure-factor-num')
+      .attr('x', 745).attr('y', yMid).text(`×${fmtDe(MEASURE_EXAMPLE.factor, 2)}`);
+    g.append('text').attr('class', 'measure-factor-form')
+      .attr('x', 745).attr('y', yMid + 30)
+      .text(`${fmtDe(MEASURE_EXAMPLE.observed, 2)} ÷ ${fmtDe(MEASURE_EXAMPLE.expected, 2)}`);
+  }
+
+  // Builds the story DOM: a sticky stage host beside the scrolling prose column.
+  function buildStoryDom(story) {
+    const mode = document.createElement('div');
+    mode.id = 'story-mode';
+    const stage = document.createElement('div');
+    stage.id = 'story-stage';
+    stage.innerHTML = '<div id="stage-heading"><div id="stage-title"></div>' +
+                      '<div id="stage-subtitle"></div></div>';
+    const scroller = document.createElement('div');
+    scroller.id = 'story-scroller';
+    scroller.appendChild(buildStoryHead(story));
+    const seen = new Set();
+    story.steps.forEach((step, i) => scroller.appendChild(renderStep(step, i, seen)));
+    scroller.appendChild(buildStoryExit());
+    mode.append(stage, scroller);
+    document.querySelector('main').appendChild(mode);
+    buildVoteStage();   // after mode is in the DOM so #vote is selectable
+    buildPayoffStage(); // fresh scatter stage (#payoff) beside it (ADR-0010)
+    buildMeasureStage(); // fresh ratio stage (#measure) for the Datenbasis (ADR-0011)
+  }
+
+  // stage name → DOM id of the element that carries `.is-stage` for that beat.
+  const STAGE_OF = { sankey: 'chart', map: 'map', vote: 'vote',
+                     matrix: 'matrix-scroll', payoff: 'payoff', measure: 'measure' };
+
+  // Per-stage diagram titles, keyed by story id so other chapters stay untouched.
+  // Shown in #stage-heading; the measure stage sets the visual pattern (ADR-0011).
+  const SANKEY_HEADING = { title: 'Sechs Jahrzehnte Teilnehmer im Fluss',
+                           subtitle: 'Zugänge, durchgehende Teilnahme und Abgänge von 1956 bis 2026.' };
+  const STAGE_HEADINGS = {
+    '0001': { sankey: SANKEY_HEADING },
+    '0002': { sankey: SANKEY_HEADING },
+    '0003': {
+      sankey:  SANKEY_HEADING,
+      map:     { title: 'Wo der Klüngel zu Hause ist',
+                 subtitle: 'Die ausgewählten Gruppen auf der Europakarte.' },
+      measure: { title: 'Der Klüngel-Faktor — wie wir »Treue« messen',
+                 subtitle: 'Was eine Gruppe sich wirklich gibt, geteilt durch das, was ohne Klüngel zu erwarten wäre.' },
+      matrix:  { title: 'Wer wählt wen — die Klüngel-Matrix',
+                 subtitle: 'Rot = mehr Punkte als erwartet, Blau = weniger; je kräftiger, desto stärker der Bias.' },
+      payoff:  { title: 'Treue gegen Erfolg',
+                 subtitle: 'Bringt Block-Loyalität am Ende einen besseren Platz?' },
+    }
+  };
+
+  // Cross-fades the stage so exactly one graphic carries the `.is-stage` class.
+  function setStage(which) {
+    for (const [name, id] of Object.entries(STAGE_OF)) {
+      const el = document.getElementById(id);   // vote/payoff exist only in story mode
+      if (el) el.classList.toggle('is-stage', name === which);
+    }
+    updateStageHeading(which);
+  }
+
+  // Drives the sticky stage title from the active story's per-stage heading.
+  function updateStageHeading(which) {
+    const bar = document.getElementById('stage-heading');
+    if (!bar) return;
+    const h = STAGE_HEADINGS[story?.id]?.[which];
+    bar.classList.toggle('empty', !h);
+    bar.querySelector('#stage-title').textContent = h ? h.title : '';
+    bar.querySelector('#stage-subtitle').textContent = h ? h.subtitle : '';
+  }
+
+  // Records an element's exact slot so exit can reinsert it where it belonged.
+  let chartHome = null, mapHome = null, matrixHome = null;
+  function recordHome(el) { return { parent: el.parentNode, next: el.nextSibling }; }
+  function restoreHome(el, home) { home.parent.insertBefore(el, home.next); }
+
+  // Reparenting (not re-render) moves the live graphics onto the sticky stage.
+  function reparentIntoStage() {
+    const stage = document.getElementById('story-stage');
+    const chart = document.getElementById('chart'), map = document.getElementById('map');
+    const matrix = document.getElementById('matrix-scroll');
+    chartHome = recordHome(chart);
+    mapHome = recordHome(map);
+    matrixHome = recordHome(matrix);
+    stage.append(chart, map, matrix);
+  }
+
+  async function enterStoryMode(id) {
+    story = await loadStory(id);
+    if (!story) return;
+    storyMode = true;
+    buildStoryDom(story);
+    reparentIntoStage();
+    document.body.classList.add('story-mode');
+    window.scrollTo(0, 0);
+    applyStep(story.steps[0]);
+    observeSteps();
+  }
+
+  // Restores the explore view; the selection is kept live for free exploration (FR-12).
+  function exitStoryMode() {
+    if (!storyMode) return;
+    clearBeats();
+    if (stepObserver) { stepObserver.disconnect(); stepObserver = null; }
+    restoreHome(document.getElementById('chart'), chartHome);
+    restoreHome(document.getElementById('map'), mapHome);
+    restoreHome(document.getElementById('matrix-scroll'), matrixHome);
+    document.body.classList.remove('story-mode');
+    document.getElementById('story-mode').remove();
+    storyMode = false;
+    window.scrollTo(0, 0);
+  }
+
+  // ── Step driver: a step's spec → the existing selection API (ADR-0006) ──
+  function groupEntity(key) {
+    const g = groups[key];
+    return g ? { id: `group:${key}`, kind: 'group',
+      label: g.label, members: new Set(g.members) } : null;
+  }
+
+  function countryEntity(code) {
+    if (!countryNames.has(code)) return null;
+    return { id: `country:${code}`, kind: 'country',
+      label: `${countryNames.get(code)} (${code})`, members: new Set([code]) };
+  }
+
+  // Every group as one band, plus each ungrouped participant as its own band.
+  // Overlapping groups partition cleanly via effectiveMembers' stack-order dedup.
+  function groupedFieldEntities(except) {
+    const keys = Object.keys(groups).filter(k => !except.includes(k));
+    const inGroup = new Set(keys.flatMap(k => groups[k].members));
+    const rest = [...everParticipants].filter(c => !inGroup.has(c));
+    return [...keys.map(groupEntity), ...rest.map(countryEntity)].filter(Boolean);
+  }
+
+  // A step's `select` ({belligerents|allGrouped|all|group|groups|countries}) → entities.
+  function entitiesFromSpec(spec) {
+    if (spec.belligerents) return [...belligerentCodes()].map(countryEntity).filter(Boolean);
+    if (spec.allGrouped) return groupedFieldEntities(spec.except ?? []);
+    if (spec.all) return [...everParticipants].map(countryEntity).filter(Boolean);
+    const keys = [spec.group, ...(spec.groups ?? [])].filter(Boolean);
+    return [...keys.map(groupEntity), ...(spec.countries ?? []).map(countryEntity)]
+      .filter(Boolean);
+  }
+
+  // A step's `focus` → a concrete year, or null for `all`/absent. A decade label
+  // resolves to its first year; anything unparseable degrades to null (never throws).
+  function focusYear(step) {
+    const f = step.focus;
+    if (f == null || f === 'all') return null;
+    if (typeof f === 'number') return Number.isFinite(f) ? f : null;
+    const start = parseInt(String(f), 10);
+    return Number.isFinite(start) ? start : null;
+  }
+
+  // Reaches exactly the state a user could reach by hand, with a single refresh.
+  function applySelection(spec, expandKey) {
+    resetSelection();
+    for (const e of entitiesFromSpec(spec)) addEntity(e);
+    if (expandKey) {
+      const e = selectedEntities.find(x => x.id === `group:${expandKey}`);
+      if (e) e.expanded = true;
+    }
+    refresh();
+  }
+
+  function applyStep(step) {
+    clearBeats();
+    storyFocus = focusYear(step);
+    storyWarSegments = step.beat === 'war-segments';
+    document.body.classList.toggle('war-mode', storyWarSegments);  // shows the legend chip
+    storyRoleMode = !!step.select?.belligerents
+      || step.beat === 'war-segments' || step.beat === 'war-spikes';
+    applySelection(step.select, step.expand);
+    setStage(step.stage);
+    runBeat(step.beat);
+  }
+
+  // ── Signature beats (ADR-0006); each resolves instantly under reduced motion ──
+  const REDUCE = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let beatRaf = null, wallTimers = [];
+
+  function runBeat(name) {
+    if (!name) return;
+    if (name.startsWith('count-')) beatCounter(name);
+    else if (name === 'wall-fall') beatWallFall();
+    else if (name === 'yu-hinge') beatYuHinge();
+    else if (name === 'baseline') beatBaseline();
+    else if (name === 'war-spikes') beatVoteLabels();
+    else if (name === 'war-segments') beatWarSegments();
+    else if (name === 'payoff-reveal') beatPayoffReveal();
+  }
+
+  // Staggers the five dots in so the anti-correlation reads as it appears;
+  // instant to the final scatter under reduced motion (FR-08/FR-09).
+  function beatPayoffReveal() {
+    const dots = d3.select('#payoff g.payoff-dots').selectAll('.payoff-dot');
+    if (dots.empty()) return;
+    if (REDUCE) { dots.attr('opacity', 1); return; }
+    dots.attr('opacity', 0).transition().delay((d, i) => i * 140)
+      .duration(420).attr('opacity', 1);
+  }
+
+  // Fades the bands and the war marks in; refresh() already drew the end state.
+  function beatWarSegments() {
+    const layer = d3.select('#chart svg g.overlay');
+    if (layer.empty() || REDUCE) return;
+    layer.selectAll('path').attr('fill-opacity', 0)
+      .transition().duration(700).attr('fill-opacity', 0.85);
+    d3.select('#chart svg g.war-marks').attr('opacity', 0)
+      .transition().duration(700).attr('opacity', 1);
+  }
+
+  // Fades the baseline cloud in on the Datenbasis step; instant under reduced motion.
+  function beatBaseline() {
+    const cloud = d3.select('#vote g.vote-cloud');
+    if (cloud.empty() || REDUCE) return;
+    cloud.attr('opacity', 0).transition().duration(600).attr('opacity', 1);
+  }
+
+  // The Δ flags fade in over the tinted dots; refresh() drew the end state.
+  function beatVoteLabels() {
+    const g = d3.select('#vote g.vote-labels');
+    if (g.empty() || REDUCE) return;
+    g.attr('opacity', 0).transition().duration(700).attr('opacity', 1);
+  }
+
+  // Clears any transient beat state before the next step applies (FR-08…FR-11).
+  function clearBeats() {
+    d3.select('#chart svg').classed('spotlight', false);
+    if (beatRaf) { cancelAnimationFrame(beatRaf); beatRaf = null; }
+    wallTimers.forEach(clearTimeout);
+    wallTimers = [];
+    storyFocus = null;
+    storyWarSegments = false;
+    storyRoleMode = false;
+    document.body.classList.remove('war-mode');
+  }
+
+  // Tweens the field-size figure (e.g. 23→47) whose endpoints come from the beat name.
+  function beatCounter(name) {
+    const m = name.match(/count-(\d+)-(\d+)/), el = document.querySelector('.story-count');
+    if (!m || !el) return;
+    if (REDUCE) { el.textContent = m[2]; return; }
+    tweenInt(el, +m[1], +m[2], 2000);
+  }
+
+  function tweenInt(el, from, to, ms) {
+    const start = performance.now();
+    const tick = now => {
+      const t = Math.min(1, (now - start) / ms);
+      el.textContent = Math.round(from + (to - from) * t);
+      if (t < 1) beatRaf = requestAnimationFrame(tick);
+    };
+    beatRaf = requestAnimationFrame(tick);
+  }
+
+  // West→east longitude of a code's feature centroid (drives the wall-fall sweep).
+  function lonOf(iso) {
+    const f = geoFeaturesFor(iso)[0];
+    return f ? d3.geoCentroid(f)[0] : 0;
+  }
+
+  // Staggered map fill west→east; the end state equals a plain recolorMap().
+  function beatWallFall() {
+    if (REDUCE || !mapSvg) return;            // refresh() already painted the end state
+    const colorByIso = mapColorByIso();
+    mapSvg.selectAll('path.geo-country').style('fill', null);
+    [...colorByIso.keys()].sort((a, b) => lonOf(a) - lonOf(b)).forEach((iso, i) =>
+      wallTimers.push(setTimeout(() => paintIso(iso, colorByIso.get(iso)), i * 150)));
+    wallTimers.push(setTimeout(recolorMap, colorByIso.size * 150 + 400));
+  }
+
+  // Isolates the Yugoslavia transition: the aggregate river + decade rects fade away.
+  function beatYuHinge() {
+    d3.select('#chart svg').classed('spotlight', true);
+  }
+
+  // A thin trigger band mid-viewport keeps exactly one step active (NFR-02).
+  function observeSteps() {
+    const opts = { rootMargin: '-45% 0px -45% 0px', threshold: 0 };
+    stepObserver = new IntersectionObserver(onStepIntersect, opts);
+    document.querySelectorAll('.story-step').forEach(s => stepObserver.observe(s));
+  }
+
+  function onStepIntersect(entries) {
+    for (const e of entries)
+      if (e.isIntersecting) applyStep(story.steps[+e.target.dataset.step]);
+  }
+
+  // Leading keyword (e.g. »Kollaps«) bold, the rest of the label plain.
+  function fillChapterButton(btn, text) {
+    const sp = text.indexOf(' ');
+    const strong = document.createElement('strong');
+    strong.textContent = sp === -1 ? text : text.slice(0, sp);
+    btn.textContent = '';
+    btn.append(strong, document.createTextNode(sp === -1 ? '' : text.slice(sp)));
+  }
+
+  // One labelled entry button per chapter; disabled if its probe fails (FR-11,
+  // per-chapter graceful degradation). `label` wins over the (long) story title.
+  async function wireChapterButton(chapter, container) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'story-entry';
+    btn.addEventListener('click', () => enterStoryMode(chapter.id));
+    container.appendChild(btn);
+    const loaded = await loadStory(chapter.id);
+    btn.disabled = !loaded;
+    fillChapterButton(btn, chapter.label ?? loaded?.title ?? 'Story');
+  }
+
+  async function wireStoryEntries() {
+    const container = document.getElementById('story-entries');
+    await Promise.all(CHAPTERS.map(c => wireChapterButton(c, container)));
+  }
+
+  // ── Vote-bias matrix (ADR-0009) ───────────────────────────────
+  // A read-only, directed 52×52 heat-grid drawn purely from the offline build's
+  // two committed JSONs; it never recomputes the null model, permutation, or Louvain.
+  const SIG_ALPHA  = 0.05;          // significance threshold (FR-05)
+  const LOG2_CLAMP = 3;             // colour domain ±3 → ×8 … ×⅛ (FR-04)
+  const MUTED_GREY = '#CBC7BE';     // not-significant fill (project neutral ramp)
+  const OVER_RED   = '#C44E3D';     // clay — over-votes (reuses Sankey 'gone' hue)
+  const UNDER_BLUE = '#2C6FB0';     // defender blue (reuses war-overlay hue)
+  const ZERO_WHITE = '#F5F3EE';     // bias == expected — near page background
+  const MATRIX_CELL_MIN = 24, MATRIX_CELL_MAX = 33;        // cell px clamp (NFR-05), 1.5× display scale
+  const MATRIX_MARGIN_LEFT = 84, MATRIX_MARGIN_TOP = 84;   // ISO2 tick gutters (1.5× scale)
+  const MATRIX_PAD_RIGHT = 12;      // small right padding (block headings removed)
+
+  // log2(bias) → colour; clamped so values beyond ±3 take the endpoint hue.
+  const biasColor = d3.scaleLinear()
+    .domain([-LOG2_CLAMP, 0, LOG2_CLAMP])
+    .range([UNDER_BLUE, ZERO_WHITE, OVER_RED])
+    .interpolate(d3.interpolateRgb)
+    .clamp(true);
+
+  // Single failure boundary (FR-12): any fetch/parse error leaves the zone hidden.
+  async function loadBiasData() {
+    try {
+      const [m, s] = await Promise.all([
+        fetch('eurovision-data/bias_matrix.json').then(r => r.json()),
+        fetch('eurovision-data/bias_seriation.json').then(r => r.json())
+      ]);
+      biasMatrix = m; biasSeriation = s; biasOrder = s.order;
+      return true;
+    } catch { return false; }
+  }
+
+  // Flatten the parallel arrays into an O(1) cell lookup; precompute significance.
+  function buildBiasIndex() {
+    biasIndex = new Map();
+    const { pairs, O, E, bias, log2bias, p } = biasMatrix;
+    pairs.forEach(([g, r], i) => biasIndex.set(`${g}|${r}`, {
+      giver: g, receiver: r, O: O[i], E: E[i], bias: bias[i],
+      log2bias: log2bias[i], p: p[i], significant: p[i] < SIG_ALPHA
+    }));
+    biasCommunityOf = new Map();
+    biasSeriation.communities.forEach((b, ci) => b.members.forEach(m => biasCommunityOf.set(m.iso, ci)));
+  }
+
+  // The matrix shows only the shared selection (ADR-0009 Decision 6 / FR coupling),
+  // kept in klüngel order so the selected countries' affinity blocks still read.
+  function matrixAxisOrder() {
+    const sel = activeIsoSet();
+    return biasOrder.filter(iso => sel.has(iso));
+  }
+
+  function matrixCellSize(order) {
+    const scroll = document.getElementById('matrix-scroll');
+    const fit = Math.floor((scroll.clientWidth - MATRIX_MARGIN_LEFT) / order.length);
+    return Math.max(MATRIX_CELL_MIN, Math.min(fit || 0, MATRIX_CELL_MAX));
+  }
+
+  function matrixGeometry(order) {
+    const cell = matrixCellSize(order);
+    const grid = order.length * cell;
+    return { cell, grid,
+      width: MATRIX_MARGIN_LEFT + grid + MATRIX_PAD_RIGHT,
+      height: MATRIX_MARGIN_TOP + grid };
+  }
+
+  // Core encoding rule (DEV_TECH_DESIGN §3.3): diagonal & never-met are blank.
+  function matrixCellState(giver, receiver) {
+    if (giver === receiver) return { state: 'blank' };
+    const datum = biasIndex.get(`${giver}|${receiver}`);
+    if (!datum) return { state: 'blank' };
+    return { state: datum.significant ? 'sig' : 'ns', datum };
+  }
+
+  function cellFill(state, datum) {
+    if (state === 'ns') return MUTED_GREY;
+    return biasColor(datum.log2bias ?? -LOG2_CLAMP);  // null log2 ⇒ bias 0 ⇒ blue end
+  }
+
+  function matrixCellData(geo, order) {
+    const out = [];
+    order.forEach((giver, r) => order.forEach((receiver, c) => {
+      const { state, datum } = matrixCellState(giver, receiver);
+      if (state === 'blank') return;  // no rect for diagonal/never-met (FR-06)
+      out.push({ datum, fill: cellFill(state, datum),
+        x: MATRIX_MARGIN_LEFT + c * geo.cell, y: MATRIX_MARGIN_TOP + r * geo.cell });
+    }));
+    return out;
+  }
+
+  function renderMatrixCells(svg, geo, order) {
+    svg.append('g').attr('class', 'matrix-cells')
+      .selectAll('rect').data(matrixCellData(geo, order)).join('rect')
+      .attr('class', 'matrix-cell')
+      .attr('x', d => d.x).attr('y', d => d.y)
+      .attr('width', geo.cell).attr('height', geo.cell)
+      .attr('fill', d => d.fill)
+      .on('mousemove', onBiasCellMove).on('mouseout', onBiasCellLeave);
+  }
+
+  function appendRowTick(g, iso, i, geo) {
+    g.append('text').attr('class', 'matrix-tick')
+      .attr('x', MATRIX_MARGIN_LEFT - 4)
+      .attr('y', MATRIX_MARGIN_TOP + i * geo.cell + geo.cell / 2)
+      .attr('text-anchor', 'end').attr('dominant-baseline', 'central').text(iso);
+  }
+
+  function appendColTick(g, iso, i, geo) {
+    const x = MATRIX_MARGIN_LEFT + i * geo.cell + geo.cell / 2;
+    const y = MATRIX_MARGIN_TOP - 4;
+    g.append('text').attr('class', 'matrix-tick')
+      .attr('x', x).attr('y', y).attr('text-anchor', 'start')
+      .attr('dominant-baseline', 'central')
+      .attr('transform', `rotate(-90 ${x} ${y})`).text(iso);
+  }
+
+  function renderMatrixAxes(svg, geo, order) {
+    const g = svg.append('g').attr('class', 'matrix-axes');
+    order.forEach((iso, i) => { appendRowTick(g, iso, i, geo); appendColTick(g, iso, i, geo); });
+  }
+
+  // One boundary rule at grid index i, drawn on both axes (square symmetry).
+  function appendSep(g, geo, i, cls) {
+    const off = i * geo.cell;
+    g.append('line').attr('class', cls)
+      .attr('x1', MATRIX_MARGIN_LEFT).attr('x2', MATRIX_MARGIN_LEFT + geo.grid)
+      .attr('y1', MATRIX_MARGIN_TOP + off).attr('y2', MATRIX_MARGIN_TOP + off);
+    g.append('line').attr('class', cls)
+      .attr('y1', MATRIX_MARGIN_TOP).attr('y2', MATRIX_MARGIN_TOP + geo.grid)
+      .attr('x1', MATRIX_MARGIN_LEFT + off).attr('x2', MATRIX_MARGIN_LEFT + off);
+  }
+
+  // Contiguous runs of one Louvain community within the (filtered) axis order.
+  function communityRuns(order) {
+    const runs = [];
+    order.forEach((iso, i) => {
+      const ci = biasCommunityOf.get(iso);
+      const last = runs[runs.length - 1];
+      if (last && last.ci === ci) last.end = i;
+      else runs.push({ ci, start: i, end: i });
+    });
+    return runs;
+  }
+
+  // Hairlines mark the community boundaries; the category names themselves are omitted.
+  function renderMatrixBlocks(svg, geo, order) {
+    const g = svg.append('g').attr('class', 'matrix-blocks');
+    communityRuns(order).forEach(run => {
+      if (run.start > 0) appendSep(g, geo, run.start, 'matrix-sep');
+    });
+  }
+
+  function legendSwatch(cls, text, color) {
+    const wrap = document.createElement('span');
+    const sw = document.createElement('span');
+    sw.className = `legend-swatch ${cls}`;
+    if (color) sw.style.background = color;
+    wrap.append(sw, text);
+    return wrap;
+  }
+
+  function legendGradient() {
+    const wrap = document.createElement('span');
+    const bar = document.createElement('span');
+    bar.className = 'legend-gradient';
+    // One-sided significance (p = P(null ≥ observed)) can only flag over-votes,
+    // so a significant cell is always bias > 1 — the blue under-vote half never
+    // renders and is omitted here to keep the legend honest.
+    bar.style.background = `linear-gradient(to right, ${ZERO_WHITE}, ${OVER_RED})`;
+    wrap.append(bar, '×1 … ×8');
+    return wrap;
+  }
+
+  function legendNote(text) {
+    const el = document.createElement('span');
+    el.textContent = text;
+    return el;
+  }
+
+  function renderMatrixLegend() {
+    const el = document.getElementById('matrix-legend');
+    el.textContent = '';
+    el.append(legendGradient(),
+      legendSwatch('legend-grey', 'nicht signifikant (p ≥ 0,05)', MUTED_GREY),
+      legendSwatch('legend-blank', 'nie aufeinandergetroffen', null),
+      legendNote('Zeilen geben → Spalten erhalten'));
+  }
+
+  // Set the leading term in bold so each abbreviation reads as a glossary entry.
+  function glossaryTerm(key, rest) {
+    const span = document.createElement('span');
+    const strong = document.createElement('strong');
+    strong.textContent = `${key} `;
+    span.append(strong, rest);
+    return span;
+  }
+
+  // Decode the hover tooltip's O/E/Bias/p shorthand for non-expert readers (ADR-0009).
+  function matrixGlossaryLine() {
+    const el = document.createElement('div');
+    el.append(
+      glossaryTerm('Lesehilfe (beim Überfahren einer Zelle):', ''),
+      glossaryTerm('O', '= tatsächlich vergebene Punkte, '),
+      glossaryTerm('E', '= laut fairem Nullmodell erwartete Punkte. '),
+      glossaryTerm('Bias', '= O ÷ E — »×1,88« heißt fast doppelt so viele Punkte wie erwartet. '),
+      glossaryTerm('p', '= Wahrscheinlichkeit, dass der Überhang Zufall ist; »p < 0,001« ≈ praktisch ausgeschlossen.'));
+    return el;
+  }
+
+  function matrixSourceLine() {
+    const m = biasMatrix._meta ?? {};
+    const q = biasSeriation._meta?.modularity ?? '—';
+    const el = document.createElement('div');
+    el.style.marginTop = '0.35rem';
+    el.textContent =
+      `Quelle: ${m.source ?? 'votes_final.json'}. Offline berechnet `
+      + `(Leave-one-out-Nullmodell, ${m.permutations ?? 4000} Permutationen, `
+      + `Louvain-Seriation, Q = ${q}).`;
+    return el;
+  }
+
+  function renderMatrixCaption() {
+    const el = document.getElementById('matrix-caption');
+    el.textContent = '';
+    el.append(matrixGlossaryLine(), matrixSourceLine());
+  }
+
+  // A matrix needs a pair: 0 selected prompts a choice, 1 selected asks for a second.
+  function setMatrixPlaceholder(count) {
+    document.getElementById('matrix-empty').textContent = count === 1
+      ? 'Für die Klüngel-Matrix sind mindestens zwei Länder nötig — wähle ein weiteres Land oder eine Gruppe.'
+      : 'Wähle links ein Land oder eine Gruppe, um die gegenseitigen Klüngel-Beziehungen der Auswahl als Matrix zu sehen.';
+  }
+
+  // Too-few selection ⇒ show the prompt, hide the grid/legend/caption (nothing to decode).
+  function toggleMatrixEmpty(isEmpty) {
+    document.getElementById('matrix-empty').hidden = !isEmpty;
+    document.getElementById('matrix-scroll').hidden = isEmpty;
+    document.getElementById('matrix-legend').hidden = isEmpty;
+    document.getElementById('matrix-caption').hidden = isEmpty;
+    document.getElementById('matrix-method').hidden = isEmpty;
+  }
+
+  // Re-run on every selection change via refresh(); guarded so it no-ops before load.
+  function renderMatrix() {
+    if (!biasMatrix) return;
+    const order = matrixAxisOrder();
+    const tooFew = order.length < 2;
+    if (tooFew) setMatrixPlaceholder(order.length);
+    toggleMatrixEmpty(tooFew);
+    if (tooFew) return;
+    const geo = matrixGeometry(order);
+    const svg = d3.select('#matrix-svg').attr('width', geo.width).attr('height', geo.height);
+    svg.selectAll('*').remove();
+    renderMatrixCells(svg, geo, order);
+    renderMatrixAxes(svg, geo, order);
+    renderMatrixBlocks(svg, geo, order);
+    renderMatrixLegend();
+    renderMatrixCaption();
+  }
+
+  function revealMatrixZone() {
+    document.getElementById('matrix-zone').hidden = false;
+  }
+
+  function seriationName(iso) {
+    for (const block of biasSeriation.communities) {
+      const m = block.members.find(x => x.iso === iso);
+      if (m) return m.name;
+    }
+    return null;
+  }
+
+  function biasName(iso) {
+    return countryNames.get(iso) ?? seriationName(iso) ?? iso;
+  }
+
+  function fmtP(p) {
+    if (p <= 0.001) return '< 0,001';
+    return `= ${p.toFixed(3).replace('.', ',')}`;
+  }
+
+  // German decimal notation (comma) to match the prose caption and fmtP.
+  function fmtDe(value, digits) {
+    return value.toFixed(digits).replace('.', ',');
+  }
+
+  function biasTooltipBody(cell) {
+    const box = document.createElement('div');
+    const line = t => { const d = document.createElement('div'); d.textContent = t; return d; };
+    box.append(
+      line(`Punkte: O = ${fmtDe(cell.O, 1)}   erwartet E = ${fmtDe(cell.E, 1)}`),
+      line(`Bias: ×${fmtDe(cell.bias, 2)}`),
+      line(cell.significant ? `signifikant (p ${fmtP(cell.p)})` : 'nicht signifikant'));
+    return box;
+  }
+
+  function renderBiasTooltip(cell) {
+    const tip = document.getElementById('tooltip');
+    tip.textContent = '';
+    const head = document.createElement('div');
+    head.className = 'tt-label';
+    head.textContent = `${biasName(cell.giver)} → ${biasName(cell.receiver)}`;
+    tip.append(head, biasTooltipBody(cell));
+  }
+
+  function onBiasCellMove(event, d) {
+    moveTooltip(event);
+    renderBiasTooltip(d.datum);
+    d3.select('#tooltip').style('opacity', 1);
+  }
+
+  function onBiasCellLeave() {
+    d3.select('#tooltip').style('opacity', 0);
+  }
+
+  async function init() {
+    const entries = await fetch('eurovision-data/entries.json').then(r => r.json());
+    allEntries      = entries;      // retained for the vote stage (story 0002)
+    participation   = buildParticipation(entries);
+    firstEntryYear  = buildFirstEntryYear(entries);
+    countryByDecade = invertParticipation(participation);
+    countryNames    = buildCountryNames(entries);
+    everParticipants = new Set(participation.keys());
+    await loadGroups();             // must complete before buildSelectionPanel() reads groups
+    await loadCountryAttributes();  // activates the wars[] accessors in story mode (0002)
+    // Integrity invariant (FR-04): the IL-2023 exclusion must fall out of the wars[]
+    // windows, never a hard-coded year — the May contest preceded the Oct-2023 war.
+    console.assert(warYearRowsFor('IL').every(r => r.year !== 2023), 'IL 2023 is not a war-year');
+    render();
+    linkCountries = computeLinkCountries();
+    buildSelectionPanel();
+    populateDatalist();
+    wireSelectionEvents();
+    selectInitialField();
+    wireStoryEntries();
+    // Kept after render() so a geo failure never blocks the Sankey (FR-01).
+    const geoOk = await loadGeo();
+    // Map is built after the initial selection, so paint it once to match (FR-08).
+    if (geoOk) { initMap(); recolorMap(); }
+    // Additive matrix view (ADR-0009); reveal before render so geometry can measure width.
+    const biasOk = await loadBiasData();
+    if (biasOk) { buildBiasIndex(); revealMatrixZone(); renderMatrix(); }
+  }
+  init();
+</script>
+</body>
+</html>

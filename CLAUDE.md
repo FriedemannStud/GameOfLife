@@ -70,17 +70,31 @@ gcc tests/test_core_types.c src/core/game_logic.c src/core/core_types.c \
 ```
 Test sources live in `tests/test_*.c`. Compiled test binaries (no extension) are pre-built there too.
 
-**Python backend tests** — run directly (no test runner needed). Each `backend/tests/test_*.py` file is self-running:
+**Python backend tests** — run directly (no test runner needed). Each `backend/tests/test_*.py` file is self-running, e.g.:
 ```bash
 python backend/tests/test_ranking.py
 python backend/tests/test_validators.py
-python backend/tests/test_auth_utils.py
-python backend/tests/test_name_claiming.py
-python backend/tests/test_oscillator_detection.py
+python backend/tests/test_duel_room.py
+python backend/tests/test_admin_service.py
 python backend/tests/test_system_integration.py  # requires built binaries
 ```
+See `backend/tests/` for the full list (duel, admin, epoch-guard, match-cache, and name-claiming suites are also covered).
 
 **Backend integration tests** require `make` to have been run first (they invoke the C binaries).
+
+**Python lint** — config lives in the root `pyproject.toml` (black, line-length 88; ruff with `E`/`F`/`W`/`I` rules), scoped to `backend/`:
+```bash
+black --check backend/
+ruff check backend/
+```
+
+## CI (`.github/workflows/ci.yml`)
+
+Runs on push/PR to `biotop`. Four jobs, all of which reflect the canonical dev commands above:
+- `build-c` — `make build/biotope_headless build/biotope_hyper_worker` (the GUI binary is skipped in CI; it needs a display).
+- `test-c` — compiles and runs `tests/test_core_types.c` and `tests/test_file_io.c` directly with `gcc` (not via `make`).
+- `test-backend` — runs `test_ranking.py` and `test_validators.py`.
+- `lint-python` — `black --check backend/` and `ruff check backend/`.
 
 ## Architecture
 
@@ -108,10 +122,13 @@ Key states: `STATE_CONFIG` → `STATE_EDIT_RED` → `STATE_EDIT_BLUE` → `STATE
 
 ### Backend (Multiplayer Tournament)
 
-- **FastAPI** (`backend/app/main.py`): Accepts pattern submissions at `POST /api/v1/submit_config`, serves `/api/leaderboard` and `/api/epoch/highlights`.
+- **FastAPI** (`backend/app/main.py`): Accepts pattern submissions at `POST /api/v1/submit_config`, serves `/api/leaderboard` and `/api/epoch/highlights`. Mounts `duel_router` and `admin_router` (see below).
 - **MongoDB** (`backend/app/database.py`): Collections `submissions`, `players`, `epoch_highlights`, plus `match_results` (deterministic match cache) and `worker_state` (epoch guard) — see ADR-0032.
 - **Python worker** (`backend/app/worker.py`): Runs every 60 s. **Incremental** (ADR-0032): it skips entirely when the active roster is unchanged (fingerprint guard), otherwise computes only the *uncached* seed-pairs via the C worker's pairings mode, upserts them into `match_results`, and aggregates the ranking + highlights from the cache. The optimisation relies on matches being deterministic (determinism tripwire at the cache boundary).
 - **C Hyper-Worker** (`src/apps/hyper/main_hyper.c`): O(N²) round-robin tournament with OpenMP parallelisation. Reads a batch JSON, runs all pairings, outputs rankings + highlight seeds. When the batch includes an optional `pairings` array (ADR-0032), it instead computes only those pairs and emits a per-pair `match_results` array.
+- **Shoulder-Duel mode** (`backend/app/duel_router.py` + `duel_service.py`, ADR-0028): two players share a screen, each editing one half of an 8×8 grid; `POST /duel/rooms` creates a room, `/duel/rooms/{id}/join`, `/lock`, and `/rematch` drive the room state machine, and the referee match is run via `biotope_headless` (needs `libgomp1`+`libcurl4` in the container — see ADR-0028 runtime notes).
+- **Admin config deletion** (`backend/app/admin_router.py` + `admin_service.py`, ADR-0035): password-gated `POST /admin/delete` soft-removes submissions, `/admin/removed` lists them, `/admin/restore` undoes a deletion.
+- Supporting modules: `validators.py` (submission validation), `ranking.py` (leaderboard aggregation), `grid_utils.py` (8×8 pattern helpers), `auth_utils.py` / `admin_auth.py` (recovery-code and admin-password auth), `storage.py` (misc persistence helpers).
 
 ### Web Editor
 

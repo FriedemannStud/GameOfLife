@@ -55,7 +55,9 @@ To preserve data before the server is decommissioned, run the backup script **on
 python scripts/backup_mongo.py
 ```
 
-It reads credentials from `.env`, calls `mongodump` against `127.0.0.1:27018`, and writes the dump to `backup/mongodump_<timestamp>/`. Commit and push that directory to preserve the data in git. Restore with `mongorestore` using the same credentials.
+It reads credentials from `.env`, calls `mongodump` against `127.0.0.1:27018`, and writes the dump to `backup/mongodump_<timestamp>/`. Restore with `mongorestore` using the same credentials.
+
+**Do not commit dumps.** `backup/` is git-ignored: the `players` collection contains visitor nicknames and short recovery-code hashes (4-char codes — trivially brute-forceable from their SHA-256), which must not appear in the public repository, and `epoch_highlights` is ~96 MB of derived data that is fully reproducible from `submissions` (matches are deterministic, ADR-0032). Instead, pack the dump (`tar -czf biotope-mongodump-<date>.tar.gz -C backup mongodump_<timestamp>`) and store it privately outside the repo. A dump from 2026-06-27 is preserved at `~/dev/biotope-mongodump-20260627.tar.gz`.
 
 ## Testing
 
